@@ -466,3 +466,73 @@ body {
   padding: 0.1em 0.3em;
   border-radius: 3px 3px 3px 0;
 }
+
+/* Brief 04, task 1: the top bar's row of small name badges, one per
+   connected user (see src/collab/presence.ts's buildPresenceBadges). */
+#presence-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.presence-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* Brief 04, task 5: the offline/reconnecting/saved status indicator. */
+#status-indicator {
+  font-size: 12px;
+  color: #6e7781;
+  white-space: nowrap;
+}
+
+#status-indicator[data-status='offline'],
+#status-indicator[data-status='reconnecting'] {
+  color: #9a6700;
+  font-weight: 600;
+}
+
+/* Brief 04, task 2: the image address/link popover. Static layout lives
+   here, NOT as an inline style set from JS -- see imagePopover.ts's own
+   comment for the real bug that came from mixing the two (an inline
+   `display` overriding the `hidden` attribute's default `display: none`,
+   so the popover never actually visually hid). Only the dynamic per-open
+   position (`left`/`top`) is set inline. */
+.phraise-image-popover {
+  position: absolute;
+  z-index: 1000;
+  background: #fff;
+  border: 1px solid #888;
+  border-radius: 4px;
+  padding: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font: 13px -apple-system, sans-serif;
+}
+
+.phraise-image-popover[hidden] {
+  display: none;
+}
+
+.phraise-image-popover label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.phraise-image-popover input {
+  font: inherit;
+  min-width: 220px;
+}

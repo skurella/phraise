@@ -4,7 +4,17 @@
 // src/collab/tiptapExtensions.ts -- no StarterKit, no extension that adds a
 // node or mark), wires it to the relay through Collaboration +
 // CollaborationCaret, and shows the serialized Markdown in a side panel.
+//
+// Brief 04 additions: a presence badge row and per-user caret colours
+// (`src/collab/presence.ts` + `presenceView.ts`), an image-address/link
+// popover (`editing/imagePopover.ts`), `y-indexeddb` local persistence plus
+// a hand-written service worker for the offline path (`offlineShell.ts`),
+// and a "Saved"/"Offline.../"Reconnecting" status indicator
+// (`src/offline/status.ts` + `statusView.ts`). Undo/redo need no new wiring:
+// `@tiptap/extension-collaboration` (already below) binds Mod-Z/Mod-Shift-Z/
+// Mod-Y to a real per-client Yjs `UndoManager` on its own.
 import * as Y from 'yjs';
+import { IndexeddbPersistence, storeState as storeIndexeddbState } from 'y-indexeddb';
 import { Node as PMNode } from 'prosemirror-model';
 import { Editor, Node as TiptapNode, type AnyExtension } from '@tiptap/core';
 import { Collaboration } from '@tiptap/extension-collaboration';
@@ -15,12 +25,16 @@ import { PhraiseWorkarounds } from '../../src/collab/tiptapWorkaroundsExtension.
 import { FRAGMENT_NAME } from '../../src/model/yjs.js';
 import { schema } from '../../src/model/schema.js';
 import { serializeDoc } from '../../src/model/serialize.js';
+import { colorForName } from '../../src/collab/presence.js';
+import { createBuildGate, type GateSource } from '../../src/offline/editorGate.js';
+import type { ProviderConnectionStatus } from '../../src/offline/status.js';
 import { FreshSrc } from '../../src/editing/freshSrc.js';
 import { stripEmptyTopLevelParagraphs } from '../../src/editing/stripEmptyParagraphs.js';
 import { MarkdownInputRules } from './editing/inputRulesExtension.js';
 import { EnterConversions } from './editing/enterConversions.js';
 import { MarkShortcuts } from './editing/markShortcuts.js';
 import { LinkShortcut } from './editing/linkShortcut.js';
+import { ImagePopover } from './editing/imagePopover.js';
 import { ListKeymap } from './editing/listKeymap.js';
 import { TableKeymap } from './editing/tableKeymap.js';
 import { MarkdownPasteRule } from './editing/pasteRule.js';
@@ -30,6 +44,9 @@ import { UnverifiedCheck, debugStats as unverifiedCheckDebugStats } from './edit
 import { rawBlockNodeView } from './nodeviews/rawBlockView.js';
 import { rawInlineNodeView } from './nodeviews/rawInlineView.js';
 import { codeBlockNodeView } from './nodeviews/codeBlockView.js';
+import { renderPresenceBadges } from './presenceView.js';
+import { renderStatus } from './statusView.js';
+import { registerServiceWorker, primeOfflineCache } from './offlineShell.js';
 import 'katex/dist/katex.min.css';
 
 interface PhraiseWindowHook {
@@ -39,6 +56,14 @@ interface PhraiseWindowHook {
   provider: HocuspocusProvider;
   /** Test-only (gate H): see `unverifiedCheck.ts`'s `debugStats` comment. */
   debugUnverifiedCheckRuns(): number;
+  /** Test-only (gate I): which source (`'indexeddb'` or `'provider'`) the editor was actually built from. */
+  builtFrom: GateSource;
+  /** Test-only (gate I): forces the y-indexeddb write queue to a full snapshot and resolves once that write has completed, so a test can close/reload the page deterministically instead of guessing at IndexedDB write timing. */
+  flushIndexeddb(): Promise<void>;
+  /** Test-only (gate I): resolves once the service worker is active and the app shell has been explicitly primed into the cache. */
+  offlineReady: Promise<void>;
+  /** Test-only (gate I): the current status label shown in the top bar. */
+  statusLabel(): string;
 }
 
 declare global {
@@ -54,33 +79,12 @@ function readParams(): { docName: string; userName: string } {
   return { docName, userName };
 }
 
-/** Deterministic HSL colour from a name, so the same user always gets the same cursor colour. */
-function colorForName(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash << 5) - hash + name.charCodeAt(i);
-    hash |= 0;
-  }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 65%, 45%)`;
-}
-
 function debounce<Args extends unknown[]>(fn: (...args: Args) => void, ms: number): (...args: Args) => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   return (...args: Args) => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => fn(...args), ms);
   };
-}
-
-async function waitForProviderSynced(provider: HocuspocusProvider): Promise<void> {
-  if (provider.isSynced) return;
-  await new Promise<void>((resolve) => {
-    provider.on('synced', function handler() {
-      provider.off('synced', handler);
-      resolve();
-    });
-  });
 }
 
 async function main(): Promise<void> {
@@ -91,6 +95,8 @@ async function main(): Promise<void> {
   const markdownToggle = document.getElementById('markdown-toggle')! as HTMLButtonElement;
   const markdownPanel = document.getElementById('markdown-panel')!;
   const markdownOutput = document.getElementById('markdown-output')!;
+  const presenceBadgesEl = document.getElementById('presence-badges')!;
+  const statusEl = document.getElementById('status-indicator')!;
 
   // Brief 03, task 6: the top bar shows the document name and the user's
   // name as two separate elements (rather than one combined string), so
@@ -103,9 +109,25 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Brief 04, task 5: register the shell service worker as early as
+  // possible. This does not gate anything below -- it runs in the
+  // background and `window.phraise.offlineReady` (set further down) is how
+  // a test waits for it deterministically before simulating a network
+  // drop.
+  let resolveOfflineReady!: () => void;
+  const offlineReadyPromise = new Promise<void>((resolve) => {
+    resolveOfflineReady = resolve;
+  });
+
   const config = (await fetch('/config.json').then((r) => r.json())) as { relayUrl: string };
 
   const ydoc = new Y.Doc();
+
+  // Brief 04, task 5: one IndexedDB database per document name (not per
+  // user/session), so any tab/reload for this same doc in this browser
+  // profile shares the same local history.
+  const persistence = new IndexeddbPersistence(`phraise-doc:${docName}`, ydoc);
+
   const provider = new HocuspocusProvider({
     url: config.relayUrl,
     name: `file:${docName}`,
@@ -113,11 +135,47 @@ async function main(): Promise<void> {
     token: userName,
   });
 
-  // Build the editor only after the provider's first sync (spike 5's
-  // src/tiptapClient.ts does the same, and for the same reason: the
-  // workaround plugins' initial view() hooks read the Y.Doc's content, which
-  // must already reflect the server's seed/persisted state).
-  await waitForProviderSynced(provider);
+  // Brief 04, task 5: the status indicator tracks two independent facts --
+  // whether the BROWSER is online at all, and whether the relay WebSocket
+  // is `connected` -- wired as soon as the provider exists, not gated
+  // behind the editor build, so the indicator is live through the initial
+  // connecting phase too.
+  let browserOnline = navigator.onLine;
+  let providerStatus: ProviderConnectionStatus = 'connecting';
+  function updateStatus(): void {
+    renderStatus(statusEl, browserOnline, providerStatus);
+  }
+  provider.on('status', ({ status }: { status: ProviderConnectionStatus }) => {
+    providerStatus = status;
+    updateStatus();
+  });
+  window.addEventListener('online', () => {
+    browserOnline = true;
+    updateStatus();
+  });
+  window.addEventListener('offline', () => {
+    browserOnline = false;
+    updateStatus();
+  });
+  updateStatus();
+
+  // Brief 04, task 5: build the editor after whichever comes first --
+  // IndexedDB loaded WITH CONTENT (a previous offline session already wrote
+  // something locally), or the provider's first sync. A freshly opened
+  // document in a brand-new browser profile has an empty IndexedDB that
+  // "loads" almost instantly; settling the gate from that alone would build
+  // the editor before any real content (local OR remote) exists, which is
+  // exactly the precondition spike 5's workaround plugins need violated
+  // (see the plan's "Key choices" offline paragraph and D5). So the
+  // IndexedDB side only settles the gate when its content is non-empty.
+  const gate = createBuildGate();
+  persistence.on('synced', () => {
+    if (ydoc.getXmlFragment(FRAGMENT_NAME).length > 0) gate.onIndexedDBSynced();
+  });
+  if (provider.isSynced) gate.onProviderSynced();
+  provider.on('synced', () => gate.onProviderSynced());
+
+  const builtFrom = await gate.ready;
 
   const user = { name: userName, color: colorForName(userName) };
 
@@ -126,7 +184,9 @@ async function main(): Promise<void> {
   // CollaborationCaret, then the wrapped workaround plugins, then brief 02's
   // editing extensions (typing/shortcuts/lists/tables/paste/copy -- see
   // `src/editing/`'s and `web/src/editing/`'s own comments for what each
-  // one does and why).
+  // one does and why), then brief 04's `ImagePopover` (a plain click
+  // handler plugin; no keyboard shortcut, so its position relative to the
+  // others doesn't matter for the "last one tried first" rule below).
   //
   // The relative order AMONG the keyboard-shortcut extensions here
   // (`ListKeymap`, `TableKeymap`, `EnterConversions`, `LinkShortcut`,
@@ -139,9 +199,9 @@ async function main(): Promise<void> {
   // list nesting; `ListKeymap` is placed after `EnterConversions` so Enter
   // tries "add a list item" before "convert this paragraph to a fence/rule".
   // None of this matters for `FreshSrc`, `MarkdownInputRules`,
-  // `MarkdownPasteRule`, or `MarkdownCopyRule`: the first is an
-  // `appendTransaction` plugin (runs regardless of position), and the other
-  // three bind no keys that anything else here also binds.
+  // `MarkdownPasteRule`, `MarkdownCopyRule`, or `ImagePopover`: the first is
+  // an `appendTransaction` plugin (runs regardless of position), and the
+  // rest bind no keys that anything else here also binds.
   // Brief 03, task 2/4: node views are added by `.extend()`-ing the
   // specific generically-converted extensions by name, never by hand-
   // writing a new Node/Mark (that would risk `checkSchemaEquivalence`
@@ -186,6 +246,7 @@ async function main(): Promise<void> {
     MarkdownInputRules,
     MarkShortcuts,
     LinkShortcut,
+    ImagePopover,
     EnterConversions,
     ListKeymap,
     TableKeymap,
@@ -212,12 +273,27 @@ async function main(): Promise<void> {
     return serializeDoc(stripEmptyTopLevelParagraphs(doc));
   }
 
+  // Brief 04, task 1: the presence badge row re-renders whenever awareness
+  // changes (a user joins/leaves/renames) -- the SAME `update` event
+  // `CollaborationCaret` itself listens to for `editor.storage
+  // .collaborationCaret.users` (confirmed by reading its source; see
+  // `src/collab/presence.ts`'s file comment), so the two stay in sync.
+  function updatePresence(): void {
+    renderPresenceBadges(presenceBadgesEl, editor);
+  }
+  provider.awareness?.on('update', updatePresence);
+  updatePresence();
+
   window.phraise = {
     editor,
     markdown,
     ydoc,
     provider,
     debugUnverifiedCheckRuns: () => unverifiedCheckDebugStats.checkRuns,
+    builtFrom,
+    flushIndexeddb: () => storeIndexeddbState(persistence, true).then(() => undefined),
+    offlineReady: offlineReadyPromise,
+    statusLabel: () => statusEl.textContent ?? '',
   };
 
   const refreshMarkdown = debounce(() => {
@@ -235,6 +311,17 @@ async function main(): Promise<void> {
     markdownPanel.hidden = !markdownPanel.hidden;
     if (!markdownPanel.hidden) refreshMarkdown();
   });
+
+  // Brief 04, task 5: prime the offline cache once the page has actually
+  // finished loading its own resources (so `performance`'s resource list is
+  // as complete as it'll get) -- deliberately not awaited before the editor
+  // exists; a test awaits `window.phraise.offlineReady` itself before
+  // simulating a network drop.
+  void (async () => {
+    await registerServiceWorker();
+    await primeOfflineCache();
+    resolveOfflineReady();
+  })();
 }
 
 main().catch((err) => {

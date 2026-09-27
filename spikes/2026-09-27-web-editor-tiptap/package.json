@@ -42,6 +42,7 @@
     "remark-parse": "^11.0.0",
     "unified": "^11.0.5",
     "ws": "^8.18.0",
+    "y-indexeddb": "^9.0.12",
     "y-protocols": "^1.0.6",
     "yjs": "13.6.33"
   },

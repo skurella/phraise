@@ -1,14 +1,16 @@
-# Spike 7: the web editor, briefs 01-03 (foundation, typing, source blocks)
+# Spike 7: the web editor, briefs 01-04 (foundation, typing, source blocks, collab/undo/offline)
 
-Status: briefs 01, 02 and 03 done. See
+Status: briefs 01-04 done. See
 [the plan](../../context/plans/2026-09-27-spike-7-plan.md),
 [the charter](../../context/plans/2026-09-27-spike-7-charter-web-editor.md),
 [brief 01](../../context/plans/2026-09-27-spike-7-brief-01-foundation.md),
-[brief 02](../../context/plans/2026-09-27-spike-7-brief-02-typing.md) and
-[brief 03](../../context/plans/2026-09-27-spike-7-brief-03-source-blocks.md).
+[brief 02](../../context/plans/2026-09-27-spike-7-brief-02-typing.md),
+[brief 03](../../context/plans/2026-09-27-spike-7-brief-03-source-blocks.md) and
+[brief 04](../../context/plans/2026-09-27-spike-7-brief-04-collab-offline.md).
 Logs: [brief 01](../../context/logs/2026-09-27-builder-spike-7-foundation.md),
 [brief 02](../../context/logs/2026-09-27-builder-spike-7-typing.md),
-[brief 03](../../context/logs/2026-09-27-builder-spike-7-source-blocks.md).
+[brief 03](../../context/logs/2026-09-27-builder-spike-7-source-blocks.md),
+[brief 04](../../context/logs/2026-09-27-builder-spike-7-collab-offline.md).
 
 ## Goal
 
@@ -26,7 +28,17 @@ anything unrecognized) render as labelled, editable source blocks that
 never get corrupted by edits around them; Mermaid fences render as
 diagrams; an edit the serializer cannot express shows a plain-language
 banner instead of failing silently; and the page got plain, clean document
-styling (gates C, H, and part of J). Serves D4 and D5 in
+styling (gates C, H, and part of J). Brief 04 proved the collaboration,
+undo and offline gates in real browsers: presence (name badges, coloured
+carets), an image address/link popover whose Apply edits the image's `url`
+and its `link` mark together in one transaction (spike 5's gate B3 edit),
+two real browser contexts converging on typed edits and on that image edit
+through the relay (gate D); per-client undo/redo via
+`@tiptap/extension-collaboration`'s own Yjs `UndoManager` (gate E); and a
+real offline path with `y-indexeddb` and a hand-written service worker,
+surviving a reload and a full page close/reopen while offline and
+reconverging with no edit lost once back online (gate I). Serves D4, D5
+and D6's offline path in
 [the architecture decisions](../../context/docs/2026-09-27-architecture-decisions.md).
 
 ## Layout
@@ -145,6 +157,67 @@ styling (gates C, H, and part of J). Serves D4 and D5 in
   banner's buttons call into). `pasteRule.ts` gained one guard line so a
   paste into a source block never tries to insert block-level Markdown
   content into inline-only content.
+- `src/collab/presence.ts` (brief 04) — `colorForName` (deterministic
+  `#rrggbb` hex from a name -- hex, not `hsl(...)`: see the file's own
+  comment for why `@tiptap/extension-collaboration-caret` silently
+  discards anything else) and `buildPresenceBadges` (the awareness-array
+  -> top-bar-badge-list pure logic).
+- `src/offline/editorGate.ts` (brief 04) — `createBuildGate`: "build the
+  editor after whichever comes first" as a plain two-source promise race,
+  first call wins.
+- `src/offline/status.ts` (brief 04) — `deriveSyncStatus`/`STATUS_LABEL`:
+  the "Saved"/"Offline, changes kept on this device"/"Reconnecting"
+  status indicator's state machine, a pure function of browser-online +
+  relay-connection-status.
+- `src/editing/imageEdit.ts` (brief 04) — `buildImageEdit`: the image
+  popover's Apply/Remove-link new attrs+marks, given the real schema and
+  node. Preserves an existing `link` mark's other attrs; only `href` (or
+  `url` for the image itself) is overwritten. The caller (`web/src/
+  editing/imagePopover.ts`) dispatches both in ONE
+  `tr.setNodeMarkup(pos, undefined, attrs, marks)` -- this is spike 5's
+  gate B3 edit (an image's address and its link, changed together),
+  which showed data loss on Yjs 14; here, through the `leafMarks`
+  workaround, it round-trips through the relay correctly in both browser
+  contexts.
+- `web/src/editing/imagePopover.ts` (brief 04) — the click-on-image
+  ProseMirror plugin (`handleClickOn`) and its lazy popup (two fields,
+  "Image address" and "Link", Apply/Remove-link buttons), same
+  self-contained-popup pattern as `linkShortcut.ts`. Its static layout
+  lives in `style.css`, not as an inline style -- see the file's own
+  comment for the real hidden-attribute-vs-inline-`display` bug that came
+  from mixing the two.
+- `web/src/presenceView.ts` / `web/src/statusView.ts` (brief 04) — thin
+  DOM-rendering functions over the two pure modules above; wired from
+  `provider.awareness`'s `update` event and `provider`'s `status` event +
+  `window`'s `online`/`offline` events in `main.ts`.
+- `web/public/sw.js` + `web/src/offlineShell.ts` (brief 04) — the offline
+  app shell. Vite's build output has hashed/unpredictable chunk names (and
+  further code-splits Mermaid), so rather than a build-time precache
+  manifest, the PAGE itself explicitly primes the cache after a
+  successful load (`primeOfflineCache`: its own navigation URL,
+  `/config.json`, and every same-origin URL from `performance
+  .getEntriesByType('resource')`) -- deterministic, not dependent on the
+  service worker's own install/activate timing racing the very first
+  page load (which a precache list would hit, since the worker cannot
+  control fetches made before it activates). The worker's own `fetch`
+  handler is network-first, caching every successful same-origin GET as
+  a bonus, and falls back to the cache (`ignoreSearch`) when offline.
+  `window.phraise.offlineReady` (a promise) lets a test/consumer wait for
+  both "worker active" and "shell primed" before relying on offline
+  support, instead of guessing at timing.
+- `web/src/main.ts` (brief 04 rewiring) — builds the `Y.Doc` with BOTH a
+  `y-indexeddb` `IndexeddbPersistence` (one database per document name,
+  `phraise-doc:<docName>`) and the `HocuspocusProvider`, and awaits
+  `createBuildGate()`'s `ready` before constructing the editor: the
+  IndexedDB side only settles the gate when the doc's own Y.XmlFragment
+  is ALREADY non-empty (a previous offline session's content) -- an
+  empty, freshly-opened IndexedDB in a new browser profile must not win
+  the race against the provider's real sync, or the editor (and spike
+  5's workaround plugins) would see an empty document instead of the
+  real one. Adds `ImagePopover` to the extensions array (no schema
+  change: `test/schemaEquivalence.spec.ts` still passes) and exposes
+  test-only `window.phraise.builtFrom`, `flushIndexeddb()`,
+  `offlineReady`, `statusLabel()` alongside the existing hooks.
 
 ## Origin of copied code
 
@@ -197,16 +270,28 @@ which are spike 5/spike 2 concerns this brief has no use for), `web/`,
 ```bash
 npm ci                 # install
 npm run setup          # Playwright browsers (.pw-browsers/, git-ignored) + the two fetched corpus files
-npm test               # vitest: 69 unit tests
+npm test               # vitest: 138 unit tests
 npm run typecheck      # tsc --noEmit
 npm run gates          # builds the page, runs the Playwright gates, prints the gate table
 npm start              # builds if needed, seeds from examples/, serves on 127.0.0.1:4480 (relay 4481)
 ```
 
 `npm run gates` runs gates `[A]` (22 tests), `[B]` (23 tests), `[C]`
-(6 tests) and `[H]` (4 tests); later briefs add D, E, F, G, I, J and K.
-The reporter marks every gate with no tests "not run", not a failure.
-Every gate that does run passes.
+(6 tests), `[D]` (4 tests), `[E]` (3 tests), `[H]` (4 tests) and `[I]`
+(1 test); later briefs add F, G, J and K. The reporter marks every gate
+with no tests "not run", not a failure. Every gate that does run passes.
+
+`expect: { timeout: 10_000 }` in `playwright.config.ts` (raised from
+Playwright's 5s default) applies to every `expect.poll`/`toBeVisible`
+etc. in the suite: gate D/E/I's multi-context tests poll for a real
+cross-client network round trip (relay -> the other browser's own
+WebSocket -> its `ySyncPlugin`/`y-tiptap` apply cycle), and under
+`npm run gates`' full worker parallelism (several Chromium instances and
+relay processes competing for CPU at once) that round trip was observed
+taking noticeably longer than 5s, causing one real, reproduced (not
+guessed) flake in a gate E test that passed reliably every time run in
+isolation. Two full `npm run gates` runs after raising it: 63/63 both
+times.
 
 ## Gate H's demonstration
 
@@ -238,17 +323,19 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
 
 ## Verified
 
-- `npx vitest run` — 14 files, 117 tests, all passing (brief 01's schema
+- `npx vitest run` — 18 files, 138 tests, all passing (brief 01's schema
   equivalence, corpus round-trip and workaround-order tests; brief 02's
   `freshSrc`, `pasteMarkdown`, `copyMarkdown`, `inputRulePatterns` and
   `tableNav` tests; brief 03's `stripEmptyParagraphs`, `rawBlockLabels`,
   `frontMatterPreview`, `sanitizeHtml`, `sourceBlockBoundary` and
-  `blockCheckCache` tests).
+  `blockCheckCache` tests; brief 04's `presence`, `editorGate`,
+  `syncStatus` and `imageEdit` tests).
 - `npx tsc --noEmit` — clean.
-- `npm run gates` — builds the page, runs gates `[A]`, `[B]`, `[C]` and
-  `[H]` in Chromium, 55/55 passing, prints the table, writes
-  `results/gates.md`/`gates.json`, exits 0. `lsof -nP -iTCP:4400-4499
-  -sTCP:LISTEN` is empty afterward.
+- `npm run gates` — builds the page, runs gates `[A]`, `[B]`, `[C]`,
+  `[D]`, `[E]`, `[H]` and `[I]` in Chromium, 63/63 passing, prints the
+  table, writes `results/gates.md`/`gates.json`, exits 0. Run twice in a
+  row after the `expect.timeout` fix (see "Commands"): 63/63 both times.
+  `lsof -nP -iTCP:4400-4499 -sTCP:LISTEN` is empty afterward.
 - `npm start` — prints the open URL; `curl` of the page returns 200; a
   real Ctrl-C (verified by sending `SIGINT` to the whole process group,
   not just the top pid — confirmed with `ps -o pid,ppid,pgid` that
@@ -259,6 +346,53 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
 - Manual check in a real browser (not just Playwright): opened
   `examples/hello.md`, typed into it, opened the Markdown panel, read
   `window.phraise.markdown()` from the console — all matched.
+
+## Brief 04: how gate D/E/I were verified, and what was found
+
+- **Offline simulation**: `browserContext.setOffline(true)` was tried
+  first (per the brief's own suggestion to find what works) and confirmed
+  to genuinely cut an already-connected Hocuspocus WebSocket in headless
+  Chromium — the status indicator flips to "Offline, changes kept on this
+  device" within well under a second, and a second, still-online browser
+  context genuinely never receives an edit typed while the first is
+  offline. The documented fallback (stop the relay process, or route
+  around it) was not needed.
+- **Real bugs found by running the tests, not guessed** (full detail in
+  the builder log):
+  1. Locating a paragraph by `hasText` breaks the instant a REMOTE user's
+     caret lands inside it (`CollaborationCaret` injects the caret's name
+     label as a real DOM text node into that paragraph's own subtree,
+     changing its `textContent`). Fixed by locating paragraphs
+     structurally (`#editor .ProseMirror > p`, `nth(index)`) in every
+     gate D/E/I test, never by `hasText`.
+  2. `colorForName`'s original `hsl(...)` string was silently replaced
+     with `transparent` by `@tiptap/extension-collaboration-caret`'s own
+     `sanitizeUserColor` helper (`isValidColor` only accepts `#rrggbb`
+     hex) — both users' caret labels rendered fully transparent. Fixed by
+     changing `colorForName` to return hex.
+  3. An idle remote user's ProseMirror selection is NOT remapped through
+     someone else's edit elsewhere in the same paragraph on this stack —
+     confirmed by polling, not assumed. A test originally designed around
+     two carets placed simultaneously before either user typed was
+     redesigned so the second user places their caret (real keyboard
+     navigation) AFTER the first edit has already converged on their
+     page. Worth the next brief's attention if a future gate needs a
+     remote cursor to visually track someone else's edits while idle.
+  4. Undo grouping (confirmed empirically with a throwaway probe, see the
+     log): Yjs's `UndoManager` groups by real elapsed time (~500ms
+     `captureTimeout`), not by word. Against this LOCAL relay, a full
+     click+poll+type+poll round trip comfortably finishes within that
+     window, so an explicit pause is needed between two edits meant to
+     land in separate undo groups — this is the actual thing under test
+     (crossing the real timeout boundary), not a substitute for polling.
+  5. A CSS bug, not a test bug: the image popover's own inline
+     `display: 'flex'` permanently overrode the `hidden` attribute's
+     default `display: none`, so it never actually hid after Apply.
+     Fixed by moving static layout into `style.css`.
+- `img:not(.ProseMirror-separator)` is needed everywhere images are
+  located/counted in gate D/E/I — ProseMirror renders invisible
+  `.ProseMirror-separator` `<img>` placeholders around inline atoms that
+  otherwise shift `nth()` indices.
 
 ## Bundle sizes (brief 03, after the Mermaid split)
 
@@ -363,3 +497,36 @@ accounts for the rest of the increase.
   document (~1.2s). The context (link/footnote definitions + detected
   style) is only recomputed when the set of definition blocks changes, not
   on every check.
+- Brief 04, for brief 05 (comments) and beyond:
+  - Locate a paragraph/block in a multi-context Playwright test
+    structurally (`#editor .ProseMirror > p`, `nth(index)`), never by
+    `hasText` — a remote user's caret can inject real text into the DOM
+    subtree of whatever paragraph it lands in (see this file's "Brief 04"
+    section above). The same likely applies to a comment anchor's own
+    decoration once brief 05 adds one.
+  - `editor.storage.collaborationCaret.users` (from
+    `awarenessStatesToArray` inside `@tiptap/extension-collaboration-caret`)
+    is already the presence data source, refreshed on
+    `provider.awareness`'s own `update` event — reuse it rather than
+    re-deriving anything from `provider.awareness.getStates()` directly.
+  - `provider.on('status', ...)` gives `'connecting'|'connected'|
+    'disconnected'` (confirmed from `@hocuspocus/provider`'s
+    `WebSocketStatus` enum); combined with `window`'s `online`/`offline`,
+    this is the whole status-indicator input — no polling needed.
+  - Any color handed to `CollaborationCaret`'s `render`/`selectionRender`
+    callbacks is sanitized through `isValidColor`
+    (`/^#[0-9a-fA-F]{6}$/`) BEFORE those callbacks see it — only
+    `#rrggbb` hex survives; anything else (including a perfectly valid
+    `hsl(...)` CSS colour) becomes `'transparent'`.
+  - `y-indexeddb`'s `IndexeddbPersistence` writes each local update to
+    IndexedDB as it happens (no meaningful debounce on the write itself,
+    only on its periodic full-snapshot compaction); its exported
+    `storeState(persistence, true)` forces a full snapshot write and
+    returns a promise, used here (`window.phraise.flushIndexeddb()`) to
+    make a reload-after-offline-edit test deterministic instead of
+    guessing at write timing.
+  - `expect: { timeout: 10_000 }` is now the suite-wide default (see
+    "Commands"); a future gate that polls a cross-client network round
+    trip should rely on this rather than adding its own per-assertion
+    timeout, so the whole suite's tolerance for parallel-worker
+    contention stays in one place.

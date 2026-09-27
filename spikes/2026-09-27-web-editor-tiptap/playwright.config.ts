@@ -11,6 +11,18 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
+  // Brief 04: gate D/E/I's multi-context tests poll for a real cross-client
+  // network round trip (relay -> the other browser's WebSocket -> its own
+  // ySyncPlugin/y-tiptap apply cycle), not just a same-page DOM/model
+  // state. Under the full `npm run gates` run's default worker parallelism
+  // (several Chromium instances + several relay processes competing for
+  // CPU at once), that round trip was observed taking noticeably longer
+  // than the default 5s `expect.poll` timeout, causing a real, reproduced
+  // (not guessed) flake in an otherwise-passing gate E test that ran
+  // reliably every time in isolation. Raised globally rather than
+  // per-assertion, since any cross-page poll anywhere in the suite is
+  // subject to the same contention.
+  expect: { timeout: 10_000 },
   reporter: [['./e2e/gateReporter.ts'], ['list']],
   use: {
     headless: true,
