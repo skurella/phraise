@@ -1,6 +1,30 @@
-# Spike 7: the web editor, briefs 01-06 (foundation, typing, source blocks, collab/undo/offline, caret/IME/flakes, comments)
+# Spike 7: the web editor in a real browser
 
-Status: briefs 01-06 done. See
+## Final state (orchestrator, 2026-09-28)
+
+Findings: [spike 7 findings](../../context/docs/2026-09-27-spike-7-findings-web-editor.md). Orchestrator log: [log](../../context/logs/2026-09-27-orchestrator-spike-7.md).
+
+```bash
+npm ci
+npm run setup      # Playwright browsers into .pw-browsers/ (git-ignored) and the three fetched corpus files
+npm test           # vitest unit tests
+npm run typecheck  # tsc --noEmit
+npm run gates      # builds, runs every gate, prints the gate table and a WebKit table, writes results/
+npm start          # builds, seeds examples/ into a temporary directory, prints http://127.0.0.1:4480/?doc=hello.md&user=Alice
+```
+
+`npm run gates` (`scripts/gates.ts`) exits non-zero if any Chromium gate A to K fails or has no tests. WebKit runs gates A to D and is reported in a second, informational table. Firefox is opt-in (`PHRAISE_FIREFOX=1 npm run gates`) because it does not launch on the owner's machine. Gate J rewrites the PNGs in `screenshots/` on every run; commit them only when the look changed on purpose.
+
+Corrections to the brief sections below, made by the orchestrator:
+
+- **U+00A0.** The brief 05 section calls a typed space turning into U+00A0 "a Chromium quirk under load". The cause was ours: the page built Tiptap with `injectCSS: false`, and without Tiptap's base CSS the editable lacks `white-space: pre-wrap`, so Chromium inserts U+00A0 for a trailing space. Fixed with `injectCSS: true`; the tests no longer normalize it away.
+- **Line keys in tests.** `e2e/keys.ts` gives Home and End in Chromium and Cmd+Left and Cmd+Right in WebKit on macOS, where Home and End scroll.
+- **Retries.** Every retry of a keyboard or click action in a test prints a `[...-retry]` line, so a dropped keystroke cannot hide.
+- **Origin.** `src/model/serialize.ts` is not byte-identical to spike 5 any more: brief 03 extracted the per-block ladder into an exported `serializeBlock` and `buildBlockCheckContext` for the gate H cache, without changing `serializeDoc`'s behaviour. `src/collab/tiptapWorkaroundsExtension.ts` gained the third workaround plugin in brief 05.
+
+## History
+
+Status: briefs 01-07 done; brief 08 was the review. See
 [the plan](../../context/plans/2026-09-27-spike-7-plan.md),
 [the charter](../../context/plans/2026-09-27-spike-7-charter-web-editor.md),
 [brief 01](../../context/plans/2026-09-27-spike-7-brief-01-foundation.md),
