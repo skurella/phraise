@@ -1,0 +1,16 @@
+{
+  "parseMarkdownMs": 169.249209,
+  "serializeDocMs": 169.621292,
+  "docToYDocMs": 6.873042,
+  "yDocToDocMs": 2.830083,
+  "importFreshMs": 214.791959,
+  "importStaleForkedMs": 250.54725,
+  "importPlusExportMs": 539.88575,
+  "renderDetailedMs": 319.839708,
+  "encodeStateAsUpdateMs": 4.321541,
+  "ydocBinBytes": 845087,
+  "chooseBase8Ms": 43.411209,
+  "gateALatencyMedianMs": 383,
+  "gateBLatencyMedianMs": 625,
+  "peakRssMb": 730.78125
+}

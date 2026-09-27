@@ -1,0 +1,174 @@
+{
+  "quick": false,
+  "generatedAt": "2026-09-27T10:27:02.785Z",
+  "gates": [
+    {
+      "gate": "A",
+      "requirement": "Remote edit reaches the file; untouched blocks stay byte-identical. Latency median/p95.",
+      "pass": true,
+      "numbers": {
+        "trials": 200,
+        "completed": 200,
+        "medianMs": 44,
+        "p95Ms": 57,
+        "maxMs": 63
+      },
+      "failures": []
+    },
+    {
+      "gate": "B",
+      "requirement": "File edit reaches the remote client confined to the edited block, attributed to the local user, per save style.",
+      "pass": true,
+      "numbers": {
+        "perStyle": 100,
+        "in-place.medianMs": 110,
+        "in-place.p95Ms": 121,
+        "in-place.completed": 100,
+        "rename-over.medianMs": 110,
+        "rename-over.p95Ms": 124,
+        "rename-over.completed": 100,
+        "truncate-then-write.medianMs": 110,
+        "truncate-then-write.p95Ms": 124,
+        "truncate-then-write.completed": 100
+      },
+      "failures": []
+    },
+    {
+      "gate": "C",
+      "requirement": "No echo: the daemon's own writes never come back as edits, under rapid alternating edits.",
+      "pass": true,
+      "numbers": {
+        "rounds": 200,
+        "echoCount": 0,
+        "importOfDaemonBytesCount": 0
+      },
+      "failures": []
+    },
+    {
+      "gate": "D",
+      "requirement": "Stale save does not revert remote edits made after its base.",
+      "pass": true,
+      "numbers": {
+        "cases": 50,
+        "passed": 50,
+        "casesWith60ExtraRemoteEdits": 10
+      },
+      "failures": []
+    },
+    {
+      "gate": "E",
+      "requirement": "Concurrent local and remote edits converge; nothing lost; file equals render.",
+      "pass": true,
+      "numbers": {
+        "cases": 50,
+        "passed": 50
+      },
+      "failures": []
+    },
+    {
+      "gate": "F",
+      "requirement": "Imported save reproduces saved bytes exactly (core); daemon does not re-fight the editor.",
+      "pass": false,
+      "numbers": {
+        "corpusFiles": 294,
+        "passRate": 0.9994029850746269,
+        "coarseTextblocks": 30,
+        "repairs": 0,
+        "forks": 0,
+        "coreFailures": 2
+      },
+      "failures": [
+        "gates/f-roundtrip.ts: 2 core round-trip failures (see results/f-roundtrip.json)"
+      ]
+    },
+    {
+      "gate": "G",
+      "requirement": "git commit harmless; branch/reset/stash detach; index.lock detected; reattach works; no local-attributed import while detached.",
+      "pass": true,
+      "numbers": {
+        "rows": 8,
+        "passed": 8
+      },
+      "failures": []
+    },
+    {
+      "gate": "H",
+      "requirement": "Restart merges from a persisted base; missing state yields a conflict copy, nothing overwritten.",
+      "pass": true,
+      "numbers": {
+        "cases": 4,
+        "passed": 4
+      },
+      "failures": []
+    },
+    {
+      "gate": "I",
+      "requirement": "300 seeded trials interleaving saves/remote edits/restarts/delays: no exception, convergence, no lost text, no echo.",
+      "pass": false,
+      "numbers": {
+        "trials": 300,
+        "passed": 298,
+        "exception": 0,
+        "divergence": 0,
+        "fileNotRender": 0,
+        "lost": 0,
+        "deleteVsEdit": 41,
+        "resurrected": 3,
+        "echo": 0,
+        "detach": 0,
+        "wholeDocMismatch": 0,
+        "ambiguousDelete": 11,
+        "degradedFinal": 5,
+        "duplicated": 0,
+        "degradedExports": 31,
+        "entityEscapeTrials": 7,
+        "baseMisjudged": 22,
+        "forks": 913,
+        "coarseTextblocks": 1,
+        "repairs": 0,
+        "noops": 18
+      },
+      "failures": [
+        "seed 439041158: resurrected",
+        "seed 439041369: resurrected"
+      ]
+    },
+    {
+      "gate": "J",
+      "requirement": "240 KB file measured before and after the verification cache; target (reported, not gated): fresh-save import + export under 500ms median.",
+      "pass": true,
+      "numbers": {
+        "before.parseMarkdownMs": 1308.374458,
+        "after.parseMarkdownMs": 169.249209,
+        "before.serializeDocMs": 1264.294042,
+        "after.serializeDocMs": 169.621292,
+        "before.docToYDocMs": 9.017125,
+        "after.docToYDocMs": 6.873042,
+        "before.yDocToDocMs": 2.981125,
+        "after.yDocToDocMs": 2.830083,
+        "before.importFreshMs": 1496.005958,
+        "after.importFreshMs": 214.791959,
+        "before.importStaleForkedMs": 1465.376125,
+        "after.importStaleForkedMs": 250.54725,
+        "before.importPlusExportMs": 3203.321916,
+        "after.importPlusExportMs": 539.88575,
+        "before.renderDetailedMs": 1738.200875,
+        "after.renderDetailedMs": 319.839708,
+        "before.encodeStateAsUpdateMs": 4.974667,
+        "after.encodeStateAsUpdateMs": 4.321541,
+        "before.ydocBinBytes": 845087,
+        "after.ydocBinBytes": 845087,
+        "before.chooseBase8Ms": 41.421125,
+        "after.chooseBase8Ms": 43.411209,
+        "before.gateALatencyMedianMs": 1750,
+        "after.gateALatencyMedianMs": 383,
+        "before.gateBLatencyMedianMs": 1922,
+        "after.gateBLatencyMedianMs": 625,
+        "before.peakRssMb": 646.734375,
+        "after.peakRssMb": 730.78125,
+        "target.importPlusExportUnder500ms": false
+      },
+      "failures": []
+    }
+  ]
+}

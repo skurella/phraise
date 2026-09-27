@@ -1,0 +1,26 @@
+{
+  "trials": 20,
+  "seedBase": 439041101,
+  "passed": 20,
+  "categories": {
+    "exception": 0,
+    "divergence": 0,
+    "fileNotRender": 0,
+    "lost": 0,
+    "deleteVsEdit": 1,
+    "resurrected": 0,
+    "echo": 0,
+    "detach": 0,
+    "wholeDocMismatch": 0,
+    "ambiguousDelete": 0,
+    "degradedFinal": 0,
+    "duplicated": 0
+  },
+  "baseMisjudged": 0,
+  "degradedExports": 6,
+  "forks": 58,
+  "coarse": 1,
+  "repairs": 0,
+  "noops": 1,
+  "failingSeeds": []
+}

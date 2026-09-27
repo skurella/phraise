@@ -1,0 +1,4 @@
+corpus/fetched/
+node_modules/
+dist/
+results/tmp/
