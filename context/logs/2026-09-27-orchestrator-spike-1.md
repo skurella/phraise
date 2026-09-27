@@ -57,3 +57,23 @@ Result, full run: A 294/294, A3b 1621/1621, B 293/293 files and 1465/1465 edits,
 
 ## 05:05 — brief 04 (structural edits) written
 Word replacement is solved; structural edits (bold a word) still re-serialize whole top-level blocks. Brief 04 adds a B2 measurement, a textblock-level splice, re-serializer fidelity from hints, and semantic line breaks if time allows.
+
+## 05:07 — structural builder dispatched (dispatch 4)
+
+## 05:48 — structural builder handback, verified
+All five tasks done (textblock splice, B2, hard-break and literal-link fidelity, semantic line breaks, harness fixes); 20/20 tests. Again the final full run was not committed. My full run: all gates pass; B2 98.6 percent of corpus files, 7 failing edits.
+
+## 05:50 to 06:00 — my fixes from B2 failures
+Traced all 7: (1) mdast-util-to-markdown peeks at `<` for inline html nodes and turned a soft line break before a bare URL or inline HTML into a space; the literal-link fix emitted an html node. Fixed with custom node types whose peek is their first character (inline HTML peeks `<` only for block start conditions 1 to 6). (2) Mark nesting closed and reopened marks in schema order; now keeps the longest still-carried prefix of open marks open. B2: 293/293 corpus files.
+
+## 06:02 — reviewer dispatched (dispatch 5)
+
+## 06:12 — reviewer handback
+Major: unverified serialization was silently returned; gate E could pass vacuously on conventions it never re-checks (not inflated today). Minor: replacement words never exercise escaping; README stale; B only edits paragraphs. Verified sound: meta/semantic attr split, opaque escape hatch, no third-party content committed.
+Actions (mine): `onUnverified` option, default throw with `UnverifiedSerializationError`, gates pass `emit` to measure; test added. Gate E now counts only conventions it re-checks and also checks strong, ordered delimiter, fence length, per-level heading style: 145 of 148 non-default files pass; the 3 failures are real re-serializer limits (fence length above 3, mixed setext and ATX), reported. README rewritten. Minor findings 3 and 5 accepted as documented limits, not fixed.
+
+## 06:15 — clean checkout test found a real reproducibility bug
+From a fresh clone, `npm test` failed because two tests read the fetched corpus. Added `pretest` that runs the idempotent fetch (1.5 s when present). Re-running the clean-clone check.
+
+## 06:20 — findings doc and decision register rows S1-1 to S1-8 written
+Timing (tools/timing.ts): median 22 ms parse, 22 ms serialize per README; worst 2 s each for a 240 KB file. Recorded as a risk.

@@ -1,6 +1,6 @@
 # Plan: spike 1, block-preserving Markdown round trip
 
-Status: active
+Status: done
 Author: spike orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Charter: [spike 1 charter](2026-09-27-spike-1-charter-markdown-round-trip.md)
