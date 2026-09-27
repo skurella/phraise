@@ -14,12 +14,103 @@ for D4 itself.
 ## Layout
 
 - `src/schema.ts` — ProseMirror `Schema`. Meta attrs (`src`, `gap`, `*Hint`) are ignored by semantic comparison.
-- `src/parse.ts` — `parseMarkdown` (full document), `parseBlock` (isolation re-parse for one block, with an optional splice text-run map), mdast → PM conversion.
+- `src/parse.ts` — `parseMarkdown` (full document), `parseBlock` (isolation re-parse for one block, with an optional splice text-run map, link-span list, and per-node source-span table), mdast → PM conversion.
 - `src/style.ts` — `detectStyle`: file-convention majority vote.
-- `src/serialize.ts` — `serializeDoc`: verbatim / splice / re-serialize candidates, in that order.
+- `src/serialize.ts` — `serializeDoc`: the serializer candidate ladder (below).
 - `src/compare.ts` — `semanticEq`, `stripMeta`.
+- `src/yjs.ts` — the Yjs codec (below).
 - `src/index.ts` — public re-exports.
-- `test/*.test.ts` — round trip (handwritten + corpus smoke), single-word/structural edits, style detection.
+- `test/*.test.ts` — round trip (handwritten + corpus smoke), single-word/structural/textblock edits, re-serializer fidelity, style detection, position tracking.
+
+### The serializer candidate ladder (`src/serialize.ts`)
+
+`serializeDoc` emits each top-level block through the cheapest candidate that
+still verifies (re-parses to a semantically equal node), falling through to
+the next when one doesn't apply or doesn't verify:
+
+1. **Verbatim** (`kind: 'verbatim'`) — the block's own `src` attr, unedited:
+   re-parsing it in isolation reproduces the same node. This is the common
+   case for every untouched block (D4's core guarantee).
+2. **Text splice** (`kind: 'splice'`, via `tryTextSplice`) — the edit is a
+   literal character-for-character replacement inside one textblock's plain
+   text (no mark change): find the diffed range, confirm the corresponding
+   source run is a literal (unescaped, 1:1 source-mapped) span, and splice
+   the new text directly over it. This is what a plain word replacement uses.
+3. **Link splice** (`kind: 'splice'`, via `tryLinkSplice`) — the edit lies
+   inside one link whose text is also its syntax (a shortcut reference or a
+   bare literal/autolink URL), which a text splice cannot express: re-render
+   just that link from the new document and splice it over the link's own
+   source span.
+4. **Textblock splice** (`kind: 'textblock-splice'`, via
+   `tryTextblockSplice`) — the edit changes marks or structure (bold, a new
+   link, ...) but still lies inside one textblock (a paragraph, heading, or
+   table cell) at any nesting depth: re-render only that textblock's own
+   inline content and splice it over the textblock's own mdast source span
+   (with the enclosing list/blockquote's line prefix re-applied to any
+   continuation line), instead of re-serializing the whole enclosing
+   list/blockquote/table. This is what a bold/link toggle on a word inside a
+   list item or blockquote paragraph uses; see brief 04.
+5. **Re-serialize** (`kind: 're-serialize'` if it re-parses correctly,
+   `'unverified'` if not — the latter is still returned; there is no further
+   fallback) — the whole top-level block is rebuilt from the edited PM node
+   via `mdast-util-to-markdown`, using the file's detected style
+   (`detectStyle`) and per-node hints (emphasis/strong marker, list
+   bullet/delimiter, fence, heading style, hard-break spelling, literal-link
+   form, ...) recorded at parse time. This is the last resort, used when an
+   edit's shape doesn't fit any splice (e.g. splitting one list item into
+   two, or an edit spanning more than one textblock).
+
+An `opaque-edit` trace kind covers the analogous case for a `raw_block`
+(front matter, HTML, math, ...) whose text content was itself edited
+directly.
+
+### Tools (`tools/`)
+
+Small standalone scripts (`npx tsx tools/<name>.ts [args]`), not part of
+`npm test`/`npm run gates`, for interactively investigating one file or one
+finding:
+
+- `debug-edit.ts` — replays gate B's exact word-replacement edits for given
+  `<set>/<file>:<seed>` args and prints the serializer trace, the literal
+  text-run at the diff point, and a context window around the first byte
+  difference.
+- `debug-pos.ts` — prints the `positions` side table (`parseMarkdown(md,
+  {positions:true})`) for one file, cross-referenced with gate B's eligible
+  words.
+- `quick-roundtrip.ts` — a fast no-edit round-trip pass over every corpus
+  set, reporting byte-identical/unstable-block counts without the full
+  gates harness.
+- `b-failures.ts` — lists every gate B (single-word edit) failure, with
+  category and path, for the corpus or one named set.
+- `b2-before-after.ts` — brief 04's task 2 measurement: runs gate B2
+  (structural bold-toggle edit) twice over the same parsed corpus and RNG
+  seeds, with and without textblock splice (`noTextblockSplice`), and prints
+  the before/after file/edit/single-line pass rates and path/category
+  distributions.
+- `top-diffs.ts` — brief 04's task 3 tool: for every top-level block whose
+  forced re-serialization differs from its own `src`, computes the minimal
+  (removed → added) span and groups occurrences by `(block type, removed,
+  added)` shape, printing the most common ones with an example file each —
+  used to find what's cheap to fix in `reserializeBlock` next.
+
+### The Yjs codec (`src/yjs.ts`)
+
+`docToYDoc`/`yDocToDoc` wrap y-prosemirror's
+`prosemirrorToYXmlFragment`/`yXmlFragmentToProseMirrorRootNode`, closing two
+gaps measured by gate A3 (plain y-prosemirror, no codec): a `Y.XmlFragment`
+has no attribute slot for the *root* node, so the doc's own `lead`/`eol`
+attrs get lost, and y-prosemirror stores an inline leaf node's (image,
+hard_break, raw_inline) marks nowhere, so they get silently dropped (most
+visibly a linked image, `[![alt](img)](href)`, loses its outer link). The
+codec stores root attrs in a side `Y.Map` (`META_MAP_NAME`) next to the
+fragment, and encodes each inline leaf's marks into a `leafMarks` meta attr
+(`encodeLeafMarks`/`decodeLeafMarks`, ignored by `semanticEq`) before handing
+the tree to y-prosemirror, decoding it back on the way out. Gate A3b (100%)
+measures the round trip through this codec and a real binary Yjs update;
+gate A3 (informational) measures plain y-prosemirror with neither, to keep
+the finding visible. Covers seeding/reading a `Y.Doc` (D1/D2); the live
+`ySyncPlugin` converting in-editor transactions directly still needs the
+same encoding upstream or an `appendTransaction` plugin -- left to spike 2.
 
 ## Running
 

@@ -327,12 +327,19 @@ async function main() {
 
   md.push('## Gate E detail (style detection, real + handwritten)');
   md.push('');
-  md.push(`Non-default files that pass the forced-reserialize convention check: ${gateE.nonDefaultPassCount}`);
+  const nonDefaultFiles = gateE.files.filter((f) => f.isNonDefault);
+  const failingNonDefaultFiles = nonDefaultFiles.filter((f) => !f.pass);
+  md.push(
+    `Non-default files: ${nonDefaultFiles.length} total, ${gateE.nonDefaultPassCount} passing the forced-reserialize convention check (threshold: >= 10 passing).`
+  );
+  if (failingNonDefaultFiles.length > 0) {
+    md.push('');
+    md.push(`Failing non-default files (${failingNonDefaultFiles.length}): ${failingNonDefaultFiles.map((f) => f.id).join(', ')}`);
+  }
   md.push('');
   md.push('| File | Non-default conventions | Pass |');
   md.push('|---|---|---|');
-  for (const f of gateE.files) {
-    if (!f.isNonDefault) continue;
+  for (const f of nonDefaultFiles) {
     md.push(`| ${f.id} | ${f.nonDefaultFields.join(', ')} | ${f.pass ? 'yes' : 'no'} |`);
   }
   md.push('');
@@ -401,7 +408,17 @@ async function main() {
     ),
     gateC: gateC.stats,
     gateD,
-    gateE: { nonDefaultPassCount: gateE.nonDefaultPassCount, hintsOnByteIdenticalRate: gateE.hintsOnByteIdenticalRate, hintsOffByteIdenticalRate: gateE.hintsOffByteIdenticalRate, hintsOnVerificationRate: gateE.hintsOnVerificationRate, hintsOffVerificationRate: gateE.hintsOffVerificationRate, blocksMeasured: gateE.blocksMeasured, nonDefaultFiles: gateE.files.filter((f) => f.isNonDefault) },
+    gateE: {
+      nonDefaultTotal: nonDefaultFiles.length,
+      nonDefaultPassCount: gateE.nonDefaultPassCount,
+      nonDefaultFailingIds: failingNonDefaultFiles.map((f) => f.id),
+      hintsOnByteIdenticalRate: gateE.hintsOnByteIdenticalRate,
+      hintsOffByteIdenticalRate: gateE.hintsOffByteIdenticalRate,
+      hintsOnVerificationRate: gateE.hintsOnVerificationRate,
+      hintsOffVerificationRate: gateE.hintsOffVerificationRate,
+      blocksMeasured: gateE.blocksMeasured,
+      nonDefaultFiles,
+    },
     a3DocAttrLossFiles,
     a3LeafMarkLossFiles,
   };
