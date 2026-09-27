@@ -27,3 +27,18 @@ Claimed 280 entries "all permissive"; that was wrong: 25 entries had Unknown, NO
 
 ## 03:35 — brief 02 (core) written
 Decision: nested blocks carry only style hints, not `src`; only top-level blocks carry `src` and `gap`. The splice step gives list-item and table-cell precision for text edits without nested `src`, and fewer meta attrs means less CRDT churn. Revisit if gate B fails on nested content.
+
+## 03:36 — core builder dispatched (dispatch 2)
+
+## 03:50 — core builder handback, verified
+`npm test` 8 of 9 as claimed. The one failure: a kubernetes KEP where a `<br>` line lazily follows a paragraph inside a three-deep list. Diagnosed myself: micromark parses that list differently at document start than in context (in context the `<br>` is an html node inside the list item; in isolation it becomes a second top-level node). Builder's claim that isolation "drops" it was imprecise; the diagnosis of context-dependence was right.
+
+## 03:55 — my fixes to core (small, done myself rather than dispatching)
+1. **Self-description check at parse time**: every modeled top-level block must re-parse in isolation to one node, semantically equal. Blocks that fail become opaque `raw_block` with `kind: unstable:<type>`. Gate A is now exact by construction; the metric that matters is how many blocks go opaque (1 block in 1593 files).
+2. Verification of every candidate now also requires the re-parse to yield exactly one top-level block (before, a candidate that split into two blocks could pass if the first matched).
+3. Opaque block text is now the construct's full source, including `---` and `$$` delimiters. Before, yaml and math used mdast `value`, so an edited front matter would have lost its fences.
+4. Opaque top-level blocks emit their text directly; no parse compare.
+Quick full check: gate A 28/28 handwritten, 266/266 real, 655/655 CommonMark, 672/672 GFM. 76 s for all 1621 files. `npm test` 9/9. Committed 473a978, pushed.
+Found in reading: the positions side table records the top-level span for nested nodes; brief 03 asks for per-node spans.
+
+## 04:02 — brief 03 (gates harness) written
