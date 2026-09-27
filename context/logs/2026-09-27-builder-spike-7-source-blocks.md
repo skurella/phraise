@@ -239,3 +239,164 @@ below, near the end of this brief).
 Next: gate H (the empty-paragraph wrapper is already done from the very
 first entry above; remaining: the debounced per-block check wiring, the
 unverified-block banner UI, and gate H's own Playwright tests).
+
+## 18:41 — gate H done, definition of done, README, commit
+
+`web/src/editing/unverifiedCheck.ts`: a Tiptap `Extension` (`UnverifiedCheck`)
+listening to the editor's `update` event, bailing immediately for a
+remote-origin transaction (`transaction.getMeta('y-sync$')?.isChangeOrigin`
+-- `@tiptap/y-tiptap` follows y-prosemirror's own `new PluginKey('y-sync')`
+convention, confirmed by grepping its built `dist/y-tiptap.js`) or for its
+own fix-transaction (a private meta flag), then debouncing 400ms before
+calling `BlockCheckCache.check()` on a canonical-schema doc built by
+converting only CHANGED top-level live blocks (cached by the LIVE node's
+own reference in a module-level `WeakMap`, so an unchanged block is never
+re-converted OR re-verified across cycles -- this is what makes gate H's
+measured ~6ms warm-cache cost real, not just `BlockCheckCache`'s own
+cache alone, since `PMNode.fromJSON` always allocates a fresh object that
+would otherwise defeat identity-based caching on every cycle). An
+unverified block is replaced with `raw_block { kind: 'unverified' }`
+holding the best-effort text, in a transaction that also carries the
+fix-flag (so it does not re-trigger the check) and `addToHistory: true`
+(so it is its own undoable step, not merged into the triggering edit --
+needed so "Undo my change" only reverts the ORIGINAL edit, tested
+directly). `keepUnverifiedBlock` (the "Keep this" handler) parses the
+block's current text via the same `parseBlock` the check itself uses (with
+a defs context rebuilt from the live doc), and only replaces the block if
+that parse succeeds to exactly one node -- a no-op otherwise, so a
+half-edited banner never silently loses text.
+
+`web/src/nodeviews/rawBlockView.ts` gained the `kind === 'unverified'`
+special case: instead of the normal label + preview, a banner (the exact
+wording the brief specifies) with "Keep this"/"Undo my change" buttons,
+and the source `contentDOM` permanently visible (no preview to toggle back
+to -- showing exactly what will be saved IS the point).
+
+Demonstration and its fixture: see this brief's earlier entry (18:20/18:33)
+for how it was found; `e2e/fixtures/gate-h.md` is a 4-block file (heading,
+two paragraphs, the autolink paragraph in between) verified to round-trip
+byte for byte before use. The edit itself is driven through a real generic
+core command (`editor.chain().setTextSelection(range).unsetMark('link').run()`),
+which is exactly "a local transaction" from the check's point of view --
+no special-casing needed to make the check see it.
+
+`e2e/gateH-unverified.spec.ts`, 4/4 passing:
+- the banner appears with the exact message and both buttons, and the
+  block's own editable text is non-empty (the best-effort Markdown);
+- "Keep this" makes the banner disappear (which IS the parse succeeding,
+  confirmed by reading `keepUnverifiedBlock`'s own logic rather than
+  re-implementing a separate check) and leaves `markdown()` returning a
+  string (no throw) whose content still carries the URL, in a real
+  paragraph -- not byte-identical to the shown text, since a link mark
+  round-trips through more than one valid Markdown spelling (in this
+  specific case it happened to come back out as the SAME autolink form the
+  file originally had, once re-verified structurally -- ProseMirror's own
+  view had no other opinion). First attempt at this test asserted literal
+  byte-containment of the shown (escaped, unlinked) text and failed for
+  exactly this reason; fixed by asserting substance (the URL is present, in
+  a real paragraph) instead of exact spelling;
+- "Undo my change" restores the original file bytes exactly
+  (`editor.commands.undo()`, the generic Yjs-undo-manager-backed command
+  `@tiptap/extension-collaboration` already provides -- no custom undo
+  wiring needed);
+- a second browser context (`browser.newContext()`, both pages on the
+  SAME document through the SAME relay) sees the SAME converted block (via
+  Yjs sync) but its OWN check never ran: asserted directly via a
+  test-only counter (`debugStats.checkRuns`, exposed as
+  `window.phraise.debugUnverifiedCheckRuns()`) rather than inferring it
+  from the absence of a visible double-conversion, which a race could
+  hide.
+
+Two real Playwright/browser races found while writing these tests (not
+guessed), logged in full in the earlier gate C entry and in
+`README.md`'s "Notes for the next brief": native `End` inside a
+multi-line `<pre>` moves to the end of the VISUAL line, not the block's
+own last line; a button's `mousedown`-triggered `editor.commands.focus()`
+does not synchronously move real DOM focus, losing the first keystroke
+sent right after.
+
+**Cost, measured** (not estimated) on `corpus/fetched/nodejs-node-docapinapimd.md`
+(240 KB, 1619 blocks), via a throwaway script (deleted before committing)
+exercising `BlockCheckCache` directly the same way `unverifiedCheck.ts`
+does: a cold full check costs ~1235 ms (dominated by `detectDocStyle`'s
+one full-document re-parse -- the same cost `serializeDoc` itself always
+pays, per D4's own amendment); a second check after editing ONE paragraph,
+cache warm, costs ~6 ms -- about 200x faster than calling `serializeDoc`
+on the whole document again (~1224 ms) for the same edit. The debounce
+(400ms) means this cost is paid once per pause in typing, not per
+keystroke, and the ~1.2s COLD cost only happens once per document per
+page load, not per edit.
+
+### Definition of done
+
+- `npx vitest run` -- 14 files, 117 tests, all passing.
+- `npx tsc --noEmit` -- clean.
+- `npm run gates` -- builds, runs gates A (22), B (23), C (6), H (4),
+  55/55 passing, table printed (D/E/F/G/I/J/K "not run" as expected --
+  out of this brief's scope), `results/gates.md`/`gates.json` written,
+  exit 0.
+- `lsof -nP -iTCP:4400-4499 -sTCP:LISTEN` -- empty after the gates run.
+- No `test.fixme`s: every scenario in the brief's scope (7 tasks) has a
+  passing test with a real, verified assertion.
+- Bundle sizes measured and reported in `README.md`'s new section (main
+  chunk 608 KB -> 914 KB / 186 KB -> 280 KB gzip; Mermaid confirmed never
+  in the initial load via a direct grep of the built `index.js`; katex
+  left as a static import, accounting for most of the increase, noted as
+  a straightforward follow-up).
+
+Updated `README.md`: status/goal for brief 03, new file layout entries for
+every new module, the new e2e specs and fixtures, gate H's demonstration
+explained, the bundle-size table, and new "notes for the next brief"
+entries (the two new Playwright races, the `.extend()`/`instanceof`
+narrowing pattern for adding node views, the `test.use({seedFiles:[...]})`
+multi-element-array bug and its workaround, gate H's measured cache cost).
+
+Committed (paths staged explicitly, no `-A`/`.`): all new `src/editing/`,
+`web/src/nodeviews/`, `web/src/editing/` files, `test/*.spec.ts` additions,
+`e2e/gateC-sourceblocks.spec.ts`, `e2e/gateH-unverified.spec.ts`,
+`e2e/fixtures/{source-blocks,unsafe-html,gate-h}.md`, the `serialize.ts`
+refactor, `main.ts`/`pasteRule.ts`/`style.css`/`index.html` changes,
+`package.json`/`package-lock.json` (dompurify, katex, mermaid, jsdom,
+`@types/dompurify`), `README.md`, and this log. `context/logs/2026-09-27-
+orchestrator-spike-7.md` was already modified in this worktree before I
+started (not by me) and was deliberately left unstaged. Not pushed (brief
+says commit only). Commit `75514c1` on `spike/2026-09-27-web-editor`.
+
+## Handback summary
+
+Gate C: 6/6 passing (labels + no visible Markdown syntax + Mermaid SVG;
+editing a source block via keyboard changes only its own bytes; typing/
+Enter/Backspace/Delete in neighbouring paragraphs leave a source block
+byte-identical; Backspace/Delete at a source-block boundary selects it
+instead of merging; sanitizer removes `<script>`/`onerror`/no global
+flag set). Gate H: 4/4 passing (banner + best-effort text; "Keep this";
+"Undo my change"; a second browser context never runs its own check).
+`npm test` 117/117. `npx tsc --noEmit` clean. No `fixme`s.
+
+Gate H's trigger: CommonMark spec example 20, an autolink
+`<https://example.com?find=\*>`; unlinking it (`unsetMark('link')`) leaves
+literal-backslash plain text the serializer's ladder cannot re-express.
+Both of the brief's OWN suggested constructs (`&#10;&#10;` entities;
+`***foo** bar*` with a bold toggle) were tried for real and verify
+successfully with this serializer -- confirmed via a fuzz across all 652
+CommonMark spec examples (46 real failures found across two edit types;
+this one chosen for being a single paragraph, not multi-block). Measured
+cost: cold full check ~1235ms on the 240KB/1619-block corpus file; warm
+(one small edit) ~6ms, ~200x faster than a naive whole-doc `serializeDoc`
+call for the same edit.
+
+Bundle sizes after the Mermaid split: main chunk 608KB -> 914KB raw
+(186KB -> 280KB gzip); Mermaid (~2MB across ~60 chunks) confirmed NEVER
+in the initial load (grepped the built `index.js` for the chunk's own
+filename: zero references outside the one `import()` call); katex
+(~250KB) was left as a static import and accounts for most of the
+increase -- a straightforward follow-up, not required by this brief.
+
+"Unknown construct" for gate C's fixture: could not be produced by this
+parser/plugin stack on valid input (confirmed by probing every
+CommonMark/GFM construct -- `blockFromMdast`'s switch already enumerates
+every reachable mdast type); covered instead at the unit level
+(`rawBlockLabels.spec.ts`'s synthetic `mdxJsxFlowElement` case).
+
+Paths: log (this file); README
+`spikes/2026-09-27-web-editor-tiptap/README.md`.
