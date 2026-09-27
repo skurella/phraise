@@ -67,6 +67,13 @@ async function runPathB(
       () => clientB2.view.state.doc.textContent.length === clientB1.view.state.doc.textContent.length,
       8000,
     );
+    // Orchestrator fix, same as stack 13: equal text length can be reached
+    // before every update has arrived; wait for whole-document JSON equality
+    // between the editors before comparing (a timeout still reports below).
+    await waitUntil(
+      () => JSON.stringify(clientB2.view.state.doc.toJSON()) === JSON.stringify(clientB1.view.state.doc.toJSON()),
+      8000,
+    ).catch(() => {});
     const relayBytes = await relay.fetchState(loadDocName);
     const relayDoc = decodeRelayState(relayBytes);
     const outEditor2 = serializeDoc(clientB2.view.state.doc);

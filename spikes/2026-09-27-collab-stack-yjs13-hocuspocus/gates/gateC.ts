@@ -81,6 +81,15 @@ async function runPathB(
       () => clientB2.view.state.doc.textContent.length === clientB1.view.state.doc.textContent.length,
       8000,
     );
+    // Orchestrator fix: equal text length is reached before the root-attrs
+    // map update and the leafMarks attr updates (separate Yjs updates) have
+    // arrived, so comparing here raced (the rare 265/266 in full runs).
+    // Wait for editor 2's whole ProseMirror JSON to equal editor 1's first;
+    // a timeout is still reported as a mismatch below.
+    await waitUntil(
+      () => JSON.stringify(clientB2.view.state.doc.toJSON()) === JSON.stringify(clientB1.view.state.doc.toJSON()),
+      8000,
+    ).catch(() => {});
     const relayBytes = await relay.fetchState(loadDocName);
     const relayDoc = decodeRelayState(relayBytes, { codec: true });
     const outEditor2 = serializeDoc(clientB2.view.state.doc);

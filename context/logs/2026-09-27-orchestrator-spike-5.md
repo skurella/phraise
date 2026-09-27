@@ -48,3 +48,9 @@ Hocuspocus primary for 14 via postinstall dedupe; B3 FAIL (upstream, expected); 
 - Read: y-prosemirror CAVEATS.md "Compatibility with older y-prosemirror": v1 docs load in v2, v1 cannot read v2, no mixed clients. Matches the compat probe.
 - Read: Yjs 13 loss is long-known upstream: ueberdosis/tiptap#4339 (marks on Mention not encoded, open since 2023-08); y-prosemirror PR #213 (marks on inline nodes) closed 2026-01 unmerged for 1.x.
 - Read: @y/hub 0.9.0 (official Yjs 14 backend used by the demos) is AGPL-3.0 OR PROPRIETARY, needs Redis, Postgres, S3. No Hocuspocus issue or release mentions Yjs 14.
+
+## 14:37 — Stack 13 gate C flake: harness race, fixed
+Path B compared editor 2 as soon as its text length matched editor 1, but the root-attrs map write and leafMarks attr writes travel as separate Yjs updates, so the compare could run before they arrived. Fix in both stacks' gateC.ts: also wait (up to 8 s) until the two editors' whole ProseMirror JSON is equal, then compare once. Stack 13 gate C alone, 3 runs from fresh databases: 266/266 on both paths every time. Debug script scratch/debug-pathb.ts found no file that fails to converge. The one path-A lead flake reported in brief 03 has not recurred in 6 runs; cause unconfirmed. My own mistake along the way: my first loop script reused SQLite files between runs, so the load: document accumulated history to 200 MB and runs took 8 to 20 minutes; numbers from those runs are discarded.
+Also probed yjs/y-prosemirror#241 (swap bold for code in one transaction): syncs correctly on both stacks (case 6 in both probe scripts).
+
+## 14:37 — Brief 06 dispatched (gate F, stack 14)
