@@ -23,3 +23,8 @@ Ran `npm test` myself: 162 tests pass, tsc clean. Code read: rebase.ts matches t
 
 ## 04:40 — Brief 02 written, dispatching builder 2
 [brief 02](../plans/2026-09-27-spike-2-brief-02-yjs-integration-gates.md).
+
+## 05:06 — Builder 2 handback verified
+Ran `npm test` (174 pass) and `npm run gates` (A to G plus idempotence all PASS) myself. Read integrate.ts: matches plan section 5. Weaknesses I found on review: gate G's edits are uniform over a ~50 KB concatenated corpus, so they almost never touch a comment and the 50/50 at 10 edits says little; needs-review and resurrection compare plain text, so mark-only changes are not flagged and resurrected blocks lose marks; resurrection appends at the end of the ancestor. Fold the first into brief 03 as a targeted G2; note the others as open risks. Dispatch 2 of ~10.
+
+## 05:15 — Brief 03 written (fuzz, granularity comparison, G2)
