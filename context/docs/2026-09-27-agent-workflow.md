@@ -50,7 +50,7 @@ A **brief** is written by the orchestrator, one per task, in `context/plans/`, a
 2. **Scope and non-scope**, explicit.
 3. **Inputs to read**, as links: AGENTS.md, the decisions doc, and at most two or three other docs or code paths. Nothing else.
 4. **Definition of done**, executable: commands to run, tests that must pass, fixtures that must round-trip, a demo script.
-5. **Constraints**: model, rough effort budget, whether commits are allowed, whether a worktree is used.
+5. **Constraints**: model, whether commits are allowed, whether a worktree is used. **Budgets are never wall-clock time.** A brief budgets by an ordered task list with a stated stopping point; a charter budgets by number of worker dispatches.
 6. **Handback format**: outcome, verification, omissions, links.
 
 Briefs are small. A package that needs more than a day of builder effort is split.
@@ -82,7 +82,8 @@ Decided 2026-09-27, see the decision register. All agents are in-process subagen
 
 - Fable leads and touches each spike a handful of times. Opus orchestrates and plans. Sonnet builds and reviews. Haiku grinds.
 - One orchestrator per spike. Spikes run in parallel only when independent; workers inside a spike run one at a time.
-- Briefs carry an effort budget; a builder that exceeds it stops, logs where it is, and hands back partial work with a clear state rather than thrashing.
+- Briefs carry an ordered task list and a stopping point, never a time budget. A builder that is stuck on a task after two distinct attempts logs where it is and hands back partial work with a clear state rather than thrashing.
+- Long verification runs, such as full gates or full fuzz, belong to the orchestrator. A builder is done when the quick subset passes and the full command is documented. The orchestrator verifies worker claims anyway, so this removes duplicated runs.
 - Spikes are timeboxed and produce a findings doc, not production code. Until the owner opens a production tree, every package is a spike under `spikes/`, and competing approaches to one component are encouraged rather than a single blessed implementation. Sunk cost is not an argument; a findings doc that says "abandoned because X" is a successful outcome.
 
 ## Phases

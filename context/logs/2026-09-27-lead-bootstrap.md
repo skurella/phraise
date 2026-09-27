@@ -128,3 +128,12 @@ Pending lead actions at each handback: read handback and findings, transfer deci
 ## 06:37 — Spikes 4 and 1 accepted
 
 Spike 4 merged by the owner as PR 3. Spike 1 verified by the lead, rebased onto `main`, and opened as PR 4. Details in the lead's handback logs for each spike. Two rules added to AGENTS.md from spike 1's lessons: commit incrementally, and verify claims that have consequences. Spike 2 still running; spike 3 waits for its recommendation on D5.
+
+## 06:47 — Correction: why spike 1 builders stopped early
+
+The owner relayed an analysis from a side chat. Verified against the evidence:
+- **Correct:** the spike 1 builders did not run out of context or usage. Brief 03 said "one session of up to about two and a half hours". The gates builder's log claims 05:40 for a harness that git shows committed at 04:34; it stopped believing its time was used up. The lead had repeated the orchestrator's phrase "ran out of session" without checking. No work was lost; only the final full gate run was missing.
+- **Incorrect:** the claim that the app process exited and killed the spike 2 orchestrator and the lead's gate re-run. The lead's re-run completed with exit 0 in 374 s. At 06:47 the agent list shows the spike 2 orchestrator and its Loro builder both running, and files in the Loro spike directory were modified within the last minute.
+- **Also found:** the spike 2 orchestrator's log has entries stamped 06:40 and 06:45 written before 06:34. The lead's own handback logs for spikes 4 and 1 contain estimated times as well (entries 04:45, 04:50, 06:40, 06:45). Those are approximate; entries in this file written with `date` are exact.
+
+Procedures changed, decision P13: no wall-clock budgets, timestamps only from `date`, long verification runs belong to the orchestrator. Spike 2 orchestrator informed.
