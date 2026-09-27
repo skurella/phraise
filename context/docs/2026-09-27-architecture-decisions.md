@@ -45,9 +45,27 @@ Raw HTML, MDX, front matter, math, footnote definitions, link reference definiti
 
 Semantic line breaks, one sentence per line, are a repo-level opt-in for re-serialized paragraphs. They make merges cleaner but reformat touched paragraphs on first edit.
 
+### D4 amendments after spike 1 (2026-09-27)
+
+Confirmed by measurement, see [spike 1 findings](2026-09-27-spike-1-findings-markdown-round-trip.md): 294 of 294 corpus files and 1327 of 1327 spec examples round-trip byte for byte, and a one-word edit changes only the edited paragraph in every corpus file. The lead re-ran all gates independently. Amendments:
+
+1. **`src` and `gap` live on top-level blocks only.** Precision inside lists and tables comes from splicing, not from `src` on nested blocks. Fewer meta attributes in the CRDT.
+2. **Edits are written by a verified ladder:** the original bytes if nothing changed; else a splice of just the changed text; else of the changed link; else of the changed paragraph, heading or cell; else a full re-serialization of the block in the file's style.
+3. **Every candidate is verified** by re-parsing it and comparing with the document. Output that fails is never written silently.
+4. **When nothing verifies, the save must still succeed.** The product shows that block as source with the best-effort Markdown, asks the user to confirm, and flags it for review. The library's refusal is the mechanism; a failed save is not the user experience.
+5. **Load-time self-description check:** a block that parses differently in isolation is kept as an opaque source block. One block in 1621 files.
+6. **Syntax choices are hints, not content:** marker, fence, break style, link form. They are excluded from the compare and reused when writing.
+7. **Semantic line breaks** work as an option on rewritten paragraphs. Untouched paragraphs are never reflowed.
+
+Known limits to carry into integration: saving re-parses every block, 22 ms median per README but about 2 s for a 240 KB file, so verification must be cached by node identity before any per-change use; real-file coverage of front matter, math, Mermaid, footnotes and especially MDX is thin; `$...$` in prose is treated as math; gate B only covered paragraph edits with words that need no escaping.
+
 ## D5. Yjs, y-prosemirror, Tiptap, Hocuspocus — default
 
 The only production-proven ProseMirror binding; Hocuspocus 4 is a mature MIT server; Yjs 14 brings attribution, suggestion mode and version diffs. Record the Yjs client ID to user and timestamp mapping at the server's authentication hook from day one, since no CRDT embeds identity. Harden the editor schema for attributed rendering. Loro is the named fallback if native fork, diff and applyDiff prove more valuable than binding maturity. Revisit only if spike 2 shows Yjs cannot express the rebase operation cleanly.
+
+### D5 reopened after spike 1 (2026-09-27)
+
+`y-prosemirror` 1.3.7 and `@tiptap/y-tiptap` 3.0.9 drop the root node's attributes and all marks on inline leaf nodes. In 134 of 294 real files a linked image such as a CI badge would lose its link on the next commit. Spike 1 has a codec that fixes loading and saving, but the live editing path still loses such marks. Options: upstream patch, maintained fork, a schema in which a link around an image is not a mark, or Loro. The decision waits for spike 2, which has been asked to reproduce the loss and test the alternatives.
 
 ## D6. External commits, offline returns and merges are one operation — locked
 
@@ -75,7 +93,7 @@ Attributed commits and comments, fine-grained permissions, higher limits. Org in
 - **Read rate-limit budgets from response headers**, per reset bucket. The `/rate_limit` endpoint reported zero use throughout the spike.
 - Still unverified: everything with App tokens. Needs the owner to create a GitHub App; steps are in the spike 4 findings. Re-run gates C to F with a user-to-server token and gates A and G with an installation token before locking.
 
-## D10. Language and repo layout — default, pending spike results
+## D10. Language and repo layout — language confirmed by spike 1
 
 **Repo layout, locked by owner on 2026-09-27:** no main source tree yet. All development happens in `spikes/<date>-<component>-<approach>/`, each self-contained. Multiple approaches per component are encouraged and losers are discarded with a findings doc. A production tree is opened only after an integration spike shows the idea is feasible and key risks are resolved.
 
