@@ -28,3 +28,14 @@ Ran `npm test` myself: 162 tests pass, tsc clean. Code read: rebase.ts matches t
 Ran `npm test` (174 pass) and `npm run gates` (A to G plus idempotence all PASS) myself. Read integrate.ts: matches plan section 5. Weaknesses I found on review: gate G's edits are uniform over a ~50 KB concatenated corpus, so they almost never touch a comment and the 50/50 at 10 edits says little; needs-review and resurrection compare plain text, so mark-only changes are not flagged and resurrected blocks lose marks; resurrection appends at the end of the ancestor. Fold the first into brief 03 as a targeted G2; note the others as open risks. Dispatch 2 of ~10.
 
 ## 05:15 — Brief 03 written (fuzz, granularity comparison, G2)
+
+## 06:10 — Builder 3 (fuzz) handback reviewed
+Gates G2 and H failed honestly. Dispatch 3 of ~10. I investigated both myself instead of dispatching.
+
+## 06:40 — Fixes by orchestrator, all gates pass
+- G2 (19% mis-anchored): measurement flaws (concatenated corpus with cross-file duplicate sentences; fixed-offset ground-truth window misaligned after length-changing edits; replacement of all quoted words counted as mis-anchor) plus a real weakness in `fuzzyAnchor` (accepted exact quote matches whose context disagreed). Revised anchoring: context agreement or long unique quote, an ambiguity margin, and a context-only fallback. Now 0/200 mis-anchored at 1 edit, 2.5% at 3 edits.
+- H (local-text-lost ~9%): two causes. (a) Human-vs-human delete-vs-edit, independent of rebase: split into a reported category `human-delete-vs-edit`. (b) Real, rebase-caused: the harness relay restated full delete sets, and with shuffled delivery a chained rebase C could arrive before B; Yjs applies delete sets eagerly while structs pend, so deletions arrived before records and integration's pre-merge snapshot P already lacked the text, so no resurrection. Fixed with per-transaction relay (as y-protocols) and a causal-delivery hold-back in the harness. This is a real requirement on the transport: recorded for findings. Rebase-caused loss now 0/500.
+- Gates runtime rose to ~45 s because the hold-back probes each update on a cloned doc; fine for a spike.
+
+## 06:45 — Lead message received
+Lead asks (cheaply, within budget) to reproduce y-prosemirror losing root doc attrs and marks on inline atom nodes (e.g. link around image), test the same against loro-prosemirror and optionally the Yjs 14 RC binding, and recommend patch, fork, schema change or switch with costs. Folding into brief 04 (Loro).

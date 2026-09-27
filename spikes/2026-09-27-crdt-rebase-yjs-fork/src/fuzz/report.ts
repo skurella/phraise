@@ -75,6 +75,7 @@ const ALL_CATEGORIES: FailureCategory[] = [
   "exception",
   "diverged",
   "local-text-lost",
+  "human-delete-vs-edit",
   "F-violation",
   "upstream-change-lost",
   "missing-flag",

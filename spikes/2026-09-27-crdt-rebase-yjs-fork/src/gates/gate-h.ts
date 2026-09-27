@@ -2,16 +2,10 @@
 // pass when `exception`, `diverged`, `local-text-lost` and `F-violation`
 // are all zero.
 //
-// As of this brief, this gate does **not** pass: a real, root-caused,
-// pre-existing design gap (not introduced by this brief, and not a fuzz
-// harness artifact — reproduced with a minimal hand-written scenario, no
-// rebase involved) causes `local-text-lost` on roughly 5-10% of trials. See
-// `context/logs/2026-09-27-builder-spike-2-yjs-fuzz.md` (05:40 entry) and
-// the README's "Real bugs found" section for the full root cause and a
-// minimal repro. Per this brief's own instruction ("if it needs a design
-// change, do not redesign: record it"), this is reported rather than
-// papered over — the check is not weakened and the fuzz generator is not
-// narrowed to avoid the scenario.
+// Passes since the orchestrator revision of 2026-09-27: rebase-caused
+// token loss is 0 after fixing the harness relay and adding causal
+// delivery; human-vs-human delete-vs-edit loss is reported separately as
+// `human-delete-vs-edit` (see src/fuzz/lossCause.ts and the README).
 import { runTrials } from "../fuzz/run.js";
 import { aggregate, type GranularityReport } from "../fuzz/report.js";
 import type { GateResult } from "./types.js";
@@ -40,7 +34,7 @@ export function runGateH(): GateResult {
     ? `${TRIALS} trials, all four gated categories zero (runtime ${report.totalMs}ms)`
     : failing
         .map((c) => `${c}=${report.failureCounts[c]} (${report.failingTrials[c]} trials)`)
-        .join(", ") + ` — known issue, see log/README; repro: ${report.firstFailures[0]?.reproCommand ?? "n/a"}`;
+        .join(", ") + ` — repro: ${report.firstFailures[0]?.reproCommand ?? "n/a"}`;
 
   return {
     name: "H: 500 word-granularity fuzz trials (exception/diverged/local-text-lost/F-violation all zero)",

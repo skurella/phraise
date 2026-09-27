@@ -1,6 +1,6 @@
 # CRDT rebase, Yjs fork approach — core + integration + gates + fuzz
 
-Status: in progress (briefs 1-3 of several; see the plan and briefs in `context/plans/`)
+Status: gates A to H, G2 and idempotence pass (see the orchestrator revision section)
 
 Goal: prove the "fork at base, two-way diff, merge" rebase algorithm from
 [the spike-2 plan](../../context/plans/2026-09-27-spike-2-plan.md) on Yjs.
@@ -22,8 +22,8 @@ npm test          # vitest: all core/integration tests, gates A-H (+ G2 and
                    # idempotence), and a fuzz-harness sanity suite (180
                    # tests total)
 npm run gates      # prints a Markdown table for gates A-H (+ G2, idempotence);
-                   # exits non-zero if any gate fails (see "Known,
-                   # documented gate failures" below — two currently do)
+                   # exits non-zero if any gate fails (all pass as of
+                   # the orchestrator revision below)
 npm run fuzz       # granularity comparison: 500 `word` trials (gate H's own
                    # set) + 200 each of char/block/yprosemirror on the same
                    # seeds; prints a Markdown table + interpretation per
@@ -31,6 +31,61 @@ npm run fuzz       # granularity comparison: 500 `word` trials (gate H's own
                    # a gated failure
 npm run typecheck  # npx tsc --noEmit
 ```
+
+## Orchestrator revision (2026-09-27, 06:40) — read this before the rest
+
+Sections below were written by the builders and describe gates G2 and H as
+failing. The orchestrator reviewed both findings and changed the following;
+all gates now pass (`npm run gates`, about 45 s).
+
+1. **Relay semantics** (`src/replica.ts`). The harness relayed
+   `encodeStateAsUpdate(doc, before)`, which restates the entire delete set,
+   so a rebase's deletions reached replicas without the rebase's structs and
+   records. Now each transaction's own update is forwarded, as y-protocols
+   and Hocuspocus do.
+2. **Causal delivery** (`src/replica.ts`). Yjs applies an update's delete
+   set immediately even when its structs wait for missing dependencies.
+   With shuffled delivery, chained rebase C could arrive before B, delete
+   blocks, and hide the pre-merge state that integration needs, so a
+   locally edited block deleted by C was not resurrected. The harness now
+   holds back any update that would leave pending structs. An ordered
+   y-protocols channel gives this for free; a custom transport must too.
+   This is a real integration requirement, recorded in the findings.
+3. **Loss classification** (`src/fuzz/lossCause.ts`). A lost token is
+   `local-text-lost` (gated) when a rebase caused it, and
+   `human-delete-vs-edit` (reported) when another human deleted the block
+   concurrently, which is ordinary CRDT delete-vs-edit semantics with or
+   without a rebase. After fixes 1 and 2, rebase-caused loss is 0 in 500
+   `word` trials; human-vs-human loss occurs in about 8 percent of trials
+   because the fuzz makes humans delete whole blocks often.
+4. **Quote-selector anchoring** (`src/comments.ts`, `fuzzyAnchor`). A quote
+   match is accepted only when its context agrees (better of prefix and
+   suffix similarity at least 0.5) or the quote is at least 24 characters
+   and unique; if another non-overlapping candidate scores within 8 points
+   the match is treated as ambiguous. Otherwise a context-only match (both
+   16-character context halves found close together) anchors to whatever
+   now sits between them; else orphan.
+5. **G2 measurement** (`src/gates/gate-g2.ts`). One document per corpus
+   file instead of one concatenated document (the decision register restates
+   the decisions doc, so concatenation measured cross-file duplicates);
+   ground truth by whole-block word diff instead of a fixed-offset window
+   that misaligned after length-changing edits; an anchor that overlaps the
+   truth and stays within 16 characters of it, or that sits on the
+   replacement text when every quoted word was replaced, counts as correct.
+   Result: 1 edit per comment 187/200 correct, 13 orphaned, 0 mis-anchored;
+   3 edits 119 correct, 76 orphaned, 5 mis-anchored (2.5 percent, all short
+   single-word quotes in table text that collapses into one paragraph).
+
+Latest `npm run fuzz` (seed 20260927):
+
+| Granularity | trials | exception | diverged | local-text-lost | human-delete-vs-edit (trials) | F-violation | comment crdt / fuzzy / orphaned | mis-anchored | flag precision / recall |
+|---|---|---|---|---|---|---|---|---|---|
+| word | 500 | 0 | 0 | 0 | 38 | 0 | 76.2 / 7.2 / 16.5 % | 0.1 % | 99.5 / 100 % |
+| char | 200 | 0 | 0 | 0 | 15 | 0 | 76.1 / 8.1 / 15.8 % | 0.4 % | 98.7 / 100 % |
+| block | 200 | 0 | 0 | 0 | 15 | 0 | 67.5 / 16.4 / 16.1 % | 0.0 % | 98.7 / 100 % |
+| yprosemirror | 200 | 0 | 0 | 0 | 15 | 0 | 70.6 / 13.7 / 15.7 % | 0.1 % | 91.1 / 100 % |
+
+Idempotence under fuzz: 108 dual-rebase trials, 0 byte mismatches.
 
 ## Layout (brief 1: core)
 

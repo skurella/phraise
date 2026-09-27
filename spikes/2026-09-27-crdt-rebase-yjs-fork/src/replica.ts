@@ -31,6 +31,14 @@ export interface ReplicaUser {
   name: string;
 }
 
+/** True if applying `update` to `doc` would leave structs waiting on missing dependencies. */
+function wouldPend(doc: Y.Doc, update: Uint8Array): boolean {
+  const probe = new Y.Doc({ gc: false });
+  Y.applyUpdate(probe, Y.encodeStateAsUpdate(doc));
+  Y.applyUpdate(probe, update);
+  return (probe as any).store.pendingStructs !== null;
+}
+
 export class Replica {
   readonly name: string;
   readonly docId: string;
@@ -58,6 +66,20 @@ export class Replica {
     // transaction itself.
     this.clientID = hash32(`${docId}:replica:${name}`);
     this.doc.clientID = this.clientID;
+
+    // Orchestrator revision (2026-09-27): relay like y-protocols/Hocuspocus.
+    // Every transaction's own update (its new structs plus only the
+    // deletions it applied) is forwarded to peers, local ones to everyone,
+    // remote ones to everyone except the sender. The previous relay
+    // re-encoded `encodeStateAsUpdate(doc, before)`, which restates the
+    // whole delete set, so a rebase's deletions could reach a replica before
+    // the rebase's structs and records did. Integration then saw the
+    // deletions already inside its pre-merge snapshot P and could not
+    // resurrect locally edited blocks (fuzz: rebase-caused local-text-lost).
+    this.doc.on("update", (update: Uint8Array, origin: unknown) => {
+      if (origin === "remote") this.emit(update, this.currentSender);
+      else this.emit(update);
+    });
 
     if (user) {
       this.doc.transact(() => {
@@ -130,63 +152,59 @@ export class Replica {
     return q.splice(0, k);
   }
 
+  private currentSender: string | undefined;
+
   private runLocal(fn: () => void, origin: string): void {
-    const before = Y.encodeStateVector(this.doc);
+    // The doc's "update" handler forwards the transaction to peers.
     this.doc.transact(fn, origin);
-    const update = Y.encodeStateAsUpdate(this.doc, before);
-    if (update.length > 2) this.emit(update);
   }
 
   /**
    * Take P = Y.snapshot(doc), apply `updates`, then run integrate(doc, P,
-   * myClientId) (plan section 5). Any resulting local changes (integrate's
-   * flags/resurrections) — plus the incoming content itself — are re-queued
-   * to this replica's peers, so a hub relays what it learns onward.
-   *
-   * `fromName`, when given, names the peer these `updates` came from. It is
-   * excluded from the re-broadcast, but *only* when this call produced no
-   * genuinely new content of this replica's own (see below) — found by the
-   * fuzz harness, brief 03: `Y.encodeStateAsUpdate(doc, before)` always
-   * restates the doc's *entire* delete set regardless of `before` — it is
-   * not filtered by the state vector the way new structs are — so once a
-   * doc has any deletions at all, this method's `delta` is essentially
-   * always non-trivially sized, even when every struct in it is already
-   * known to every peer. In a hub topology where every replica relays to
-   * *all* its peers, unconditionally echoing that "delta" straight back to
-   * the very peer that just sent it bounces server<->spoke forever and the
-   * hub's fan-out multiplies each bounce across every other spoke, so the
-   * queued-update count grows without bound (confirmed empirically:
-   * identical ~277-byte payloads recurring with growing multiplicity, see
-   * the builder log).
-   *
-   * The unconditional version of this fix regressed gates D/D2/F (also
-   * confirmed empirically): `integrate()` can write genuinely new content
-   * under *this* replica's own clientID as a side effect of processing the
-   * incoming batch — a resurrection, a review flag, an ack — and if the
-   * peer we're excluding is our *only* peer (e.g. an offline replica whose
-   * one link is the hub), that new content would never reach anyone.
-   * Restated-but-already-known content is safe to withhold from the
-   * sender specifically; this replica's own new writes are not. So the
-   * exclusion only applies when this replica's own clientID clock did not
-   * advance during this call (i.e. nothing new was produced locally) —
-   * content-neutral either way: it only ever drops a message that would
-   * have been a no-op for its specific recipient, never a change to any
-   * CRDT/rebase/integrate semantics.
+   * myClientId) (plan section 5). Forwarding happens in the doc's "update"
+   * handler: each applied update's effect goes to every peer except
+   * `fromName`, and integrate()'s own writes go to every peer. Yjs emits no
+   * update for an already-known payload, so relays cannot loop.
    */
   receive(updates: Uint8Array[], fromName?: string): void {
     if (updates.length === 0) return;
     const P = Y.snapshot(this.doc);
-    const before = Y.encodeStateVector(this.doc);
-    const myClockBefore = Y.decodeStateVector(before).get(this.clientID) ?? 0;
-    for (const u of updates) Y.applyUpdate(this.doc, u, "remote");
-    integrate(this.doc, P, this.clientID);
-    const delta = Y.encodeStateAsUpdate(this.doc, before);
-    if (delta.length > 2) {
-      const myClockAfter = Y.decodeStateVector(Y.encodeStateVector(this.doc)).get(this.clientID) ?? 0;
-      const producedOwnContent = myClockAfter > myClockBefore;
-      this.emit(delta, producedOwnContent ? undefined : fromName);
+    // Causal delivery (orchestrator revision, 2026-09-27). Yjs applies an
+    // update's delete set immediately even when some of its structs must
+    // wait for missing dependencies. A chained rebase C delivered before B
+    // would therefore delete blocks here before C's records arrive, and
+    // integration could no longer see the pre-merge state it needs. An
+    // ordered y-protocols channel never delivers such an update; this
+    // harness shuffles, so it holds back any update that would leave
+    // pending structs until its dependencies have arrived.
+    let queue = [...this.held, ...updates];
+    this.held = [];
+    this.currentSender = fromName;
+    try {
+      let progress = true;
+      while (progress && queue.length > 0) {
+        progress = false;
+        const rest: Uint8Array[] = [];
+        for (const u of queue) {
+          if (wouldPend(this.doc, u)) rest.push(u);
+          else {
+            Y.applyUpdate(this.doc, u, "remote");
+            progress = true;
+          }
+        }
+        queue = rest;
+      }
+    } finally {
+      this.currentSender = undefined;
     }
+    this.held = queue;
+    // integrate()'s own transaction is forwarded to every peer by the
+    // "update" handler.
+    integrate(this.doc, P, this.clientID);
   }
+
+  /** Updates held back until their dependencies arrive (see receive). */
+  private held: Uint8Array[] = [];
 
   // --- edit helpers (go straight to the block's Y.XmlText, as
   // y-prosemirror would for typing) ---

@@ -106,8 +106,8 @@ export interface RangeOrNull {
 /** Maps a range in `oldText` to its ground-truth range in `newText` via a
  * character diff, independent of how the edits were produced. Returns null
  * if the range is fully contained in deleted text. */
-export function buildDiffMapper(oldText: string, newText: string) {
-  const parts = Diff.diffChars(oldText, newText);
+export function buildDiffMapper(oldText: string, newText: string, mode: "chars" | "words" = "chars") {
+  const parts = mode === "words" ? Diff.diffWordsWithSpace(oldText, newText) : Diff.diffChars(oldText, newText);
   interface Seg {
     oldStart: number;
     oldEnd: number;

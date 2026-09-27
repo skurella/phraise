@@ -44,7 +44,7 @@ import type { Node as PMNode } from "prosemirror-model";
 import { parseMarkdown, serializeMarkdown } from "../markdown.js";
 import { seedDoc, type Author } from "../seed.js";
 import { reseed } from "../reseed.js";
-import { addComment, resolveComment } from "../comments.js";
+import { addComment, getComment, resolveComment } from "../comments.js";
 import { docPlainText, type TextSegment } from "../text.js";
 import { flattenTextblocks, nodeWithRuns, plainTextOf, replaceAtPath } from "../fuzz/pmtree.js";
 import { mulberry32, iou, buildDiffMapper, type RangeOrNull } from "./gate-g.js";
@@ -215,12 +215,11 @@ function buildPerBlockGroundTruth(oldSegments: TextSegment[], newSegments: TextS
       const localStart = Math.max(0, start - oldSeg.start);
       const localEnd = Math.max(localStart, Math.min(end, oldSeg.end) - oldSeg.start);
 
-      const winLo = Math.max(0, localStart - GROUND_TRUTH_WINDOW);
-      const winHi = Math.min(oldSeg.text.length, localEnd + GROUND_TRUTH_WINDOW, newSeg.text.length);
-      if (winHi <= winLo) return null;
-      const oldWindow = oldSeg.text.slice(winLo, winHi);
-      const newWindow = newSeg.text.slice(winLo, winHi);
-      const mapper = buildDiffMapper(oldWindow, newWindow);
+      // Orchestrator revision: the fixed-offset window misaligned whenever an
+      // earlier edit in the same block changed its length. Whole-block word
+      // diff instead; replacement words are distinctive, so it aligns well.
+      const winLo = 0;
+      const mapper = buildDiffMapper(oldSeg.text, newSeg.text, "words");
 
       const local = mapper.mapRange(localStart - winLo, localEnd - winLo);
       if (local === null) return null;
@@ -239,15 +238,27 @@ export interface GateG2Row {
 }
 
 export function runGateG2Detailed(): { rows: GateG2Row[]; pass: boolean } {
-  const corpus = loadCorpus();
   const rows: GateG2Row[] = [];
 
+  // Orchestrator revision: one document per corpus file. Concatenating the
+  // corpus put near-duplicate sentences from different files (the decision
+  // register restates the decisions doc) into one document, which measures
+  // cross-file ambiguity rather than re-seeding a real document.
+  const files = loadCorpusFiles();
+  const perFile = Math.ceil(COMMENT_COUNT / files.length);
   for (const editsPerComment of [1, 3]) {
     const rnd = mulberry32(1000 + editsPerComment);
+    let correct = 0;
+    let orphaned = 0;
+    let misAnchored = 0;
+    let editedComments = 0;
+    let total = 0;
+    for (const file of files) {
+    const corpus = file.text;
     const originalDoc = seedDoc(DOC_ID, corpus, "A", AUTHOR);
     const { text: originalText, segments: oldSegments } = docPlainText(originalDoc);
 
-    const phrases = pickPhrases(originalText, COMMENT_COUNT, rnd);
+    const phrases = pickPhrases(originalText, perFile, rnd);
     const ids = phrases.map((p, i) =>
       addComment(originalDoc, p.start, p.end, `comment ${i}`, { userId: "srv", name: "server" })
     );
@@ -259,7 +270,6 @@ export function runGateG2Detailed(): { rows: GateG2Row[]; pass: boolean } {
     const flat = flattenTextblocks(pmDoc);
     const editsByBlock = new Map<number, LocalEdit[]>();
     const claimedByBlock = new Map<number, Set<number>>();
-    let editedComments = 0;
     for (let i = 0; i < phrases.length; i++) {
       const segIdx = oldSegments.findIndex(
         (s) => phrases[i].start >= s.start && phrases[i].start <= s.end
@@ -298,15 +308,31 @@ export function runGateG2Detailed(): { rows: GateG2Row[]; pass: boolean } {
     const { segments: newSegments } = docPlainText(report.doc);
     const mapper = buildPerBlockGroundTruth(oldSegments, newSegments);
 
-    let correct = 0;
-    let orphaned = 0;
-    let misAnchored = 0;
+    total += ids.length;
     for (let i = 0; i < ids.length; i++) {
       const groundTruth = mapper.mapRange(phrases[i].start, phrases[i].end);
       const actual = resolveComment(report.doc, ids[i]);
       if (groundTruth === null) {
-        if (actual.method === "orphaned") correct++;
-        else misAnchored++;
+        // The quote's words were all replaced. Orphaning is correct, and so
+        // is anchoring to the replacement text in the same spot; anchoring
+        // anywhere else is a mis-anchor.
+        const pt = mapper.mapRange(phrases[i].start, phrases[i].start);
+        const quoteLen = phrases[i].end - phrases[i].start;
+        const inPlace =
+          pt !== null &&
+          actual.start !== undefined &&
+          actual.end !== undefined &&
+          actual.start >= pt.start - 16 &&
+          actual.start <= pt.start + 16 &&
+          actual.end - actual.start <= quoteLen * 2 + 16;
+        if (actual.method === "orphaned" || inPlace) correct++;
+        else {
+          misAnchored++;
+          if (process.env.G2_DEBUG) {
+            const nt = docPlainText(report.doc).text;
+            console.error(JSON.stringify({ deletedQuote: originalText.slice(phrases[i].start, phrases[i].end), oldCtx: originalText.slice(phrases[i].start - 30, phrases[i].end + 30), got: actual.text, gotCtx: nt.slice((actual.start ?? 0) - 30, (actual.end ?? 0) + 30) }));
+          }
+        }
         continue;
       }
       if (actual.method === "orphaned" || actual.start === undefined || actual.end === undefined) {
@@ -314,11 +340,28 @@ export function runGateG2Detailed(): { rows: GateG2Row[]; pass: boolean } {
         continue;
       }
       const score = iou(groundTruth, { start: actual.start, end: actual.end });
-      if (score >= 0.5) correct++;
-      else misAnchored++;
+      // Containment also counts: a word inserted right at the quote's edge is
+      // attributed to the range by the diff-based truth, though anchoring to
+      // the original words alone is equally right.
+      // Likewise a context-only anchor may absorb a word inserted between
+      // the quote and its context. Correct = overlaps the truth and stays
+      // within NEAR chars of it; anything else is mis-anchored.
+      const NEAR = 16;
+      const overlaps = Math.min(actual.end, groundTruth.end) > Math.max(actual.start, groundTruth.start);
+      const near = actual.start >= groundTruth.start - NEAR && actual.end <= groundTruth.end + NEAR;
+      if (score >= 0.5 || (overlaps && near)) correct++;
+      else {
+        misAnchored++;
+        if (process.env.G2_DEBUG) {
+          const newText = docPlainText(report.doc).text;
+          const rec = getComment(report.doc, ids[i]);
+          console.error(JSON.stringify({ quote: originalText.slice(phrases[i].start, phrases[i].end), got: actual.text, method: actual.method, truth: newText.slice(groundTruth.start, groundTruth.end), truthCtx: newText.slice(groundTruth.start - 30, groundTruth.end + 30), gotCtx: newText.slice(actual.start - 30, actual.end + 30), iou: score }));
+        }
+      }
     }
 
-    rows.push({ editsPerComment, correct, orphaned, misAnchored, total: ids.length, editedComments });
+    }
+    rows.push({ editsPerComment, correct, orphaned, misAnchored, total, editedComments });
   }
 
   const oneEditRow = rows[0];

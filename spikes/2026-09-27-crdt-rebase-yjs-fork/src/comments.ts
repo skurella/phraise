@@ -147,22 +147,111 @@ export function fuzzyAnchor(
   const matches = search(text, exact, maxErrors);
   if (matches.length === 0) return null;
 
-  let best: { start: number; end: number; quoteSim: number; score: number } | null = null;
-  for (const m of matches) {
+  // Orchestrator revision (2026-09-27, after gate G2 showed 19% mis-anchoring):
+  // a quote match is accepted only if its surrounding context agrees, or if
+  // the quote is long and unambiguous enough to stand on its own (a moved
+  // paragraph). Otherwise fall back to a context-only match: the prefix and
+  // suffix are both found close together, and the comment anchors to
+  // whatever now sits between them (the quoted text was edited in place).
+  let best: { start: number; end: number; quoteSim: number; ctxSim: number; score: number } | null = null;
+  const strong = matches.filter((m) => m.errors <= maxErrors);
+  const scored: Array<{ start: number; end: number; score: number }> = [];
+  for (const m of strong) {
     const quoteSim = 1 - m.errors / Math.max(exact.length, 1);
-    const prefixSim = charSimilarity(
+    const prefixSim = contextSimilarity(
       text.slice(Math.max(0, m.start - PREFIX_SUFFIX_LEN), m.start),
-      quote.prefix
+      quote.prefix,
+      "prefix"
     );
-    const suffixSim = charSimilarity(text.slice(m.end, m.end + PREFIX_SUFFIX_LEN), quote.suffix);
+    const suffixSim = contextSimilarity(text.slice(m.end, m.end + PREFIX_SUFFIX_LEN), quote.suffix, "suffix");
     const posProximity = Math.max(0, 1 - Math.abs(m.start - approxPos) / Math.max(text.length, 1));
     const score = quoteSim * 50 + prefixSim * 20 + suffixSim * 20 + posProximity * 2;
+    scored.push({ start: m.start, end: m.end, score });
     if (!best || score > best.score) {
-      best = { start: m.start, end: m.end, quoteSim, score };
+      best = { start: m.start, end: m.end, quoteSim, ctxSim: Math.max(prefixSim, suffixSim), score };
     }
   }
-  if (!best || best.quoteSim < 0.75) return null;
-  return { start: best.start, end: best.end, quoteSim: best.quoteSim };
+  if (best && best.quoteSim >= 0.75) {
+    const distinctive = exact.length >= MIN_STANDALONE_QUOTE && countNear(strong, best) === 1;
+    // Ambiguity guard: if another, non-overlapping location scores almost as
+    // well, context does not discriminate. Orphaning (quote kept, shown to
+    // the user) is better than silently attaching to the wrong occurrence.
+    const b = best;
+    const runnerUp = Math.max(
+      -Infinity,
+      ...scored.filter((c) => c.end <= b.start || c.start >= b.end).map((c) => c.score)
+    );
+    const ambiguous = best.score - runnerUp < AMBIGUITY_MARGIN;
+    if (!ambiguous && (best.ctxSim >= MIN_CONTEXT_SIM || distinctive)) {
+      return { start: best.start, end: best.end, quoteSim: best.quoteSim };
+    }
+  }
+  return contextOnlyAnchor(text, quote, approxPos);
+}
+
+/** Minimum score lead over the best non-overlapping alternative (score scale: quote 50, prefix 20, suffix 20, position 2). */
+const AMBIGUITY_MARGIN = 8;
+/** Quotes at least this long may anchor without context agreement when unique. */
+const MIN_STANDALONE_QUOTE = 24;
+/** Required similarity of the better of prefix or suffix for a quote match. */
+const MIN_CONTEXT_SIM = 0.5;
+/** Context-only anchoring needs this similarity on both sides. */
+const MIN_CONTEXT_ONLY_SIM = 0.75;
+
+function countNear(
+  matches: Array<{ start: number; end: number; errors: number }>,
+  best: { start: number; end: number }
+): number {
+  // Matches overlapping each other are one candidate location.
+  let n = 0;
+  let lastEnd = -1;
+  for (const m of [...matches].sort((a, b) => a.start - b.start)) {
+    if (m.start >= lastEnd) n++;
+    lastEnd = Math.max(lastEnd, m.end);
+  }
+  return n;
+}
+
+/**
+ * Similarity of context text, comparing only the side nearest the quote: the
+ * tail of a prefix and the head of a suffix. Short stored contexts (at the
+ * start or end of the document) compare over their own length.
+ */
+function contextSimilarity(actual: string, stored: string, side: "prefix" | "suffix"): number {
+  if (stored.length === 0) return actual.length === 0 ? 1 : 0.5;
+  const a = side === "prefix" ? actual.slice(-stored.length) : actual.slice(0, stored.length);
+  return charSimilarity(a, stored);
+}
+
+function contextOnlyAnchor(
+  text: string,
+  quote: QuoteSelector,
+  approxPos: number
+): { start: number; end: number; quoteSim: number } | null {
+  const pre = quote.prefix.slice(-16);
+  const suf = quote.suffix.slice(0, 16);
+  if (pre.length < 8 || suf.length < 8) return null;
+  const preMatches = search(text, pre, Math.floor(pre.length * (1 - MIN_CONTEXT_ONLY_SIM)));
+  if (preMatches.length === 0) return null;
+  const maxGap = quote.exact.length * 2 + 16;
+  let best: { start: number; end: number; score: number } | null = null;
+  for (const p of preMatches) {
+    const window = text.slice(p.end, p.end + maxGap + suf.length);
+    const sufMatches = search(window, suf, Math.floor(suf.length * (1 - MIN_CONTEXT_ONLY_SIM)));
+    for (const s of sufMatches) {
+      const start = p.end;
+      const end = p.end + s.start;
+      if (end <= start) continue;
+      const errs = p.errors + s.errors;
+      const posProximity = Math.max(0, 1 - Math.abs(start - approxPos) / Math.max(text.length, 1));
+      const lenPenalty = Math.abs(end - start - quote.exact.length) / Math.max(quote.exact.length, 1);
+      const score = -errs * 10 - lenPenalty * 5 + posProximity * 2;
+      if (!best || score > best.score) best = { start, end, score };
+    }
+  }
+  if (!best) return null;
+  const quoteSim = charSimilarity(text.slice(best.start, best.end), quote.exact);
+  return { start: best.start, end: best.end, quoteSim };
 }
 
 function fuzzyResolve(doc: Y.Doc, record: CommentRecord): ResolvedRange {

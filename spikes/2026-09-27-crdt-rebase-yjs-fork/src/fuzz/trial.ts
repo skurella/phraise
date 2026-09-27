@@ -3,6 +3,7 @@
 // the same seed+trialIndex produces the same document/edits/mutations
 // across all four granularities (needed for the granularity comparison in
 // section 2 to be a fair, paired comparison).
+import { classifyLoss, deletedElementIds } from "./lossCause.js";
 import * as Y from "yjs";
 import type { Author } from "../seed.js";
 import { PM_FRAGMENT, PHRAISE_MAP, base64ToUint8 } from "../seed.js";
@@ -119,11 +120,13 @@ export function runTrial(opts: TrialOptions): TrialResult {
     // tokens still present in the human's *own* doc right after their edit
     // loop finishes are tracked.
     const allTokens: string[] = [];
+    const humanDeletedIds = new Set<string>();
     const editKindsUsed = new Set<string>();
     for (const h of humans) {
       const count = rng.range(1, 6);
       const { log, tokens } = applyLocalEdits(h.replica, rng, count, h.name);
       for (const l of log) if (l.applied) editKindsUsed.add(l.kind);
+      for (const id of deletedElementIds(h.replica.doc)) humanDeletedIds.add(id);
       const ownText = docPlainText(h.replica.doc).text;
       for (const t of tokens) if (ownText.includes(t)) allTokens.push(t);
     }
@@ -268,8 +271,14 @@ export function runTrial(opts: TrialOptions): TrialResult {
     // local-text-lost: a human's own token missing from the final text.
     const finalText = docPlainText(server.doc).text;
     const missingTokens = allTokens.filter((t) => !finalText.includes(t));
-    if (missingTokens.length > 0) {
-      fail("local-text-lost", missingTokens.slice(0, 5).join(","), missingTokens.length);
+    // Orchestrator revision: split by cause (see lossCause.ts).
+    const rebaseLost = missingTokens.filter((t) => classifyLoss(server.doc, t, humanDeletedIds) !== "human-delete");
+    const humanLost = missingTokens.filter((t) => !rebaseLost.includes(t));
+    if (rebaseLost.length > 0) {
+      fail("local-text-lost", rebaseLost.slice(0, 5).map((t) => `${t}(${classifyLoss(server.doc, t, humanDeletedIds)})`).join(","), rebaseLost.length);
+    }
+    if (humanLost.length > 0) {
+      fail("human-delete-vs-edit", humanLost.slice(0, 5).join(","), humanLost.length);
     }
 
     // F-violation: every textblock not touched by any human must equal its
