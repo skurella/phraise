@@ -25,15 +25,24 @@ JS/ProseMirror values.
 2. **Editor plugins.** `editorPlugins(doc, opts)` returns
    `[ySyncPlugin, leafMarksPlugin, rootAttrsPlugin]` in that order (order
    matters: see `workarounds/leafMarks.ts`'s comment on why leafMarks must
-   come before rootAttrs).
+   come before rootAttrs). Brief 04 adds `initEditorDoc(doc) -> {doc,
+   mapping}` (wraps `initProseMirrorDoc` on this module's own
+   `FRAGMENT_NAME`/`schema`), so `src/testkit/editor.ts` (the live jsdom
+   editor client) can build its initial `EditorState` without importing
+   `yjs`/`@tiptap/y-tiptap` itself. `FRAGMENT_NAME` is now also re-exported
+   from `index.ts` for the same reason (a caller outside this module needs
+   the fragment name to check document emptiness/read raw state, e.g. a
+   gate scratch-decoding the relay's `/state` bytes).
 3. **Relay per-update hook.** `inspectUpdate(update)` via `Y.parseUpdateMeta`.
    Brief 03 adds `recordAttribution(doc, update, user, at)` and
    `listAttributedRanges(doc)` (`attribution.ts`, ported from spike 5's
    `attribution.ts`) -- per-client clock ranges mapped to a user and
    timestamp, and a walk of the doc's items grouping visible runs by who
-   wrote them. `authorOf` (plan section 3's other point-3 item) is left to
-   the relay brief: it needs the connection-level auth mapping, not
-   anything this module owns.
+   wrote them. Brief 04 adds `authorOf(doc, clientId) -> string |
+   undefined` (plan section 3's other point-3 item, left open by brief 01's
+   note above): the relay's forged-identity check (`src/relay/forgery.ts`)
+   reads a client id's currently-mapped user directly, rather than walking
+   `AttributionEntry.ranges` itself.
 4. **Fork, diff, apply.** `snapshot(doc)`/`encodeSnapshot` (alias), and
    `forkDiffMerge(doc, base, target, {clientId, origin, forceFork?, onFork?})`:
    fork `doc` at `base` (or diff directly when `base` already equals the

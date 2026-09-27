@@ -1,1 +1,51 @@
-[]
+{
+  "results": [
+    {
+      "gate": "A",
+      "pass": true,
+      "summary": "all 4 checks passed",
+      "numbers": {
+        "checks": 4,
+        "relayBytes": 830
+      }
+    },
+    {
+      "gate": "B",
+      "pass": true,
+      "summary": "all 6 checks passed",
+      "numbers": {
+        "checks": 6,
+        "forgedRejections": 1
+      }
+    },
+    {
+      "gate": "C",
+      "pass": true,
+      "summary": "all 5 checks passed",
+      "numbers": {
+        "checks": 5,
+        "comments": 2
+      }
+    },
+    {
+      "gate": "D",
+      "pass": true,
+      "summary": "all 12 checks passed",
+      "numbers": {
+        "checks": 12
+      }
+    },
+    {
+      "gate": "E",
+      "pass": true,
+      "summary": "all 9 checks passed",
+      "numbers": {
+        "checks": 9,
+        "e2Files": 10,
+        "e2Edits": 19,
+        "e2Violations": 0
+      }
+    }
+  ],
+  "portsLeaked": []
+}

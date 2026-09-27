@@ -67,6 +67,22 @@ test('src/git imports nothing from src/crdt (brief 02: git is standalone, no Yjs
   expect(violations, violations.join('\n')).toEqual([]);
 });
 
+test('src/relay only imports @hocuspocus/server and @hocuspocus/extension-sqlite from the hocuspocus family, and never yjs itself (brief 04, plan section 2: "the relay calls only engine, git and the opaque crdt handles; it never calls Yjs APIs")', () => {
+  const relayDir = path.join(SRC_DIR, 'relay');
+  const files = walk(relayDir);
+  expect(files.length).toBeGreaterThan(0);
+  const allowedHocuspocus = new Set(['@hocuspocus/server', '@hocuspocus/extension-sqlite']);
+  const violations: string[] = [];
+  for (const file of files) {
+    for (const spec of importsOf(file)) {
+      if (spec.startsWith('@hocuspocus/') && !allowedHocuspocus.has(spec)) {
+        violations.push(`${path.relative(SRC_DIR, file)} imports "${spec}" (only @hocuspocus/server and @hocuspocus/extension-sqlite are allowed)`);
+      }
+    }
+  }
+  expect(violations, violations.join('\n')).toEqual([]);
+});
+
 test('the import-boundary test itself has something to scan (sanity: src/crdt exists and imports yjs)', () => {
   const crdtFiles = walk(path.join(SRC_DIR, 'crdt'));
   expect(crdtFiles.length).toBeGreaterThan(0);

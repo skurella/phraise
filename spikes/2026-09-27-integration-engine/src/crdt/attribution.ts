@@ -61,6 +61,17 @@ export function recordAttribution(doc: Y.Doc, update: Uint8Array, user: string, 
   }, ATTRIBUTION_ORIGIN);
 }
 
+/**
+ * Brief 04 addition (plan section 3 point 3 names this outright:
+ * `authorOf(doc, clientId)`): the user a given Yjs client id is currently
+ * mapped to in `phraise-attribution`, or `undefined` if unmapped. The
+ * relay's forged-identity check (`src/relay/`) reads this directly instead
+ * of walking `AttributionEntry.ranges` itself.
+ */
+export function authorOf(doc: Y.Doc, clientId: number): string | undefined {
+  return doc.getMap<AttributionEntry>(ATTRIBUTION_MAP_NAME).get(String(clientId))?.user;
+}
+
 function findUser(attrMap: Y.Map<AttributionEntry>, client: number, clock: number): { user: string; at: number } {
   const entry = attrMap.get(String(client));
   if (entry) {

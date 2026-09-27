@@ -5,9 +5,11 @@
 // leafMarksPlugin, then rootAttrsPlugin (see workarounds/leafMarks.ts's own
 // comment on why this order matters -- copied verbatim from spike 5's
 // src/client.ts construction).
+import type { Node as PMNode } from 'prosemirror-model';
 import type { Plugin } from 'prosemirror-state';
 import * as Y from 'yjs';
 import { ySyncPlugin, initProseMirrorDoc } from '@tiptap/y-tiptap';
+import { schema } from '../markdown/index.js';
 import { FRAGMENT_NAME } from './codec.js';
 import { leafMarksPlugin, type LeafMarksStats } from './workarounds/leafMarks.js';
 import { rootAttrsPlugin, type RootAttrsStats } from './workarounds/rootAttrs.js';
@@ -29,6 +31,19 @@ export interface EditorPluginsOpts {
   undo?: boolean;
   /** Stats objects the workaround plugins accumulate into, for tests/gates that want to observe them. */
   stats?: { leafMarks?: LeafMarksStats; rootAttrs?: RootAttrsStats };
+}
+
+/**
+ * Brief 04 addition: `src/testkit/editor.ts` (the live jsdom editor client)
+ * must not import `yjs`/`@tiptap/y-tiptap` itself (the import-boundary test
+ * scans every file outside `src/crdt/`, testkit included), so this wraps
+ * `initProseMirrorDoc(fragment, schema)` -- the initial `{doc, mapping}}` a
+ * caller needs to build its first `EditorState` -- behind the opaque
+ * `CrdtDoc` interface, on this module's own `FRAGMENT_NAME`/`schema`.
+ */
+export function initEditorDoc(doc: Y.Doc): { doc: PMNode; mapping: ProsemirrorMapping } {
+  const fragment = doc.getXmlFragment(FRAGMENT_NAME);
+  return initProseMirrorDoc(fragment, schema);
 }
 
 /** The plugins a live ProseMirror EditorView binds to `doc`'s `prosemirror` fragment. */

@@ -45,7 +45,8 @@ export function setClientId(doc: CrdtDoc, id: number): void {
 }
 
 // --- 2. Editor plugins -------------------------------------------------------
-export { editorPlugins, type EditorPluginsOpts, type ProsemirrorMapping } from './editorPlugins.js';
+export { editorPlugins, initEditorDoc, type EditorPluginsOpts, type ProsemirrorMapping } from './editorPlugins.js';
+export { FRAGMENT_NAME } from './codec.js';
 
 // --- 3. Relay per-update hook (inspectUpdate only; see inspectUpdate.ts) -----
 export { inspectUpdate, type UpdateClientRange } from './inspectUpdate.js';
@@ -90,6 +91,7 @@ export { textProjection, anchorAt, resolveAnchor, ATOM_PLACEHOLDER } from './anc
 export {
   recordAttribution,
   listAttributedRanges,
+  authorOf,
   ATTRIBUTION_ORIGIN,
   ATTRIBUTION_MAP_NAME,
   ATTRIBUTION_CONFLICTS_MAP_NAME,

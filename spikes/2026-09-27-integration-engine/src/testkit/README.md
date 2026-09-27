@@ -36,8 +36,29 @@ Brief 02 adds:
   also watches -- staging is always explicit by path (never `add -A`/`add
   .`), tracked from the paths passed to `write()`.
 
-Later briefs add: a live jsdom editor client, a relay harness (in-process
-and child-process).
+Brief 04 adds:
+
+- `editor.ts`: `createLiveEditor({url, docName, token}) -> LiveEditor`, the
+  live jsdom editor client (ported from spike 5's `createLiveClient`) built
+  entirely on `crdt.initEditorDoc`/`crdt.editorPlugins` and
+  `engine.attachIntegration` -- this file itself never imports
+  `yjs`/`@tiptap/y-tiptap` (the import-boundary test scans every file
+  outside `src/crdt/`, testkit included). `disconnect()`/`connect()`
+  delegate to the dedicated `websocketProvider` for offline-period tests;
+  `waitUntil(check, timeoutMs?, intervalMs?)`.
+- `edits.ts`: ported from spike 5's `gates/lib/edits.ts` --
+  `insertText`/`replaceWord`/`splitBlockAt`/`joinBackwardAt`/`deleteRange`/
+  `findPos`/`replaceWholeDoc`, every one a genuine dispatched ProseMirror
+  `Transaction`. `addCommentOnQuote` is new: comments are engine/crdt
+  state, not ProseMirror nodes, so it calls `engine.createCommentOnQuote`
+  directly rather than dispatching a transaction.
+- `relayHarness.ts`: `startRelayHarness({mode?, remote, port?, dataDir?,
+  timings?}) -> RelayHarnessHandle`, starting a relay in-process (default)
+  or as a child process (`mode: 'child-process'`, needed for memory
+  measurement and hard kills later); always stopped by the caller
+  (`finally`), with a process-exit safety net (ported from spike 5's
+  `src/harness.ts`) that kills any relay still running if the process ends
+  without calling `stop()`.
 
 ## Origin of copied code
 
@@ -49,3 +70,15 @@ four source spikes' testkits; spike 3's `src/testkit/temp-repo.ts` does the
 non-bare, single-repo version of what `remote.ts` does for a bare remote
 plus clones of it, and its style -- temp dir under `os.tmpdir()`, local user
 config, a returned `cleanup()` -- carries over).
+
+`editor.ts` -- spike 5 (collab-stack-yjs13-hocuspocus, branch
+spike/2026-09-27-collab-stack, commit eeb3fe2) `src/client.ts`'s
+`createLiveClient`, rebuilt on this spike's own `crdt.initEditorDoc`/
+`editorPlugins` (added by brief 04 to `src/crdt/editorPlugins.ts`
+specifically so this file would never need to import `yjs`/
+`@tiptap/y-tiptap` itself) plus `engine.attachIntegration` wired in.
+`edits.ts` -- same branch/commit, `gates/lib/edits.ts`, ported near
+verbatim; `addCommentOnQuote` is new. `relayHarness.ts` -- same
+branch/commit, `src/harness.ts`'s child-process spawn/ready-line/exit-hook
+mechanics, adapted to this spike's own `src/relay/cli.ts` argv and to also
+offer an in-process mode.

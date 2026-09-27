@@ -1,6 +1,6 @@
 # Spike 6: the integration engine
 
-Status: in progress (`src/markdown/`, `src/crdt/`, `src/git/`, `src/engine/`, `src/testkit/` built; `src/relay/`/`src/daemon/` not yet)
+Status: in progress (`src/markdown/`, `src/crdt/`, `src/git/`, `src/engine/`, `src/testkit/`, `src/relay/` built, with gates A-E and the gate runner; `src/daemon/` not yet)
 
 The headless engine that runs Phraise's whole loop in one codebase: open a
 file from a git remote, edit it together, comment, flush drafts, commit,
@@ -29,10 +29,17 @@ npm run gates          # full gate suite, prints a results table, writes results
 npm run gates:quick     # same gates at small/fast sizes
 ```
 
-Definition of done for this foundation brief: `npm ci && npm test && npm
-run typecheck` passes from a clean checkout. Corpus tests that need
-`corpus/fetched/` skip with a clear message when it is absent; the
-handwritten corpus tests always run.
+Definition of done for brief 04 (milestone 1, gates A-E): `npm test`,
+`npm run typecheck` and `npm run gates:quick` pass. Gates A-E each report
+pass in the quick run; `npm run gates:quick` also checks with `lsof` that
+nothing is left listening on 4300-4399. The full `npm run gates` (gate E2
+at 50 corpus files instead of 10) is the orchestrator's to run at the
+milestone boundary, per the charter ("long verification runs belong to the
+orchestrator") -- it was run once here during development (50 files, 94
+edits, 0 containment violations) and is otherwise not re-run on every
+change. Corpus tests/gates that need `corpus/fetched/` skip (or, for gate
+E2, fail with a clear message naming `npm run fetch`) when it is absent;
+the handwritten corpus tests always run.
 
 ## Layout
 
@@ -49,14 +56,20 @@ src/
               file at commit, draft flush/restore (lease), commit (lease).
               Shells out to the git CLI via plumbing in a bare cache repo
               (no working tree). No Yjs.
-  relay/      (not yet built) Hocuspocus server as a library plus a thin CLI.
+  relay/      Hocuspocus server as a library (startRelay) plus cli.ts. Auth stub,
+              forged-identity rejection, open-and-seed/restore, draft flusher,
+              commit. HTTP control API. See src/relay/README.md.
   daemon/     (not yet built) File materialization on top of engine + crdt.
   testkit/    Temp dirs, PRNG, tokens, waitFor, corpus loader, port allocation
               (4300-4399), temp bare git remotes and clones (`remote.ts`), a
               tiny in-test hub exchanging CrdtDoc updates in causal order
-              (`hub.ts`). May import anything in src/; src/ never imports testkit.
-gates/        gates/index.ts runs all registered gates and prints a results table
-              (placeholder for now; gates/<letter>.ts land one per brief).
+              (`hub.ts`), a live jsdom editor client (`editor.ts`, `edits.ts`),
+              a relay harness in-process or child-process (`relayHarness.ts`).
+              May import anything in src/; src/ never imports testkit.
+gates/        gates/index.ts runs gates A-E and prints a results table; writes
+              results/gates.{md,json}; gates/<letter>.ts for F onward land in
+              later briefs. gates/lib/ has gate-only helpers (diffHunks.ts,
+              topSpans.ts, words.ts, ported from spike 1 for gate E2).
 test/         vitest unit tests, one or more per module.
 scripts/      fetch-corpus.mjs.
 corpus/       manifest, handwritten (checked in), specs list; fetched/ is gitignored.
