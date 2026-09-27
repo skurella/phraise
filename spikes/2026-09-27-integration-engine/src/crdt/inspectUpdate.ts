@@ -23,3 +23,16 @@ export function inspectUpdate(update: Uint8Array): UpdateClientRange[] {
   }
   return out;
 }
+
+/**
+ * Brief 06 task 1: the clock `doc` already has for `clientId` (`Y.getState`,
+ * reading `doc.store` directly -- no encode/decode round trip needed). Used
+ * by `relay/forgery.ts` to tell "this message resends structs the relay
+ * already has under this id" (harmless, a no-op once applied) apart from
+ * "this message introduces a clock range the relay has never seen under
+ * this id" (the only case that can actually be a forged extension of
+ * someone else's sequence).
+ */
+export function knownClock(doc: Y.Doc, clientId: number): number {
+  return Y.getState(doc.store, clientId);
+}

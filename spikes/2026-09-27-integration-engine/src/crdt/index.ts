@@ -49,7 +49,7 @@ export { editorPlugins, initEditorDoc, type EditorPluginsOpts, type ProsemirrorM
 export { FRAGMENT_NAME } from './codec.js';
 
 // --- 3. Relay per-update hook (inspectUpdate only; see inspectUpdate.ts) -----
-export { inspectUpdate, type UpdateClientRange } from './inspectUpdate.js';
+export { inspectUpdate, knownClock, type UpdateClientRange } from './inspectUpdate.js';
 
 // --- 4. Fork, diff, apply ----------------------------------------------------
 

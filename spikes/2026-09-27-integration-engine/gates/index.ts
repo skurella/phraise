@@ -1,5 +1,5 @@
-// Brief 04 task 8: the gate runner. Runs every registered gate (A-E for
-// now; F onward land in later briefs), prints a results table, writes
+// Brief 04 task 8 (gates A-E); brief 06 task 7 adds F and G. The gate
+// runner: runs every registered gate, prints a results table, writes
 // `results/gates.md`/`results/gates.json`, exits non-zero on any failure,
 // and checks at the end that nothing is still listening on 4300-4399
 // (charter/plan section 9).
@@ -12,6 +12,8 @@ import { run as runB } from './b.js';
 import { run as runC } from './c.js';
 import { run as runD } from './d.js';
 import { run as runE } from './e.js';
+import { run as runF } from './f.js';
+import { run as runG } from './g.js';
 
 export interface GateResult {
   gate: string;
@@ -30,6 +32,8 @@ const GATES: { letter: string; run: (opts: { quick?: boolean }) => Promise<GateR
   { letter: 'C', run: runC },
   { letter: 'D', run: runD },
   { letter: 'E', run: runE },
+  { letter: 'F', run: runF },
+  { letter: 'G', run: runG },
 ];
 
 async function checkPortsFree(): Promise<string[]> {

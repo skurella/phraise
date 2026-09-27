@@ -19,6 +19,9 @@
 // construct an attack, same as spike 5's own gate did).
 import 'global-jsdom/register';
 import * as Y from 'yjs';
+import * as encoding from 'lib0/encoding';
+import { writeSyncStep2 } from 'y-protocols/sync';
+import { MessageType } from '@hocuspocus/provider';
 import { startRelayHarness, type RelayHarnessHandle } from '../src/testkit/relayHarness.js';
 import { createLiveEditor, waitUntil, type LiveEditor } from '../src/testkit/editor.js';
 import { insertText, findPos } from '../src/testkit/edits.js';
@@ -51,12 +54,18 @@ export async function run(_opts: { quick?: boolean } = {}): Promise<GateBResult>
   let alice: LiveEditor | undefined;
   let bob: LiveEditor | undefined;
   let mallory: LiveEditor | undefined;
+  let mallory2: LiveEditor | undefined;
   const checks: { name: string; pass: boolean; detail: string }[] = [];
 
   try {
     remote = await makeRemote({ branch: BRANCH, files: { [PATH_MD]: FIXTURE } });
     const dataDir = (await makeTempDir('phraise-gateB-relay-')).path;
-    relay = await startRelayHarness({ remote: remote.url, dataDir });
+    // A short recovery window (brief 06 task 1's default is 60s), so this
+    // gate's forgery attempts -- run well under a second after the
+    // document is first seeded -- exercise the general "outside a recovery
+    // window" rejection path, not the documented recovery-window residual
+    // (see test/relay.forgery.test.ts for that case on its own).
+    relay = await startRelayHarness({ remote: remote.url, dataDir, timings: { recoveryWindowMs: 100 } });
     const docName = makeDocName(BRANCH, PATH_MD, 0);
 
     alice = await createLiveEditor({ url: relay.wsUrl, docName, token: 'alice' });
@@ -85,6 +94,9 @@ export async function run(_opts: { quick?: boolean } = {}): Promise<GateBResult>
       pass: attributionOk,
       detail: `alice="${aliceRanges}" bob="${bobRanges}"`,
     });
+
+    // Past the 100ms recovery window opened when the document was first seeded.
+    await new Promise((r) => setTimeout(r, 200));
 
     // --- forged update: mallory crafts a raw update under alice's real clientID ---
     const aliceClientIdAtForgeryTime = alice.ydoc.clientID;
@@ -140,17 +152,83 @@ export async function run(_opts: { quick?: boolean } = {}): Promise<GateBResult>
       detail: `connections before=${connectionsBefore} right after=${connectionsRightAfter}`,
     });
 
+    // --- brief 06 task 1: the reviewer's attack (milestone-1 review,
+    // "gate B: the check is real for the attack it tests, but ..."). The
+    // OLD version of checkForgery only ran for messages tagged SYNC_UPDATE
+    // (type 2); @hocuspocus/server and y-protocols/sync route a
+    // SYNC_STEP2-tagged message (type 1) through the exact same
+    // Y.applyUpdate + broadcast path, and nothing stops an
+    // already-authenticated connection from sending one at any time, not
+    // just as a first message. This crafts exactly that: a raw, hand-built
+    // SyncStep2 wire message (lib0/encoding + y-protocols/sync's own
+    // `writeSyncStep2`, mirroring `@hocuspocus/provider`'s internal
+    // `SyncStepTwoMessage`) carrying a genuine clock EXTENSION of alice's
+    // real clientID (continuing from a clone of her own current state, not
+    // a colliding brand-new-doc range at clock 0 -- see
+    // test/relay.forgery.test.ts's `craftForgedUpdate` for why that
+    // distinction matters), sent over a fresh, already-authenticated
+    // connection's raw websocket. Brief 06 closes this: checkForgery now
+    // runs for SYNC_STEP2 too, so this is rejected exactly like the
+    // SYNC_UPDATE attack above -- counted, connection closed, victim and
+    // relay unaffected.
+    mallory2 = await createLiveEditor({ url: relay.wsUrl, docName, token: 'mallory2' });
+
+    const scratch2 = new Y.Doc({ gc: false });
+    Y.applyUpdate(scratch2, Y.encodeStateAsUpdate(alice.ydoc)); // clone alice's own current state first, WITHOUT touching scratch2's own clientID yet
+    scratch2.clientID = aliceClientIdAtForgeryTime; // now genuinely continue her sequence
+    scratch2.getText('forged-scratch-2').insert(0, 'forged-via-syncstep2');
+
+    const beforeHealth2 = (await (await fetch(`${relay.baseUrl}/health`)).json()) as { counters: { forgedRejections: number } };
+    const connectionsBefore2 = ((await (await fetch(`${relay.baseUrl}/connections?docName=${encodeURIComponent(docName)}`)).json()) as { count: number }).count;
+
+    const encoder = encoding.createEncoder();
+    encoding.writeVarString(encoder, docName);
+    encoding.writeVarUint(encoder, MessageType.Sync);
+    writeSyncStep2(encoder, scratch2); // messageYjsSyncStep2 (type 1) + scratch2's full state, including the forged extension
+    mallory2.websocketProvider.webSocket!.send(encoding.toUint8Array(encoder));
+
+    await new Promise((r) => setTimeout(r, 300));
+
+    const afterHealth2 = (await (await fetch(`${relay.baseUrl}/health`)).json()) as { counters: { forgedRejections: number } };
+    checks.push({
+      name: "reviewer's attack (raw SyncStep2 message): rejection counter increased by exactly 1",
+      pass: afterHealth2.counters.forgedRejections - beforeHealth2.counters.forgedRejections === 1,
+      detail: `before=${beforeHealth2.counters.forgedRejections} after=${afterHealth2.counters.forgedRejections}`,
+    });
+
+    const connectionsAfter2 = ((await (await fetch(`${relay.baseUrl}/connections?docName=${encodeURIComponent(docName)}`)).json()) as { count: number }).count;
+    checks.push({
+      name: "reviewer's attack: the forger's connection is closed",
+      pass: connectionsAfter2 === connectionsBefore2 - 1,
+      detail: `before=${connectionsBefore2} after=${connectionsAfter2}`,
+    });
+
+    const relayStateRes2 = await fetch(`${relay.baseUrl}/state/${encodeURIComponent(docName)}`);
+    const scratchCheck2 = new Y.Doc();
+    Y.applyUpdate(scratchCheck2, new Uint8Array(await relayStateRes2.arrayBuffer()));
+    checks.push({
+      name: 'reviewer\'s attack: the relay is unaffected (never applied the forged extension)',
+      pass: scratchCheck2.getText('forged-scratch-2').toString() === '',
+      detail: JSON.stringify(scratchCheck2.getText('forged-scratch-2').toString()),
+    });
+    checks.push({
+      name: "reviewer's attack: the victim (alice) is unaffected",
+      pass: !alice.view.state.doc.textContent.includes('forged-via-syncstep2'),
+      detail: alice.view.state.doc.textContent,
+    });
+
     const pass = checks.every((c) => c.pass);
     return {
       gate: 'B',
       pass,
       summary: pass ? `all ${checks.length} checks passed` : checks.filter((c) => !c.pass).map((c) => `${c.name}: ${c.detail}`).join('; '),
-      numbers: { checks: checks.length, forgedRejections: afterHealth.counters.forgedRejections },
+      numbers: { checks: checks.length, forgedRejections: afterHealth2.counters.forgedRejections },
     };
   } finally {
     alice?.destroy();
     bob?.destroy();
     mallory?.destroy();
+    mallory2?.destroy();
     if (relay) await relay.stop();
     if (remote) await remote.cleanup();
   }

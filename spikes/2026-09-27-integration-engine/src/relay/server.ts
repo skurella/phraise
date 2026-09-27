@@ -16,11 +16,12 @@ import { attachIntegration, markEditor } from '../engine/index.js';
 import { GitStore } from '../git/index.js';
 import { parseDocName, makeDocName, docId as makeDocId } from './docName.js';
 import { seedOrRestore } from './seeding.js';
-import { checkForgery, ForgedIdentityError, SYNC_UPDATE } from './forgery.js';
+import { checkForgery, ForgedIdentityError } from './forgery.js';
 import { RelayState, type BranchState } from './state.js';
 import { flushBranch } from './flush.js';
 import { TrailingDebounce } from './debounce.js';
 import { commitDocument } from './commit.js';
+import { HeadPoller } from './poller.js';
 import { handleHttpRequest } from './http.js';
 
 export interface RelayTimings {
@@ -28,6 +29,10 @@ export interface RelayTimings {
   flushDebounceMs?: number;
   /** Maximum interval between flushes even under continuous edits, ms. Default 60000. */
   flushMaxIntervalMs?: number;
+  /** Brief 06: how often the head poller checks `remoteHead` per branch with open documents, ms. Default 1000; gates use 100-250. */
+  pollMs?: number;
+  /** Brief 06 task 1: how long a document's recovery window stays open after it is freshly seeded or restored (from having no local base), ms. Default 60000. */
+  recoveryWindowMs?: number;
 }
 
 export interface RelayOptions {
@@ -67,7 +72,10 @@ export async function startRelay(opts: RelayOptions): Promise<RelayHandle> {
   const state = new RelayState(gitStore);
   const flushDebounceMs = opts.timings?.flushDebounceMs ?? 2000;
   const flushMaxIntervalMs = opts.timings?.flushMaxIntervalMs ?? 60000;
+  const pollMs = opts.timings?.pollMs ?? 1000;
+  const recoveryWindowMs = opts.timings?.recoveryWindowMs ?? 60000;
   const debouncers = new Map<string, TrailingDebounce>();
+  const poller = new HeadPoller(gitStore, state, pollMs);
 
   function debouncerFor(branch: string): TrailingDebounce {
     let d = debouncers.get(branch);
@@ -103,9 +111,18 @@ export async function startRelay(opts: RelayOptions): Promise<RelayHandle> {
             console.error(`[relay] unrecognized document name (want "<branch>:g<generation>:<path>"): ${documentName}`);
             return;
           }
-          await seedOrRestore(document, { branch: parsed.branch, path: parsed.path, generation: parsed.generation, gitStore });
+          const seeded = await seedOrRestore(document, { branch: parsed.branch, path: parsed.path, generation: parsed.generation, gitStore });
+          if (seeded.kind === 'restored' || seeded.kind === 'seeded') {
+            // Local state was actually absent (first-ever open, or this
+            // relay process lost it): open the recovery window (forgery.ts
+            // task 1) so a reconnecting client's first sync of THIS
+            // document isn't rejected for carrying other users' structs
+            // this fresh state doesn't yet know about.
+            state.markRecoveryWindow(documentName, recoveryWindowMs);
+          }
           attachIntegration(document, { isRemoteOrigin: isConnectionOrigin });
           state.register(parsed.branch, parsed.path, parsed.generation, document);
+          poller.ensureBranch(parsed.branch);
         },
         async afterLoadDocument({ document }) {
           contentCache.set(document, contentKey(document));
@@ -115,11 +132,15 @@ export async function startRelay(opts: RelayOptions): Promise<RelayHandle> {
           if (parsed) state.unregister(parsed.branch, parsed.path);
         },
         async beforeSync({ document, context, type, payload, connection }) {
-          if (type !== SYNC_UPDATE) return;
           const user = (context as Record<string, unknown> | undefined)?.user as string | undefined;
           if (!user) return; // unauthenticated connections are refused earlier by Hocuspocus itself
           try {
-            checkForgery(document, type, payload, user);
+            checkForgery(document, type, payload, user, {
+              inRecoveryWindow: state.inRecoveryWindow(connection.document.name),
+              onRelayedDuringRecovery: () => {
+                state.counters.relayedDuringRecovery++;
+              },
+            });
           } catch (err) {
             if (err instanceof ForgedIdentityError) {
               state.counters.forgedRejections++;
@@ -143,7 +164,7 @@ export async function startRelay(opts: RelayOptions): Promise<RelayHandle> {
           if (parsed) debouncerFor(parsed.branch).touch();
         },
         async onRequest({ request, response, instance }) {
-          await handleHttpRequest(instance, state, gitStore, request, response);
+          await handleHttpRequest(instance, state, gitStore, poller, request, response);
         },
       },
     ],
@@ -157,6 +178,7 @@ export async function startRelay(opts: RelayOptions): Promise<RelayHandle> {
     wsUrl: `ws://127.0.0.1:${opts.port}`,
     state,
     async stop() {
+      poller.stop();
       for (const d of debouncers.values()) d.stop();
       await server.destroy();
     },

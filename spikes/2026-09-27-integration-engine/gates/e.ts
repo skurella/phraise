@@ -93,15 +93,35 @@ async function runE1(): Promise<{ name: string; pass: boolean; detail: string }[
     const othersCommit = await other.commitAndPush('someone else commits first');
     await other.cleanup();
 
-    // alice's document's own base is still `newCommit` (the relay never learned about `othersCommit`: head polling is out of this brief's scope), so this commit attempt is exactly a stale-expected-head race.
+    // alice's document's own base is still `newCommit` (the relay's head
+    // poller has not ticked and nobody called POST /poll), so this commit
+    // attempt finds its expected head stale. Brief 06 task 3 changed the
+    // charter's milestone-1 "refused" outcome to "rebases first, then
+    // succeeds" (gate F's own last bullet exercises the live-editor version
+    // of exactly this path); this replaces the old
+    // "refused/branch-unchanged" pair of checks with "rebases and
+    // succeeds, on top of the external commit, with both texts present".
     insertText(alice.view, alice.view.state.doc.content.size - 1, ' more');
     await new Promise((r) => setTimeout(r, 150));
-    const staleCommitRes = await postJSON(relay.baseUrl, '/commit', { branch: BRANCH, path: E1_PATH, user: 'alice', message: 'Should be refused' });
-    checks.push({ name: 'a commit with a stale expected head is refused', pass: staleCommitRes.status === 409 && staleCommitRes.body.ok === false && staleCommitRes.body.reason === 'stale', detail: JSON.stringify(staleCommitRes.body) });
+    const secondCommitRes = await postJSON(relay.baseUrl, '/commit', { branch: BRANCH, path: E1_PATH, user: 'alice', message: 'Should rebase over the external commit and succeed' });
+    checks.push({
+      name: 'a commit after the head moved rebases first (not polled yet) and succeeds',
+      pass: secondCommitRes.status === 200 && secondCommitRes.body.ok === true && secondCommitRes.body.rebased === true,
+      detail: JSON.stringify(secondCommitRes.body),
+    });
 
-    await verifyStore.fetch(BRANCH);
-    const headAfterStale = await verifyStore.remoteHead(BRANCH);
-    checks.push({ name: 'the branch is unchanged after the refused commit', pass: headAfterStale === othersCommit, detail: `${headAfterStale} vs ${othersCommit}` });
+    if (secondCommitRes.body.ok) {
+      await verifyStore.fetch(BRANCH);
+      const secondCommit: string = secondCommitRes.body.commit;
+      const info2 = await verifyStore.commitInfo(secondCommit);
+      checks.push({ name: "the second commit's parent is the external commit", pass: info2.parents[0] === othersCommit, detail: `${info2.parents[0]} vs ${othersCommit}` });
+      const text2 = await verifyStore.readFile(secondCommit, E1_PATH);
+      checks.push({
+        name: "the committed text contains both the external addition and alice's rebased edit",
+        pass: !!text2 && text2.includes('Pushed by someone else') && text2.includes('more'),
+        detail: text2 ?? '(missing)',
+      });
+    }
   } finally {
     alice?.destroy();
     bob?.destroy();

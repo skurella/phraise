@@ -21,9 +21,13 @@ function parseArgs(argv: string[]): Args {
     else if (a === '--remote') out.remote = argv[++i];
     else if (a === '--flushDebounceMs') out.timings = { ...out.timings, flushDebounceMs: Number(argv[++i]) };
     else if (a === '--flushMaxIntervalMs') out.timings = { ...out.timings, flushMaxIntervalMs: Number(argv[++i]) };
+    else if (a === '--pollMs') out.timings = { ...out.timings, pollMs: Number(argv[++i]) };
+    else if (a === '--recoveryWindowMs') out.timings = { ...out.timings, recoveryWindowMs: Number(argv[++i]) };
   }
   if (!out.port || !out.dataDir || !out.remote) {
-    throw new Error('usage: cli.ts --port <n> --dataDir <path> --remote <url> [--flushDebounceMs <ms>] [--flushMaxIntervalMs <ms>]');
+    throw new Error(
+      'usage: cli.ts --port <n> --dataDir <path> --remote <url> [--flushDebounceMs <ms>] [--flushMaxIntervalMs <ms>] [--pollMs <ms>] [--recoveryWindowMs <ms>]',
+    );
   }
   return out as Args;
 }

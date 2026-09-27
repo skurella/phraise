@@ -12,10 +12,10 @@
     {
       "gate": "B",
       "pass": true,
-      "summary": "all 6 checks passed",
+      "summary": "all 10 checks passed",
       "numbers": {
-        "checks": 6,
-        "forgedRejections": 1
+        "checks": 10,
+        "forgedRejections": 2
       }
     },
     {
@@ -38,12 +38,31 @@
     {
       "gate": "E",
       "pass": true,
-      "summary": "all 9 checks passed",
+      "summary": "all 10 checks passed",
       "numbers": {
-        "checks": 9,
+        "checks": 10,
         "e2Files": 10,
         "e2Edits": 19,
         "e2Violations": 0
+      }
+    },
+    {
+      "gate": "F",
+      "pass": true,
+      "summary": "all 18 checks passed",
+      "numbers": {
+        "checks": 18,
+        "rebaseLatencyMs": 641
+      }
+    },
+    {
+      "gate": "G",
+      "pass": true,
+      "summary": "all 24 checks passed",
+      "numbers": {
+        "checks": 24,
+        "variant1Checks": 11,
+        "variant2Checks": 13
       }
     }
   ],

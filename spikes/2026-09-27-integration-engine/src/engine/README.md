@@ -63,8 +63,20 @@ direction); never imports `yjs`/`y-protocols`/`@tiptap/y-tiptap` itself
   snapshot, coAuthors}` (render via `crdt.render`, snapshot taken in the
   same synchronous step -- nothing else can mutate `doc` in between, in a
   single-threaded runtime); `recordCommit(doc, {commit, snapshot})` sets
-  `base` to the new commit with exactly that snapshot, sets `lastCommit`,
-  clears `editorsSinceCommit` -- no re-seed (D1 as amended).
+  `base` to the new commit, sets `lastCommit`, clears
+  `editorsSinceCommit` -- no re-seed (D1 as amended) -- **then** takes and
+  stores `snapshot:<commit>` (brief 06 fix: it used to store the
+  `snapshot` this function is handed, i.e. `prepareCommit`'s, taken BEFORE
+  the meta writes above; a later rebase forks from that snapshot via
+  `Y.createDocFromSnapshot`, so its view of `base` was the PRE-commit
+  value, and its `onFork` override of `base` would then race this
+  function's own later, fork-unseen write for the same `Y.Map` key --
+  Yjs's own tie-break decided the winner non-deterministically, silently
+  reverting the rebase's base pointer roughly half the time. Reordering to
+  snapshot AFTER these writes -- `seed.ts`'s `seedFromCommit` already did
+  this correctly -- fixes it; content is unchanged either way, since
+  nothing between `prepareCommit` and `recordCommit` touches the
+  prosemirror fragment).
 - **`attribution.ts`** -- `listAttribution(doc)`: crdt's
   `listAttributedRanges` (keyed by connection user name) joined with
   `phraise-authors`' per-clientId `kind`, matched by name (logged

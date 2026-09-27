@@ -84,6 +84,8 @@ function startChildProcess(opts: RelayHarnessOptions, port: number, dataDir: str
   const args = ['--port', String(port), '--dataDir', dataDir, '--remote', opts.remote];
   if (opts.timings?.flushDebounceMs !== undefined) args.push('--flushDebounceMs', String(opts.timings.flushDebounceMs));
   if (opts.timings?.flushMaxIntervalMs !== undefined) args.push('--flushMaxIntervalMs', String(opts.timings.flushMaxIntervalMs));
+  if (opts.timings?.pollMs !== undefined) args.push('--pollMs', String(opts.timings.pollMs));
+  if (opts.timings?.recoveryWindowMs !== undefined) args.push('--recoveryWindowMs', String(opts.timings.recoveryWindowMs));
 
   return new Promise((resolve, reject) => {
     const proc: ChildProcess = spawn(process.execPath, ['--import', 'tsx/esm', CLI_ENTRY, ...args], {

@@ -16,6 +16,7 @@ import { makeDocName } from './docName.js';
 import type { RelayState } from './state.js';
 import { flushBranch } from './flush.js';
 import { commitDocument, type CommitRequest } from './commit.js';
+import type { HeadPoller } from './poller.js';
 
 // Milestone 1: no generations yet (charter/plan: "generation 0 for now").
 const GENERATION = 0;
@@ -44,6 +45,7 @@ export async function handleHttpRequest(
   instance: Hocuspocus,
   state: RelayState,
   gitStore: GitStore,
+  poller: HeadPoller,
   request: IncomingMessage,
   response: ServerResponse,
 ): Promise<void> {
@@ -137,11 +139,10 @@ export async function handleHttpRequest(
   }
 
   if (request.method === 'POST' && url.pathname === '/poll') {
-    // Head polling + rebase-on-poll is out of this brief's scope (plan
-    // section 6's head poller; charter gate F, milestone 2, brief 06). The
-    // route exists (plan section 6 names it) so callers can rely on it
-    // being present, and returns an honestly empty result rather than 404.
-    sendJSON(response, 200, { polled: [], note: 'head polling/rebase lands in a later brief (gate F)' });
+    // Brief 06 task 2: poll every branch with at least one open document
+    // right now, instead of waiting for its timer.
+    const results = await poller.pollAll();
+    sendJSON(response, 200, { polled: results });
     return;
   }
 

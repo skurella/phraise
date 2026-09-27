@@ -1,6 +1,6 @@
 # Spike 6: the integration engine
 
-Status: in progress (`src/markdown/`, `src/crdt/`, `src/git/`, `src/engine/`, `src/testkit/`, `src/relay/` built, with gates A-E and the gate runner; `src/daemon/` not yet)
+Status: in progress (`src/markdown/`, `src/crdt/`, `src/git/`, `src/engine/`, `src/testkit/`, `src/relay/` built, with gates A-G and the gate runner (milestone 2 complete: head poller, rebase-on-commit, forgery fix); `src/daemon/` not yet)
 
 The headless engine that runs Phraise's whole loop in one codebase: open a
 file from a git remote, edit it together, comment, flush drafts, commit,
@@ -29,10 +29,11 @@ npm run gates          # full gate suite, prints a results table, writes results
 npm run gates:quick     # same gates at small/fast sizes
 ```
 
-Definition of done for brief 04 (milestone 1, gates A-E): `npm test`,
-`npm run typecheck` and `npm run gates:quick` pass. Gates A-E each report
-pass in the quick run; `npm run gates:quick` also checks with `lsof` that
-nothing is left listening on 4300-4399. The full `npm run gates` (gate E2
+Definition of done for brief 04 (milestone 1, gates A-E) and brief 06
+(milestone 2, gates F-G): `npm test`, `npm run typecheck` and `npm run
+gates:quick` pass. Gates A-G each report pass in the quick run; `npm run
+gates:quick` also checks with `lsof` that nothing is left listening on
+4300-4399. The full `npm run gates` (gate E2
 at 50 corpus files instead of 10) is the orchestrator's to run at the
 milestone boundary, per the charter ("long verification runs belong to the
 orchestrator") -- it was run once here during development (50 files, 94
@@ -66,8 +67,8 @@ src/
               (`hub.ts`), a live jsdom editor client (`editor.ts`, `edits.ts`),
               a relay harness in-process or child-process (`relayHarness.ts`).
               May import anything in src/; src/ never imports testkit.
-gates/        gates/index.ts runs gates A-E and prints a results table; writes
-              results/gates.{md,json}; gates/<letter>.ts for F onward land in
+gates/        gates/index.ts runs gates A-G and prints a results table; writes
+              results/gates.{md,json}; gates/<letter>.ts for H onward land in
               later briefs. gates/lib/ has gate-only helpers (diffHunks.ts,
               topSpans.ts, words.ts, ported from spike 1 for gate E2).
 test/         vitest unit tests, one or more per module.
