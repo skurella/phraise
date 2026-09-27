@@ -52,7 +52,7 @@
       "summary": "all 18 checks passed",
       "numbers": {
         "checks": 18,
-        "rebaseLatencyMs": 641
+        "rebaseLatencyMs": 652
       }
     },
     {
@@ -63,6 +63,23 @@
         "checks": 24,
         "variant1Checks": 11,
         "variant2Checks": 13
+      }
+    },
+    {
+      "gate": "H",
+      "pass": true,
+      "summary": "all 12 checks passed",
+      "numbers": {
+        "corpusFiles": 30,
+        "gateAOk": 30,
+        "gateA2Ok": 30,
+        "gateA3bOk": 30,
+        "gateBFilesOk": 30,
+        "gateBFilesTotal": 30,
+        "gateBEditsOk": 150,
+        "gateBEditsTotal": 150,
+        "formattingChecked": 29,
+        "formattingEntities": 0
       }
     }
   ],

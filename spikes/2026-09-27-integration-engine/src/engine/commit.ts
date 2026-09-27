@@ -5,8 +5,9 @@
 // what one did). D1 as amended: "a commit records a new base and does not
 // re-seed" -- `recordCommit` sets `base` directly to the new commit with
 // the snapshot `prepareCommit` already took, no re-parse/re-seed.
-import { render, snapshot, getMeta, setMeta, deleteMeta, listMetaEntries, type CrdtDoc, type CrdtSnapshot } from '../crdt/index.js';
+import { snapshot, getMeta, setMeta, deleteMeta, listMetaEntries, type CrdtDoc, type CrdtSnapshot } from '../crdt/index.js';
 import { base64FromSnapshot } from './seed.js';
+import { renderForSave } from './renderForSave.js';
 import type { Base } from './types.js';
 
 const EDITORS_PREFIX = 'editorsSinceCommit:';
@@ -30,15 +31,19 @@ export interface PrepareCommitResult {
 
 /**
  * Render `doc` to Markdown (best effort plus degraded-block report, via
- * crdt's `render`) and take its snapshot, in the same synchronous step (no
- * `await` between them, so nothing else can mutate `doc` in between --
- * JS's single-threaded execution is the whole mechanism here, matching the
- * brief's "snapshot taken in the same synchronous step"). `coAuthors` lists
- * everyone `markEditor` has recorded since the last commit; the caller
- * (git/relay) turns that into `Co-authored-by:` trailers.
+ * `engine.renderForSave` -- brief 07 task 4: this also reconciles the
+ * `review` map's `serialization-best-effort` flags against the current
+ * degraded set, so a commit's own render carries the same guarantee the
+ * relay's draft flush does) and take its snapshot, in the same synchronous
+ * step (no `await` between them, so nothing else can mutate `doc` in
+ * between -- JS's single-threaded execution is the whole mechanism here,
+ * matching the brief's "snapshot taken in the same synchronous step").
+ * `coAuthors` lists everyone `markEditor` has recorded since the last
+ * commit; the caller (git/relay) turns that into `Co-authored-by:`
+ * trailers.
  */
 export function prepareCommit(doc: CrdtDoc): PrepareCommitResult {
-  const rendered = render(doc);
+  const rendered = renderForSave(doc);
   const snap = snapshot(doc);
   return { text: rendered.text, degraded: rendered.degraded, snapshot: snap, coAuthors: editorsSinceCommit(doc) };
 }

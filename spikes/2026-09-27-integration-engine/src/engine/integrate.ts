@@ -138,7 +138,8 @@ export function attachIntegration(doc: CrdtDoc, opts: AttachIntegrationOptions):
 
 export interface ReviewListEntry {
   blockId: string;
-  rebaseId: string;
+  /** Absent for a 'serialization-best-effort' entry (brief 07 task 4); see `ReviewEntry`'s own comment. */
+  rebaseId?: string;
   reason: ReviewEntry['reason'];
   text: string;
   cleared: boolean;

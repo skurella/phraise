@@ -72,6 +72,7 @@ export {
   isTextblockName,
   collectBlocks,
   currentBlockText,
+  textblockIdsAtTopLevel,
   blockStatesAt,
   blockSignatureAt,
   blockPlainTextAt,

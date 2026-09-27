@@ -521,12 +521,44 @@ export function buildDefsContext(mdastRoot: any, source: string): string {
   return ctx;
 }
 
-/** Build the definitions context string from a doc's raw_blocks (for serialization time). */
+/**
+ * Build the definitions context string from a doc's raw_blocks (for
+ * serialization time and for parseMarkdown's own self-description check).
+ *
+ * Footnote-continuation bug (brief 07, task 2): a `definition`/
+ * `footnoteDefinition` raw_block's PM text content is `blockFromMdast`'s
+ * `stripContainerIndentation(raw)` -- the multi-line footnote's own
+ * continuation lines with their common leading indentation removed (so
+ * `[^note]: foo\n\n    bar` becomes text `[^note]: foo\n\nbar`). That
+ * de-indented text almost never equals the block's own verbatim `src`
+ * (indentation was stripped), so parseMarkdown's self-description check
+ * (below) replaces the block with a fresh `raw_block` built directly from
+ * `src` -- but only AFTER this function has already been called once with
+ * the PRE-replacement doc to build `ctx` for that very check. A second
+ * call to this function later (serializeDoc, or a second parseMarkdown
+ * self-check pass) sees the POST-replacement doc, whose block textContent
+ * is now `src` verbatim (indentation restored) -- a DIFFERENT ctx string
+ * for the exact same document. Since a footnote/list continuation's
+ * indentation controls whether it can absorb a following indented line as
+ * more of its own content across a blank line (list/footnote continuation
+ * semantics), re-parsing `ctx + src` in isolation against these two
+ * different ctx strings can reach two different structural conclusions
+ * for the SAME candidate block -- e.g. an indented-code (or tab-indented)
+ * block inserted right after such a footnote getting silently absorbed
+ * into the footnote's continuation in one ctx but not the other, so the
+ * self-check and a later serialize/splice verification disagree about
+ * whether the block is stable. Fixed by always reading each definition's
+ * verbatim `attrs.src` (set on every top-level block, before and after any
+ * self-check replacement -- see the per-block loop above) instead of its
+ * PM text content, so `ctx` is the same string every time this function is
+ * called on equivalent content, regardless of when in the pipeline.
+ */
 export function buildDefsContextFromDoc(doc: PMNode): string {
   let ctx = '';
   doc.descendants((node) => {
     if (node.type.name === 'raw_block' && (node.attrs.kind === 'definition' || node.attrs.kind === 'footnoteDefinition')) {
-      ctx += node.textContent + '\n\n';
+      const src = node.attrs.src as string | null;
+      ctx += (src ?? node.textContent) + '\n\n';
     }
     return true;
   });

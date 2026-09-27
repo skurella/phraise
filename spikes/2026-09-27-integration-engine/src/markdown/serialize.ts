@@ -201,7 +201,7 @@ function tryLinkSplice(block: PMNode, src: string, ctx: string, style: Style): s
   const top = phrasing[0];
   if (top.type === 'linkReference' && top.referenceType !== 'full') top.referenceType = 'full';
   const options = optionsFor(block, style, true);
-  const linkExtensions = [...toMarkdownExtensions, { handlers: { break: makeBreakHandler(true), literalAutolink: literalAutolinkHandler, rawInlineHtml: rawInlineHtmlHandler } }];
+  const linkExtensions = [...toMarkdownExtensions, { handlers: { break: makeBreakHandler(true), emphasis: makeEmphasisHandler(), strong: makeStrongHandler(), literalAutolink: literalAutolinkHandler, rawInlineHtml: rawInlineHtmlHandler } }];
   let md = toMarkdown({ type: 'paragraph', children: phrasing.map(simplifyLiteralLinks) } as any, { extensions: linkExtensions, ...options } as any);
   md = md.replace(/\n+$/, '');
   if (md.includes('\n')) return null;
@@ -306,7 +306,7 @@ function tryTextblockSplice(block: PMNode, src: string, ctx: string, style: Styl
   const applySLB = semanticLineBreaks && newTextblock.type.name === 'paragraph';
   const tbExtensions = [
     ...toMarkdownExtensions,
-    { handlers: { break: makeBreakHandler(true), paragraph: makeParagraphHandler(applySLB), literalAutolink: literalAutolinkHandler, rawInlineHtml: rawInlineHtmlHandler } },
+    { handlers: { break: makeBreakHandler(true), paragraph: makeParagraphHandler(applySLB), emphasis: makeEmphasisHandler(), strong: makeStrongHandler(), literalAutolink: literalAutolinkHandler, rawInlineHtml: rawInlineHtmlHandler } },
   ];
   let newInline = toMarkdown(
     { type: 'paragraph', children: phrasing.map(simplifyLiteralLinks) } as any,
@@ -316,21 +316,38 @@ function tryTextblockSplice(block: PMNode, src: string, ctx: string, style: Styl
 
   if (isTableCell && (newInline.includes('\n') || /(?<!\\)\|/.test(newInline))) return null;
 
-  // If either the original span or the freshly serialized text spans more
-  // than one physical line, every continuation line needs the enclosing
-  // container's line prefix (blockquote `>` markers, list continuation
-  // indent) re-applied, since we are splicing into a source string that
-  // still carries those prefixes on its other lines.
-  const newLines = newInline.split('\n');
-  let replacedInner = newInline;
-  if (newLines.length > 1) {
+  // Numeric-character-reference fix, part 3 (brief 07 task 3): a residual
+  // entity mdast-util-to-markdown's own attention-disambiguation can still
+  // emit in a rare nested-mark coincidence (two flanking-sensitive marks
+  // opening or closing at the exact same position, immediately touching a
+  // word character outside -- see the module README) is not always caught
+  // by the whitespace/intraword fixes above, since it can be triggered by
+  // adjacency the splice candidate only creates once spliced back into
+  // `src`. Try decoding every numeric character reference in `newInline`
+  // back to its literal character and re-verifying (below); every entity
+  // mdast-util-to-markdown writes decodes to an ordinary character the
+  // *content* already had, so this can only ever change bytes, never
+  // meaning, and is only ever adopted when it still verifies.
+  const buildCandidate = (inline: string): string => {
+    const lines = inline.split('\n');
+    if (lines.length <= 1) return src.slice(0, innerStart) + inline + src.slice(innerEnd);
     const prefix = computeLinePrefix(src, spanStart, innerStart, innerEnd);
-    replacedInner = newLines[0] + newLines.slice(1).map((l) => '\n' + prefix + l).join('');
+    const replaced = lines[0] + lines.slice(1).map((l) => '\n' + prefix + l).join('');
+    return src.slice(0, innerStart) + replaced + src.slice(innerEnd);
+  };
+  const verifyCandidate = (candidate: string): boolean => {
+    const r = parseBlock(candidate, ctx);
+    return r.count === 1 && semanticEq(r.node, block, { equateSoftBreaks: applySLB });
+  };
+
+  if (hasNumericEntity(newInline)) {
+    const deEntified = decodeNumericEntities(newInline);
+    const deEntifiedCandidate = buildCandidate(deEntified);
+    if (verifyCandidate(deEntifiedCandidate)) return deEntifiedCandidate;
   }
 
-  const candidate = src.slice(0, innerStart) + replacedInner + src.slice(innerEnd);
-  const r = parseBlock(candidate, ctx);
-  return r.count === 1 && semanticEq(r.node, block, { equateSoftBreaks: applySLB }) ? candidate : null;
+  const candidate = buildCandidate(newInline);
+  return verifyCandidate(candidate) ? candidate : null;
 }
 
 /**
@@ -376,12 +393,12 @@ function marksGroupEq(a: Mark, b: Mark): boolean {
   return true;
 }
 
-function mdastWrapperFor(mark: Mark): any {
+function mdastWrapperFor(mark: Mark, forceStar = false): any {
   switch (mark.type.name) {
     case 'em':
-      return { type: 'emphasis', children: [] };
+      return { type: 'emphasis', children: [], forceStar };
     case 'strong':
-      return { type: 'strong', children: [] };
+      return { type: 'strong', children: [], forceStar };
     case 'strike':
       return { type: 'delete', children: [] };
     case 'link':
@@ -437,12 +454,44 @@ function pmLeafToMdast(node: PMNode): any | null {
   }
 }
 
-function pmInlineToMdast(nodes: PMNode[]): any[] {
+const WORD_CHAR_RE = /[\p{L}\p{N}_]/u;
+
+function isWordChar(ch: string | undefined): boolean {
+  return !!ch && WORD_CHAR_RE.test(ch);
+}
+
+/**
+ * Numeric-character-reference fix, part 2 (brief 07 task 3): intraword
+ * emphasis/strong (its run touches a word character just outside its own
+ * span, on either side -- as `_bar_` does in `foo_bar_baz`) can only ever be
+ * expressed with `*` in CommonMark; `_..._` there is not emphasis at all
+ * (both sides are alphanumeric, so neither the CommonMark left- nor
+ * right-flanking rule is met). mdast-util-to-markdown's own attention
+ * mechanism (lib/util/container-phrasing.js) is SUPPOSED to retry with the
+ * other marker when the preferred one does not form its attention, but
+ * empirically (see the module README) it does not always find that retry
+ * for a single isolated intraword run and falls back to wrapping the
+ * adjoining plain-text characters in numeric character references instead
+ * -- CommonMark-legal, but exactly the "no `&#` from concurrent formatting"
+ * property this task requires. Since `*` is always valid for intraword
+ * emphasis (never stricter than `_`), forcing it whenever a run is
+ * intraword is strictly safe regardless of the file's own em/strong style:
+ * computed here (where the surrounding plain-text characters are directly
+ * at hand) and applied by the custom emphasis/strong handlers below via a
+ * temporary `state.options` override, bypassing `options.emphasis`/`strong`
+ * (and any per-block marker hint) for just that one occurrence.
+ */
+function pmInlineToMdast(rawNodes: PMNode[]): any[] {
+  const nodes = normalizeMarkWhitespace(rawNodes);
   const result: any[] = [];
   const markStack: Mark[] = [];
   const containerStack: any[][] = [result];
+  // Last plain character emitted so far (reset to '' after a non-text atom,
+  // which never counts as a word character on either side of it).
+  let lastChar = '';
 
-  for (const child of nodes) {
+  for (let idx = 0; idx < nodes.length; idx++) {
+    const child = nodes[idx];
     const marks = child.marks.filter((m) => m.type.name !== 'code');
     // Keep open the longest prefix of the open-mark stack that this node still
     // carries, whatever the schema order of its marks, and open only the rest.
@@ -456,15 +505,234 @@ function pmInlineToMdast(nodes: PMNode[]): any[] {
     }
     for (const m of marks) {
       if (markStack.some((open) => marksGroupEq(open, m))) continue;
-      const wrapper = mdastWrapperFor(m);
+      let forceStar = false;
+      if (m.type.name === 'em' || m.type.name === 'strong') {
+        const leftIsWord = isWordChar(lastChar);
+        let j = idx;
+        while (j < nodes.length) {
+          const mj = nodes[j].marks.filter((x) => x.type.name !== 'code').find((x) => marksGroupEq(x, m));
+          if (!mj) break;
+          j++;
+        }
+        const after = nodes[j];
+        const rightChar = after?.isText ? after.text?.[0] : undefined;
+        forceStar = leftIsWord || isWordChar(rightChar);
+      }
+      const wrapper = mdastWrapperFor(m, forceStar);
       containerStack[containerStack.length - 1].push(wrapper);
       markStack.push(m);
       containerStack.push(wrapper.children);
     }
     const leaf = pmLeafToMdast(child);
     if (leaf) containerStack[containerStack.length - 1].push(leaf);
+    lastChar = child.isText && child.text ? child.text[child.text.length - 1] : '';
   }
   return result;
+}
+
+/**
+ * Numeric-character-reference fix, part 1 (brief 07 task 3): a mark
+ * (em/strong/strike, all of which use CommonMark/GFM's left/right-flanking
+ * delimiter-run rule) whose own delimiter run starts or ends with
+ * whitespace cannot be expressed there at all -- CommonMark requires the
+ * character just inside the marker to be non-whitespace on the side(s) it
+ * flanks. mdast-util-to-markdown's own fallback for that case is a numeric
+ * character reference on the adjoining plain character (see the module
+ * README), which is legal but violates this task's "no `&#` from
+ * concurrent formatting" requirement -- concurrent bold/italic toggles
+ * merging over overlapping word ranges routinely produce exactly this
+ * shape, since the merge has no notion of "not adjacent to a mark
+ * boundary". Formatting whitespace has no meaning in Markdown, so the fix
+ * is to move it out of the mark instead: for each maximal run of leaf nodes
+ * carrying an IDENTICAL set of flanking-sensitive marks (em/strong/strike;
+ * a run breaks whenever that combination changes, not just when one
+ * particular type drops out -- a nested mark's OWN inner close, e.g. `em`
+ * ending while an enclosing `strong` continues, is exactly as much a
+ * delimiter boundary as the outer mark's true edge, and mdast-util-to-markdown
+ * needs the same protection there: an earlier version of this fix grouped
+ * runs per mark TYPE alone and still produced entities whenever an inner
+ * mark's close landed next to whitespace within an outer run, e.g.
+ * `"x corge"[strong,em] + " g"[strong]` -- the ` g` run's own leading space,
+ * immediately after `em` closes, still needed peeling even though the
+ * *outer* `strong` run's overall text does not start or end with
+ * whitespace), peel any leading/trailing whitespace off the run's own text
+ * into unmarked (for every flanking-sensitive mark in the run -- other
+ * kinds of marks, e.g. a link or code, are kept) sibling nodes just outside
+ * the run. The document's actual text is unchanged; only which node the
+ * boundary whitespace's marks attach to moves.
+ */
+/**
+ * Numeric-character-reference fix, part 3: a shared, general safety net for
+ * the rare residual case the targeted fixes above don't reach (see
+ * `tryTextblockSplice`'s and `serializeDoc`'s own call sites, and the
+ * module README). Every entity mdast-util-to-markdown writes decodes to an
+ * ordinary character the content already had; trying the decoded form and
+ * re-verifying it (re-parse + `semanticEq`, the same check every other
+ * candidate passes) can only ever change bytes, never meaning, so it is
+ * always safe to prefer whenever it verifies, and to fall back to the
+ * original (already-verified) entity-bearing text otherwise.
+ */
+const NUMERIC_ENTITY_RE = /&#x([0-9a-fA-F]+);|&#([0-9]+);/g;
+
+function hasNumericEntity(s: string): boolean {
+  NUMERIC_ENTITY_RE.lastIndex = 0;
+  return NUMERIC_ENTITY_RE.test(s);
+}
+
+function decodeNumericEntities(s: string): string {
+  return s.replace(NUMERIC_ENTITY_RE, (_m, hex, dec) => {
+    const code = hex !== undefined ? parseInt(hex, 16) : parseInt(dec, 10);
+    return String.fromCodePoint(code);
+  });
+}
+
+const FLANKING_SENSITIVE_MARKS = ['em', 'strong', 'strike'];
+const LEADING_WS_RE = /^[ \t\n\r\f\v]+/;
+const TRAILING_WS_RE = /[ \t\n\r\f\v]+$/;
+
+/**
+ * Peel leading/trailing whitespace out of maximal runs of a SINGLE
+ * flanking-sensitive mark type (matched via `marksGroupEq` for that type
+ * only -- other marks the same nodes carry, including a DIFFERENT
+ * flanking-sensitive type, do not affect this type's own run boundaries).
+ * Grouping by "identical full flanking-mark set" instead (an earlier
+ * version of this fix) is wrong: ordinary, unremarkable nested content like
+ * `**bold _italic_**` -- `"bold "`[strong] followed by `"italic"`
+ * [strong,em] -- has a full-markset change (strong-only -> strong+em)
+ * exactly where "bold " ends in a space, even though NEITHER mark's own
+ * overall span starts or ends on whitespace (`strong` spans the whole
+ * "bold italic", `em` spans just "italic"); grouping by full set peeled
+ * that harmless internal space anyway and broke the verbatim round trip
+ * (caught by the full-corpus round-trip test). Per-type grouping only
+ * peels when a given mark's OWN full run genuinely starts or ends on
+ * whitespace, which is the actual CommonMark constraint being worked
+ * around. The DIFFERENT problem seed 18 of the 200-seed test originally
+ * surfaced -- a nested mark's inner close landing next to whitespace
+ * within an outer run, e.g. `"x corge"`[strong,em] + `" g"`[strong], where
+ * neither mark's own span touches whitespace either, yet mdast-util-to-markdown
+ * still needs a numeric character reference for the ambiguous combined
+ * delimiter run -- is handled separately (the de-entify-and-reverify
+ * safety net at this module's two `hasNumericEntity` call sites), since it
+ * is not actually a "mark starts/ends with whitespace" case at all and
+ * restructuring marks to avoid it started breaking normal content instead.
+ */
+function stripMarkTypeWhitespace(nodes: PMNode[], markTypeName: string): PMNode[] {
+  const out: PMNode[] = [];
+  let i = 0;
+  while (i < nodes.length) {
+    const mark = nodes[i].marks.find((m) => m.type.name === markTypeName);
+    if (!mark) {
+      out.push(nodes[i]);
+      i++;
+      continue;
+    }
+    let j = i + 1;
+    while (j < nodes.length) {
+      const m2 = nodes[j].marks.find((m) => m.type.name === markTypeName);
+      if (!m2 || !marksGroupEq(m2, mark)) break;
+      j++;
+    }
+    let run = nodes.slice(i, j);
+
+    const pre: PMNode[] = [];
+    const first = run[0];
+    if (first?.isText && first.text) {
+      const m = LEADING_WS_RE.exec(first.text);
+      if (m) {
+        const wsLen = m[0].length;
+        const restMarks = first.marks.filter((mk) => mk.type.name !== markTypeName);
+        if (wsLen >= first.text.length) {
+          pre.push(first.type.schema.text(first.text, restMarks));
+          run = run.slice(1);
+        } else {
+          pre.push(first.type.schema.text(first.text.slice(0, wsLen), restMarks));
+          run = [first.type.schema.text(first.text.slice(wsLen), first.marks), ...run.slice(1)];
+        }
+      }
+    }
+
+    const post: PMNode[] = [];
+    const last = run[run.length - 1];
+    if (last?.isText && last.text) {
+      const m = TRAILING_WS_RE.exec(last.text);
+      if (m) {
+        const wsLen = m[0].length;
+        const restMarks = last.marks.filter((mk) => mk.type.name !== markTypeName);
+        if (wsLen >= last.text.length) {
+          post.push(last.type.schema.text(last.text, restMarks));
+          run = run.slice(0, -1);
+        } else {
+          const kept = last.text.slice(0, last.text.length - wsLen);
+          const peeled = last.text.slice(last.text.length - wsLen);
+          post.push(last.type.schema.text(peeled, restMarks));
+          run = [...run.slice(0, -1), last.type.schema.text(kept, last.marks)];
+        }
+      }
+    }
+
+    out.push(...pre, ...run, ...post);
+    i = j;
+  }
+  return out;
+}
+
+function sameNodeArray(a: PMNode[], b: PMNode[]): boolean {
+  return a.length === b.length && a.every((n, i) => n === b[i]);
+}
+
+/**
+ * Run every mark type's own whitespace-peeling pass to a fixed point, not
+ * just once through each type in turn. Peeling one mark type's run can
+ * split a node the OTHER type's run already finished with (e.g. peeling
+ * `strong`'s trailing whitespace off a node that ALSO carries `em` keeps
+ * `em` on the peeled whitespace, since only `strong` is being stripped
+ * there), planting a fresh lone-whitespace `em`-marked node right next to
+ * an existing one -- a NEW leading-whitespace `em` run `stripMarkTypeWhitespace`
+ * already finished processing earlier in this same call and will never
+ * revisit. A single fixed-point loop (capped, since 3 mark types can only
+ * cascade a few times before nothing changes) catches that.
+ */
+function normalizeMarkWhitespace(nodes: PMNode[]): PMNode[] {
+  let cur = nodes;
+  for (let pass = 0; pass < 6; pass++) {
+    let next = cur;
+    for (const markTypeName of FLANKING_SENSITIVE_MARKS) next = stripMarkTypeWhitespace(next, markTypeName);
+    if (sameNodeArray(next, cur)) return next;
+    cur = next;
+  }
+  return cur;
+}
+
+/**
+ * Recursively apply `normalizeMarkWhitespace` to every textblock in a doc
+ * or block subtree (brief 07 task 3, continued). Needed for two things:
+ *
+ * 1. Applied once to the WHOLE doc at the top of `serializeDoc`, so a
+ *    CRDT-merge artifact (a mark whose own boundary sits on whitespace) is
+ *    normalized before ANY candidate is even considered, not just at the
+ *    final mdast-conversion step -- otherwise the verbatim/splice/
+ *    textblock-splice candidates below would still compare against the
+ *    un-normalized `block`, and normalizing only inside `pmInlineToMdast`
+ *    (a fresh conversion, not a comparison) would leave the RESULT
+ *    correctly whitespace-free but unable to ever verify: `semanticEq`
+ *    compares text/marks per node, and moving a space from inside a mark
+ *    to outside it is, byte for byte, a genuine (if meaningless) tree
+ *    difference from the un-normalized original.
+ * 2. For real, non-CRDT-merge content, no mark's own text ever starts or
+ *    ends with whitespace to begin with (our own parser never builds one
+ *    that way from real Markdown source), so this is a no-op there --
+ *    confirmed by the full 1621-file corpus round-trip test, unaffected by
+ *    this normalization.
+ */
+function normalizeMarkWhitespaceDeep(node: PMNode): PMNode {
+  if (!node.isBlock) return node;
+  if (node.isTextblock) {
+    const kids = normalizeMarkWhitespace(childArray(node));
+    return node.type.create(node.attrs, kids, node.marks);
+  }
+  const kids: PMNode[] = [];
+  node.forEach((c) => kids.push(normalizeMarkWhitespaceDeep(c)));
+  return node.type.create(node.attrs, kids, node.marks);
 }
 
 function pmListItemToMdast(item: PMNode): any {
@@ -603,6 +871,57 @@ function makeBreakHandler(useHints: boolean) {
   };
 }
 
+/**
+ * Numeric-character-reference fix, part 2 (see `pmInlineToMdast`'s own
+ * comment): when a node built by `mdastWrapperFor` carries `forceStar`
+ * (this specific occurrence is intraword), serialize it with `*` regardless
+ * of `options.emphasis`/`options.strong` (file style or a per-block marker
+ * hint) -- `*` is always CommonMark-legal for intraword emphasis/strong, so
+ * this never trades one correctness problem for another.
+ *
+ * mdast-util-to-markdown does NOT dispatch emphasis/strong through the
+ * handler function body under normal operation: `containerPhrasing`'s
+ * `phrasing()` special-cases any handler carrying a static `.attention`
+ * property (see `defaultHandlers.emphasis.attention`/`.strong.attention`,
+ * set the same way in `mdast-util-to-markdown/lib/handle/{emphasis,strong}.js`)
+ * and builds the delimiter run itself from the `{construct, markers, sizes}`
+ * that `.attention` returns, calling the handler's own function BODY only as
+ * a fallback for direct dispatch outside phrasing (which never happens for
+ * a real doc). A plain replacement handler (an extension's handler function
+ * with no `.attention` of its own) loses that fast path: `phrasing()` then
+ * falls through to `state.handle(child, ...)`, which invokes the body,
+ * which (for `defaultHandlers.emphasis`/`.strong`) wraps the SAME node in a
+ * `{type:'root', children:[node]}` and calls `containerPhrasing` again,
+ * expecting the OUTER call to have already intercepted it via `.attention`
+ * -- an infinite loop the first version of this fix hit directly (a
+ * `RangeError: Maximum call stack size exceeded`). Fixed by keeping the
+ * handler's body delegating to the library default (used only if something
+ * ever does dispatch it directly) but attaching a custom `.attention` that
+ * forces the single candidate sequence `*` when `node.forceStar` is set,
+ * else delegates to the library's own `.attention` unchanged; `.peek` is
+ * reused as-is (a lookahead guess of the first rendered character, adequate
+ * even when `forceStar` later overrides the actual marker).
+ */
+function makeEmphasisHandler() {
+  const handler = (node: any, parent: any, state: any, info: any): string => defaultHandlers.emphasis(node, parent, state, info);
+  (handler as any).peek = (defaultHandlers.emphasis as any).peek;
+  (handler as any).attention = (node: any, state: any) => {
+    if (node.forceStar) return { construct: 'emphasis', markers: ['*'], sizes: [1] };
+    return (defaultHandlers.emphasis as any).attention(node, state);
+  };
+  return handler;
+}
+
+function makeStrongHandler() {
+  const handler = (node: any, parent: any, state: any, info: any): string => defaultHandlers.strong(node, parent, state, info);
+  (handler as any).peek = (defaultHandlers.strong as any).peek;
+  (handler as any).attention = (node: any, state: any) => {
+    if (node.forceStar) return { construct: 'strong', markers: ['*'], sizes: [2] };
+    return (defaultHandlers.strong as any).attention(node, state);
+  };
+  return handler;
+}
+
 // ---------------------------------------------------------------------------
 // Semantic line breaks (brief 04, task 4): one sentence per line, only for a
 // re-serialized or textblock-spliced paragraph.
@@ -699,7 +1018,7 @@ function reserializeBlock(block: PMNode, style: Style, useHints: boolean, eol: '
   const options = optionsFor(block, style, useHints);
   const reserializeExtensions = [
     ...toMarkdownExtensions,
-    { handlers: { break: makeBreakHandler(useHints), paragraph: makeParagraphHandler(semanticLineBreaks), literalAutolink: literalAutolinkHandler, rawInlineHtml: rawInlineHtmlHandler } },
+    { handlers: { break: makeBreakHandler(useHints), paragraph: makeParagraphHandler(semanticLineBreaks), emphasis: makeEmphasisHandler(), strong: makeStrongHandler(), literalAutolink: literalAutolinkHandler, rawInlineHtml: rawInlineHtmlHandler } },
   ];
   let out = toMarkdown(mdastNode, { extensions: reserializeExtensions, ...options } as any);
   out = out.replace(/\n+$/, '');
@@ -723,6 +1042,18 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
   // save/export that touches one block reuses every other block's isolation
   // re-parse from the previous call instead of paying it again. See that
   // cache's own comment in parse.ts for the full reasoning and the LRU bound.
+
+  // Numeric-character-reference fix, part 1, continued (brief 07 task 3):
+  // normalize the WHOLE doc's mark-whitespace boundaries up front, once,
+  // before any candidate is considered -- not just as a step inside the
+  // final mdast conversion (`pmInlineToMdast` still does it too, so this is
+  // idempotent, but needs to happen here first so verbatim/splice/
+  // textblock-splice compare against the SAME normalized reference every
+  // candidate is verified against; see `normalizeMarkWhitespaceDeep`'s own
+  // comment for why comparing against the un-normalized original would
+  // otherwise make every such block "unverified" forever, even though the
+  // normalization is exactly the DESIRED, meaning-preserving output).
+  doc = normalizeMarkWhitespaceDeep(doc);
 
   const eol: '\n' | '\r\n' = doc.attrs.eol === '\r\n' ? '\r\n' : '\n';
   const ctx = buildDefsContextFromDoc(doc);
@@ -781,7 +1112,46 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
       }
     }
 
-    const result = reserializeBlock(block, style, useHints, eol, semanticLineBreaks);
+    // Best effort, never throws (D9/D4 as amended, brief 07 task 1c): a
+    // block for which NO candidate re-parses back to itself (a reference
+    // link whose definition was deleted so its identifier no longer
+    // resolves against `ctx`, an edited `foo&#10;&#10;bar`-shaped entity
+    // block, or any other construct mdast-util-to-markdown or our own mdast
+    // conversion cannot round-trip) must still produce SOME text and be
+    // reported, never crash the caller. `reserializeBlock` itself is not
+    // expected to throw for any node type our own schema constructs (see
+    // `pmBlockToMdast`'s exhaustive switch), but nothing upstream of this
+    // point can prove that for every doc a merge/rebase might produce, so
+    // treat a thrown exception here exactly like a verification failure:
+    // fall back to the best text available (the block's own last known
+    // source, or else its plain text) rather than letting the exception
+    // propagate past `serializeDoc`.
+    let result: string;
+    try {
+      result = reserializeBlock(block, style, useHints, eol, semanticLineBreaks);
+    } catch {
+      result = (block.attrs.src as string | null) ?? block.textContent;
+      trace?.({ kind: 'unverified', type: block.type.name, text: result });
+      if (!forceReserialize && (opts.onUnverified ?? 'throw') === 'throw') {
+        throw new UnverifiedSerializationError(currentIndex, block.type.name, result);
+      }
+      return result;
+    }
+    // Numeric-character-reference fix, part 3 (see the helpers' own
+    // comment above): prefer a decoded-entity candidate when it verifies
+    // just as well, catching the rare residual case the targeted
+    // whitespace/intraword fixes in `pmInlineToMdast` do not.
+    if (hasNumericEntity(result)) {
+      const deEntified = decodeNumericEntities(result);
+      try {
+        const r = parseBlock(deEntified, ctx);
+        if (r.count === 1 && semanticEq(r.node, block, { equateSoftBreaks: semanticLineBreaks })) {
+          result = deEntified;
+        }
+      } catch {
+        // keep the original (entity-bearing) result
+      }
+    }
     let verified = false;
     try {
       const r = parseBlock(result, ctx);

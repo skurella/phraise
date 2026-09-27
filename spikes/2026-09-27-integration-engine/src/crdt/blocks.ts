@@ -25,7 +25,11 @@ import * as Y from 'yjs';
 import { schema, isMetaAttrName } from '../markdown/index.js';
 import { FRAGMENT_NAME } from './codec.js';
 
-export type ReviewReason = 'concurrent-edit' | 'deleted-upstream-edited-locally';
+// 'serialization-best-effort' (brief 07 task 4): written by
+// engine/renderForSave.ts, not by integrate.ts's rebase-time scan -- a
+// block whose best-effort serialization did not verify (D9's "best effort
+// plus a flag on the block"), unrelated to any `rebaseId`.
+export type ReviewReason = 'concurrent-edit' | 'deleted-upstream-edited-locally' | 'serialization-best-effort';
 
 export function idKey(id: Y.ID): string {
   return `${id.client}:${id.clock}`;
@@ -81,6 +85,56 @@ function collectBlocksFrom(root: Y.XmlFragment): BlockRef[] {
 /** Every textblock ever created (live or deleted) in `doc`, generalizing spike 2's `collectBlocks` (see the exported `BlockRef`'s own comment). Doc-level, not fragment-level: engine (which never touches a raw `Y.XmlFragment`) calls this with a `CrdtDoc` directly. */
 export function collectBlocks(doc: Y.Doc): BlockRef[] {
   return collectBlocksFrom(doc.getXmlFragment(FRAGMENT_NAME));
+}
+
+/**
+ * The document's LIVE top-level elements, in order -- matches `read(doc)`'s
+ * PMNode child order (and therefore `renderDoc`'s `degraded` top-level
+ * block indices; brief 07 task 4). Deleted top-level items are skipped,
+ * same as a normal (non-snapshot) read.
+ */
+function liveTopLevelElements(doc: Y.Doc): Y.XmlElement[] {
+  const frag = doc.getXmlFragment(FRAGMENT_NAME) as any;
+  const out: Y.XmlElement[] = [];
+  let item = frag._start;
+  while (item) {
+    if (!item.deleted) {
+      const content = item.content;
+      if (content && content.type instanceof Y.XmlElement) out.push(content.type);
+    }
+    item = item.right;
+  }
+  return out;
+}
+
+/** Every textblock id (`idKey`) living under `el`: itself if it is one, else every textblock nested inside it (a container -- blockquote, list, table -- has no blockId of its own; `review` flags are always keyed by a textblock). */
+function collectTextblockIdsUnder(el: Y.XmlElement): string[] {
+  const item = (el as any)._item;
+  if (isTextblockName(el.nodeName)) return item ? [idKey(item.id)] : [];
+  const out: string[] = [];
+  let child = (el as any)._start;
+  while (child) {
+    if (!child.deleted) {
+      const content = child.content;
+      if (content && content.type instanceof Y.XmlElement) out.push(...collectTextblockIdsUnder(content.type));
+    }
+    child = child.right;
+  }
+  return out;
+}
+
+/**
+ * Every textblock id living under the top-level block at `index` (an
+ * index into `renderDoc`'s `degraded` list, i.e. into the live top-level
+ * elements in document order) -- the block itself if it is a textblock,
+ * else every textblock nested inside it, since the serializer reports a
+ * degraded CONTAINER (a whole blockquote/list/table) as one top-level
+ * index without knowing which nested textblock specifically failed to
+ * verify. Brief 07 task 4 (`engine.renderForSave`'s review-flag mapping).
+ */
+export function textblockIdsAtTopLevel(doc: Y.Doc, index: number): string[] {
+  const el = liveTopLevelElements(doc)[index];
+  return el ? collectTextblockIdsUnder(el) : [];
 }
 
 /** The block's current plain text (live doc state), or `null` if `blockId` does not exist or is not currently visible. Convenience wrapper for engine's review listings, which only have a blockId string, not a `BlockRef`. */

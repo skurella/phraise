@@ -1,6 +1,6 @@
 # Spike 6: the integration engine
 
-Status: in progress (`src/markdown/`, `src/crdt/`, `src/git/`, `src/engine/`, `src/testkit/`, `src/relay/` built, with gates A-G and the gate runner (milestone 2 complete: head poller, rebase-on-commit, forgery fix); `src/daemon/` not yet)
+Status: in progress (`src/markdown/`, `src/crdt/`, `src/git/`, `src/engine/`, `src/testkit/`, `src/relay/` built, with gates A-H and the gate runner (milestone 2 complete: head poller, rebase-on-commit, forgery fix, gate H's serializer/parser fixes); `src/daemon/` not yet)
 
 The headless engine that runs Phraise's whole loop in one codebase: open a
 file from a git remote, edit it together, comment, flush drafts, commit,
@@ -29,9 +29,10 @@ npm run gates          # full gate suite, prints a results table, writes results
 npm run gates:quick     # same gates at small/fast sizes
 ```
 
-Definition of done for brief 04 (milestone 1, gates A-E) and brief 06
-(milestone 2, gates F-G): `npm test`, `npm run typecheck` and `npm run
-gates:quick` pass. Gates A-G each report pass in the quick run; `npm run
+Definition of done for brief 04 (milestone 1, gates A-E), brief 06
+(milestone 2, gates F-G) and brief 07 (milestone 2, gate H -- serializer
+and parser fixes): `npm test`, `npm run typecheck` and `npm run
+gates:quick` pass. Gates A-H each report pass in the quick run; `npm run
 gates:quick` also checks with `lsof` that nothing is left listening on
 4300-4399. The full `npm run gates` (gate E2
 at 50 corpus files instead of 10) is the orchestrator's to run at the
@@ -67,10 +68,11 @@ src/
               (`hub.ts`), a live jsdom editor client (`editor.ts`, `edits.ts`),
               a relay harness in-process or child-process (`relayHarness.ts`).
               May import anything in src/; src/ never imports testkit.
-gates/        gates/index.ts runs gates A-G and prints a results table; writes
-              results/gates.{md,json}; gates/<letter>.ts for H onward land in
+gates/        gates/index.ts runs gates A-H and prints a results table; writes
+              results/gates.{md,json}; gates/<letter>.ts for I onward land in
               later briefs. gates/lib/ has gate-only helpers (diffHunks.ts,
-              topSpans.ts, words.ts, ported from spike 1 for gate E2).
+              topSpans.ts, words.ts, ported from spike 1 for gate E2, reused
+              by gate H for spike 1's own gates A and B).
 test/         vitest unit tests, one or more per module.
 scripts/      fetch-corpus.mjs.
 corpus/       manifest, handwritten (checked in), specs list; fetched/ is gitignored.
@@ -187,3 +189,50 @@ is rebuilt from scratch on crdt's public API since it lives outside
   of spike 2's own ad hoc `Y.RelativePosition` JSON plumbing inlined in
   `comments.ts` -- the fuzzy-match scoring/acceptance logic itself (S2-9)
   is unchanged (plain string code, already schema-agnostic).
+
+## Changes to copied code (brief 07: gate H)
+
+Full details, including the actual bugs and root causes, are in
+`src/markdown/README.md`'s own "Brief 07 (gate H) fixes" section; this is
+the short version.
+
+- `src/markdown/parse.ts`'s `buildDefsContextFromDoc` now reads each
+  definition's `attrs.src` instead of PM text content (the footnote-
+  continuation parser bug: the two differed after `parseMarkdown`'s
+  self-description check replaced a block, making the isolation-reparse
+  ctx string inconsistent between when it is called at self-check time
+  versus at a later `serializeDoc` call).
+- `src/markdown/serialize.ts` gained mark-whitespace normalization
+  (`normalizeMarkWhitespace`/`normalizeMarkWhitespaceDeep`, applied once to
+  the whole doc at the top of `serializeDoc`), per-occurrence intraword
+  `*`-forcing in `pmInlineToMdast` (custom emphasis/strong `.attention`),
+  and a de-entify-and-reverify safety net at two call sites -- together,
+  concurrent bold/italic toggles over overlapping ranges no longer produce
+  numeric character references in the common cases (one narrow residual
+  documented, not fixed -- see `src/markdown/README.md`).
+- `serializeDoc`'s final reserialize call is now wrapped in try/catch,
+  falling back to best effort (`attrs.src ?? textContent`) instead of
+  letting an unexpected exception propagate (D9: never throws).
+- New `src/engine/renderForSave.ts` (`renderForSave(doc) -> {text,
+  degraded}`): `crdt.render` plus `review`-map bookkeeping (reason
+  `serialization-best-effort`, set on every currently-degraded block,
+  cleared once it serializes cleanly again). Needed a new crdt-side helper,
+  `crdt.blocks.ts`'s `textblockIdsAtTopLevel`, to map a top-level degraded
+  index (which may name a whole container, not a textblock) to the
+  textblock id(s) `review` flags are actually keyed by. `engine.ReviewEntry`/
+  `ReviewListEntry`'s `rebaseId` is now optional (a
+  `serialization-best-effort` entry has no rebase behind it).
+  `engine/commit.ts`'s `prepareCommit` and `relay/flush.ts`'s draft-flush
+  render now call `renderForSave` instead of `crdt.render` directly.
+- New `gates/h.ts`: spike 1's gates A (byte-identical, A2 PM-JSON round
+  trip, A3b through the crdt codec and a binary Yjs update) and B (five
+  seeded one-word edits, containment), reusing `gates/lib/`'s existing
+  `words.ts`/`topSpans.ts`/`diffHunks.ts`; the four fixes above as
+  checks; a 200-seed (50 in `--quick`) randomized concurrent-formatting
+  check; and a cache-persistence check (median of 3 cold/warm cycles,
+  JIT pre-warmed on unrelated content; gate threshold 3x, looser than the
+  dedicated unit test's 5x -- see that check's own comment for why: shared-
+  process measurement noise, not a different property being verified).
+  Full run reproduces spike 1's own numbers exactly: 294/294 files for
+  gate A, 293/293 files (1465/1465 edits) for gate B, matching spike 1's
+  findings doc precisely.

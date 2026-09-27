@@ -14,6 +14,7 @@ import { run as runD } from './d.js';
 import { run as runE } from './e.js';
 import { run as runF } from './f.js';
 import { run as runG } from './g.js';
+import { run as runH } from './h.js';
 
 export interface GateResult {
   gate: string;
@@ -34,6 +35,7 @@ const GATES: { letter: string; run: (opts: { quick?: boolean }) => Promise<GateR
   { letter: 'E', run: runE },
   { letter: 'F', run: runF },
   { letter: 'G', run: runG },
+  { letter: 'H', run: runH },
 ];
 
 async function checkPortsFree(): Promise<string[]> {

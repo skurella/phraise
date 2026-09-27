@@ -36,8 +36,14 @@ export interface RebaseRecord {
   peer: number;
 }
 
-/** `review` map's per-blockId entry (plan section 4). */
+/**
+ * `review` map's per-blockId entry (plan section 4). `rebaseId` is present
+ * for the integration-scan reasons ('concurrent-edit',
+ * 'deleted-upstream-edited-locally'); a 'serialization-best-effort' entry
+ * (brief 07 task 4, written by `engine.renderForSave`) is not tied to any
+ * rebase, so it has none.
+ */
 export interface ReviewEntry {
-  rebaseId: string;
+  rebaseId?: string;
   reason: ReviewReason;
 }

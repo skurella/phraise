@@ -58,9 +58,22 @@ direction); never imports `yjs`/`y-protocols`/`@tiptap/y-tiptap` itself
 - **`import.ts`** -- `importText(doc, {base, text, clientId?, author}) ->
   result`: parse, `forkDiffMerge`, register the peer as author kind
   `import`. The daemon's entry point later (gate J's reported-base save).
+- **`renderForSave.ts`** (brief 07 task 4) -- `renderForSave(doc) -> {text,
+  degraded}`: `crdt.render` plus review-flag bookkeeping. Every
+  currently-degraded block (mapped from `crdt.render`'s top-level
+  `degraded` indices to textblock ids via `crdt.textblockIdsAtTopLevel` --
+  a degraded index can name a whole container, blockquote/list/table, with
+  no blockId of its own) that has no existing `review` entry gets one with
+  `reason: 'serialization-best-effort'` (never overwrites a DIFFERENT
+  existing reason, e.g. `concurrent-edit`); every block previously flagged
+  that way but no longer degraded has the entry removed. Used by
+  `commit.ts`'s `prepareCommit` and the relay's draft flush
+  (`relay/flush.ts`) instead of calling `crdt.render` directly, so a
+  save's own best-effort blocks are always flagged, not just reported in
+  the return value.
 - **`commit.ts`** -- `markEditor(doc, user)` sets
   `editorsSinceCommit:<user>`; `prepareCommit(doc) -> {text, degraded,
-  snapshot, coAuthors}` (render via `crdt.render`, snapshot taken in the
+  snapshot, coAuthors}` (render via `renderForSave`, snapshot taken in the
   same synchronous step -- nothing else can mutate `doc` in between, in a
   single-threaded runtime); `recordCommit(doc, {commit, snapshot})` sets
   `base` to the new commit, sets `lastCommit`, clears

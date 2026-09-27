@@ -12,8 +12,8 @@
 // sidecar entry names a DIFFERENT docId/generation (or is simply present
 // under a path we don't recognize as "the same document") is a real
 // conflict: reported, and nothing is overwritten.
-import { encodeState, applyUpdate, render, type CrdtDoc } from '../crdt/index.js';
-import { getBase, getDocId, getGeneration } from '../engine/index.js';
+import { encodeState, applyUpdate, type CrdtDoc } from '../crdt/index.js';
+import { getBase, getDocId, getGeneration, renderForSave } from '../engine/index.js';
 import type { GitStore, ReadDraftResult } from '../git/index.js';
 import type { BranchState, LastDraft, RelayCounters } from './state.js';
 import { sidecarJsonKey, sidecarYdocKey, type SidecarMeta } from './seeding.js';
@@ -33,7 +33,7 @@ function buildFilesAndSidecar(opens: Iterable<{ path: string; doc: CrdtDoc }>): 
   const files: Record<string, string> = {};
   const sidecar: Record<string, Uint8Array> = {};
   for (const { path, doc } of opens) {
-    files[path] = render(doc).text;
+    files[path] = renderForSave(doc).text;
     sidecar[sidecarYdocKey(path)] = encodeState(doc);
     const meta: SidecarMeta = {
       docId: getDocId(doc) ?? '',

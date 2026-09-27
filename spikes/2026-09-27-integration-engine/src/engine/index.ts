@@ -43,6 +43,8 @@ export {
 
 export { importText, ORIGIN_IMPORT, type ImportTextOptions, type ImportTextResult } from './import.js';
 
+export { renderForSave, type RenderForSaveResult } from './renderForSave.js';
+
 export {
   markEditor,
   editorsSinceCommit,
