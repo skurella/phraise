@@ -137,6 +137,8 @@ export class Daemon extends EventEmitter {
 
   /** Serial queue: every step that reads/writes the file or the version ring runs through this (plan 4.1). */
   private queue: Promise<void> = Promise.resolve();
+  /** Count of `enqueue`d steps not yet settled (brief 03 task 1: `idle` needs this, not just the queue promise itself). */
+  private queueDepth = 0;
 
   /** The text this daemon believes is currently on disk (content-based echo check, plan 4.3). */
   private lastKnown: string | undefined;
@@ -435,15 +437,30 @@ export class Daemon extends EventEmitter {
   }
 
   private enqueue(fn: () => Promise<void> | void): Promise<void> {
+    this.queueDepth++;
     const next = this.queue.then(async () => {
       try {
         await fn();
       } catch (err) {
         this.emit('error', { message: err instanceof Error ? (err.stack ?? err.message) : String(err) });
+      } finally {
+        this.queueDepth--;
       }
     });
     this.queue = next;
     return next;
+  }
+
+  /**
+   * Gates 03 task 1: whether this daemon has settled -- no queued settle/export/rebase
+   * step still running, and no debounce timer armed waiting to enqueue one. Does NOT
+   * cover the always-on safety-net polls (`filePollTimer`/`gitPollTimer`): those run for
+   * the whole lifetime of a started daemon and would make `idle` never true. Used by
+   * `gates/lib/quiesce.ts` so a gate can wait for the daemon to stop having anything to
+   * do, rather than sleeping a guessed amount of time.
+   */
+  get idle(): boolean {
+    return this.queueDepth === 0 && !this.settleTimer && !this.exportDebounceTimer && !this.exportMaxWaitTimer;
   }
 
   // ------------------------------------------------------- file -> remote
