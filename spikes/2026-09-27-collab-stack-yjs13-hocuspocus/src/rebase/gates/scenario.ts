@@ -4,6 +4,7 @@
 // comments planted on commit A for gates A and C. Gate B (granularity
 // comparison) uses its own lighter-weight scenario in gate-b.ts since it
 // needs to run the *same* rebase three times with different granularities.
+import type * as Y from "yjs";
 import { Replica, deliver } from "../replica.js";
 import { collectBlocks, type BlockRef } from "../integrate.js";
 import { addComment } from "../comments.js";
@@ -91,8 +92,12 @@ export interface Scenario {
   rebaseId: string;
 }
 
-function labelBlocks(server: Replica): Labels {
-  const root = server.doc.getXmlFragment(PM_FRAGMENT);
+// Brief 05 (gate F) exports this and takes a bare Y.Doc rather than a
+// Replica: gate F labels blocks on live clients' and the relay's own Y.Docs,
+// none of which are a (headless-only) Replica. The logic never used
+// anything but `server.doc` in the first place.
+export function labelBlocks(doc: Y.Doc): Labels {
+  const root = doc.getXmlFragment(PM_FRAGMENT);
   const blocks = collectBlocks(root);
   const byText = (needle: string): BlockRef => {
     const found = blocks.find((b) => {
@@ -135,7 +140,7 @@ export function buildScenario(): Scenario {
   server.link(alice);
   server.link(bob);
 
-  const labels = labelBlocks(server);
+  const labels = labelBlocks(server.doc);
 
   // Comments planted on commit A, for gates A and C.
   const textA = docPlainText(server.doc).text;

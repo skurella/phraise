@@ -187,3 +187,82 @@ should carry forward.
 
 Task 3 done (live clients + the relay-side integration fix). Moving to
 task 4 (gate F proper).
+
+## 13:45 — task 4 done: gate F, all sub-checks pass including the continuous-typing variant
+
+Wrote gates/gateF.ts, reusing spike 2's own scenario fixture
+(src/rebase/gates/scenario.ts: DOC_ID, MD_A, MD_B, AUTHOR_SEED, AUTHOR_B)
+against the real relay + two live editors instead of spike 2's in-memory
+Replica harness. One small change to that copied file: `labelBlocks`
+(previously private, took a `Replica`) is now exported and takes a bare
+`Y.Doc` -- it only ever read `server.doc`, and gate F labels blocks on live
+clients' and the relay's own Y.Docs, none of which are a Replica. Verified
+the headless baseline (scripts/rebase-baseline.ts) still passes unchanged
+after this rename.
+
+Scenario: alice and bob connect and sync; three comments planted on commit
+A (untouched, rewritten-paragraph -- quote "plan for the rollout", same
+quote spike 2's own standalone gate-b.ts uses on a smaller fixture --  and
+deleted-paragraph; scenario.ts's own `buildScenario` only plants the first
+and third, so the second is planted directly in gateF.ts); bob's
+`websocketProvider.disconnect()`, bob edits P and P2 offline; alice, still
+online, edits Q, and gate F waits for the relay to actually see her edit
+(`fetchState` polling) before rebasing, matching the charter's "the relay
+rebases onto commit B while alice's editor is connected"; `POST
+/rebase/rebase:gates-scenario-doc` targetCommit B; bob reconnects; waits
+for convergence.
+
+All sub-checks pass (`npx tsx scripts/run-gate-f.ts`, ports 4238/4239):
+- Rebase applied while alice online, bob offline: `{applied:true}`.
+- Convergence: alice, bob and the relay identical ProseMirror JSON and
+  identical `review` maps (`canonicalJSON` from src/rebase/gates/
+  convergence.ts, reused as-is).
+- A: untouched-paragraph comment resolves via crdt, all three peers agree.
+- B: rewritten-paragraph comment ("plan for the rollout") resolves via crdt
+  (word-granularity rebase keeps the CRDT anchor), all three agree.
+- C: deleted-paragraph comment orphans, quote kept exact, negative control
+  (the "harbor" paragraph) not captured, all three agree.
+- D: both P (bob, offline) and Q (alice, online) flagged `concurrent-edit`;
+  both BOB EDIT and ALICE EDIT text, and the server's upstream rewrite,
+  survive on all three peers; no unexpected flags anywhere (this is the
+  check the task-3 relay fix makes possible at all -- before that fix, the
+  untouched heading was *also* flagged on the relay, which would have
+  failed "no unexpected flags").
+- D2: P2 (deleted upstream, edited offline by bob) resurrected exactly
+  once, flagged `deleted-upstream-edited-locally`, converged.
+- Every untouched block (intro paragraph, the harbor paragraph, list items
+  1 and 3) equals commit B verbatim on all three peers.
+- A retried identical POST -> `{applied:false, reason:"already at
+  target"}`, and the relay's own ProseMirror JSON and review map are
+  byte-identical (`canonicalJSON`) before and after the retry.
+- Variant (separate scenario, ports unused by the main run): alice fires 40
+  single-character inserts into the untouched paragraph with the rebase
+  POST fired mid-burst (not awaited before typing finishes) -- all 40 land
+  as one intact run, the rebase still applies, and alice/bob/relay still
+  converge. (First attempt at this variant's own assertion was buggy, not
+  the product: counting every literal "x" character doc-wide included one
+  from MD_A's own prose ("next"), which this variant's simpler two-user
+  scenario -- no bob edits -- doesn't erase from that one occurrence's
+  paragraph; fixed to check for an intact 40-long run instead of a bare
+  count, logged here so the false alarm doesn't get mistaken for a stack
+  bug later.)
+
+What had to change from spike 2, and why (also as a comment block at the
+top of gates/gateF.ts): (1) the beforeTransaction/afterTransaction
+integration hook replacing `Replica.receive()`'s inline call, per the
+brief's own design; (2) the relay-ack fix from task 3; (3) toDOM/parseDOM
+added to spike 2's schema; (4) y-prosemirror -> @tiptap/y-tiptap in
+seed.ts/diff.ts; (5) no workaround plugins needed for spike 2's schema; (6)
+gc:false on the relay and every client. One more, stated only in the gate
+file's own comment: spike 2's `Replica`/`deliver()` gave its own gate D
+explicit control over delivery order (needed for its permutation/shuffle
+sweep) -- Hocuspocus's real y-protocols sync has no equivalent hook, so
+this gate does not repeat that sweep; it relies on Hocuspocus's own
+protocol for delivery order instead, which is exactly the real-world case
+this gate exists to exercise.
+
+`npx tsc --noEmit`: clean. No relay left running after the run (`lsof -nP
+-iTCP:4210-4239 -sTCP:LISTEN` empty).
+
+Task 4 done. Moving to task 5 (wire gate F into `npm run gates`/
+`gates:quick`, README section).
