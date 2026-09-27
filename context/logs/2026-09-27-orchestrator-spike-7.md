@@ -53,3 +53,15 @@ Builder findings: the two spike 1 failure constructs suggested in the brief now 
 My own screenshots of express README, the source-blocks fixture and the table fixture (probe server on 4490, stopped). Styling problems for the fix list: paragraphs have no vertical margin, so separate paragraphs read as one; no gap after source cards; table header row neither bold nor shaded; footnote definitions and link references show Markdown source in monospace (visible syntax, which gate J forbids in normal editing); footnote reference chip says "FOOTNOTE REF" rather than a superscript number; front matter shows `---` delimiters. Badge images show as broken (network images in headless; check later).
 
 Wrote brief 04 (D, E, I); dispatching (dispatch 4).
+
+## 19:34 — brief 04 verified: flaky E and I, binding caret bug; brief 05 written
+
+Brief 04 (dispatch 4) handed back: D 4/4, E 3/3, I 1/1, 138 unit tests, all passing in the builder's runs.
+
+My verification: one full gate run failed gate E once. The whole suite with `--repeat-each=3`: 5 failures in 189 (gate E "type alternately into the same paragraph" and gate I). E and I alone, `--repeat-each=6 --workers=4`: 1 E failure and 6 I failures.
+
+Root causes found:
+1. **Binding bug, confirmed by my probe on port 4490 (stopped):** Bob's caret at the end of a paragraph; Alice types `AAA ` at its start; Bob's selection stays at the same absolute position and his next letter lands inside a word ("First paragraph hBere"). Brief 04's builder saw this as "an idle remote user's selection is not remapped" and redesigned the test around it. Cause in `@tiptap/y-tiptap` 3.0.9: `restoreRelativeSelection` resolves Yjs relative positions correctly, then `recoverSelectionEndpoint` / `isMisresolvedAfterStructuralChange` treats any change to the paragraph's text as a misresolution and restores the old in-block offset. Packed 3.0.3 to 3.0.9 to compare: the text check appears in 3.0.6 and the recovery in 3.0.7; 3.0.5 has neither. This would put a collaborator's typing in the wrong place whenever two people type in one paragraph, which is gate G's scenario.
+2. **Gate I:** after typing offline and closing the page at once, the reopened page lacks the tail of the typing (`EDIT-A EDIT-` for `EDIT-A EDIT-C`): the last keystrokes had not reached IndexedDB. A real local-loss window when a user closes the tab right after typing.
+
+Wrote brief 05 (caret workaround plugin or pin 3.0.5, E and I flakes, local-save status and beforeunload, gate G IME through CDP, flake sweep). Dispatching (dispatch 5). Comments move to brief 06; scale, screenshots, styling and other browsers to brief 07.
