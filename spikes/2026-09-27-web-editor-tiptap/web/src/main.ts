@@ -15,6 +15,15 @@ import { PhraiseWorkarounds } from '../../src/collab/tiptapWorkaroundsExtension.
 import { FRAGMENT_NAME } from '../../src/model/yjs.js';
 import { schema } from '../../src/model/schema.js';
 import { serializeDoc } from '../../src/model/serialize.js';
+import { FreshSrc } from '../../src/editing/freshSrc.js';
+import { MarkdownInputRules } from './editing/inputRulesExtension.js';
+import { EnterConversions } from './editing/enterConversions.js';
+import { MarkShortcuts } from './editing/markShortcuts.js';
+import { LinkShortcut } from './editing/linkShortcut.js';
+import { ListKeymap } from './editing/listKeymap.js';
+import { TableKeymap } from './editing/tableKeymap.js';
+import { MarkdownPasteRule } from './editing/pasteRule.js';
+import { MarkdownCopyRule } from './editing/copyRule.js';
 
 interface PhraiseWindowHook {
   editor: Editor;
@@ -100,7 +109,25 @@ async function main(): Promise<void> {
 
   // Extension order matches spike 5's src/tiptapClient.ts (wiring
   // reference): the converted schema, then Collaboration, then
-  // CollaborationCaret, then the wrapped workaround plugins last.
+  // CollaborationCaret, then the wrapped workaround plugins, then brief 02's
+  // editing extensions (typing/shortcuts/lists/tables/paste/copy -- see
+  // `src/editing/`'s and `web/src/editing/`'s own comments for what each
+  // one does and why).
+  //
+  // The relative order AMONG the keyboard-shortcut extensions here
+  // (`ListKeymap`, `TableKeymap`, `EnterConversions`, `LinkShortcut`,
+  // `MarkShortcuts`) matters for one reason: `@tiptap/core` reverses
+  // extensions before turning them into plugins (confirmed by reading its
+  // `get plugins()`; see `listKeymap.ts`'s comment), so the LAST one in this
+  // array is tried FIRST for a key two of them both bind, and a handler
+  // returning `false` falls through to the next. `TableKeymap` is placed
+  // after `ListKeymap` so Tab/Shift-Tab try table-cell navigation before
+  // list nesting; `ListKeymap` is placed after `EnterConversions` so Enter
+  // tries "add a list item" before "convert this paragraph to a fence/rule".
+  // None of this matters for `FreshSrc`, `MarkdownInputRules`,
+  // `MarkdownPasteRule`, or `MarkdownCopyRule`: the first is an
+  // `appendTransaction` plugin (runs regardless of position), and the other
+  // three bind no keys that anything else here also binds.
   const extensions: AnyExtension[] = [
     ...buildTiptapExtensions(),
     Collaboration.configure({ document: ydoc, field: FRAGMENT_NAME }),
@@ -124,6 +151,15 @@ async function main(): Promise<void> {
       ydoc,
       stats: { rootAttrs: { mapWrites: 0, docWrites: 0 }, leafMarks: { attrWrites: 0, restores: 0 } },
     }),
+    FreshSrc,
+    MarkdownInputRules,
+    MarkShortcuts,
+    LinkShortcut,
+    EnterConversions,
+    ListKeymap,
+    TableKeymap,
+    MarkdownPasteRule,
+    MarkdownCopyRule,
   ];
 
   const editor = new Editor({

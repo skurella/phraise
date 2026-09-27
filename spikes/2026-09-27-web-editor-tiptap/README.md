@@ -1,18 +1,24 @@
-# Spike 7: the web editor, brief 01 (foundation)
+# Spike 7: the web editor, briefs 01 (foundation) and 02 (typing, gates A and B)
 
-Status: brief 01 (foundation) done. See
+Status: briefs 01 and 02 done. See
 [the plan](../../context/plans/2026-09-27-spike-7-plan.md),
-[the charter](../../context/plans/2026-09-27-spike-7-charter-web-editor.md)
-and [brief 01](../../context/plans/2026-09-27-spike-7-brief-01-foundation.md).
-Log: [builder log](../../context/logs/2026-09-27-builder-spike-7-foundation.md).
+[the charter](../../context/plans/2026-09-27-spike-7-charter-web-editor.md),
+[brief 01](../../context/plans/2026-09-27-spike-7-brief-01-foundation.md) and
+[brief 02](../../context/plans/2026-09-27-spike-7-brief-02-typing.md).
+Logs: [brief 01](../../context/logs/2026-09-27-builder-spike-7-foundation.md),
+[brief 02](../../context/logs/2026-09-27-builder-spike-7-typing.md).
 
 ## Goal
 
-Stand up the application every later brief in this spike builds on: one
-server process holding a Hocuspocus relay and a static page server, a
-Tiptap 3 editor in a real browser that opens a Markdown file seeded from
-disk and can show its Markdown, and a Playwright harness with a gate
-reporter. Serves D4 and D5 in
+Brief 01 stood up the application every later brief in this spike builds
+on: one server process holding a Hocuspocus relay and a static page
+server, a Tiptap 3 editor in a real browser that opens a Markdown file
+seeded from disk and can show its Markdown, and a Playwright harness with
+a gate reporter. Brief 02 made the editor behave like a word processor
+under real keyboard input (typing, splitting/joining, formatting
+shortcuts, lists, tables) and added Markdown affordances (input rules,
+paste, copy), proving every scenario with Playwright in Chromium against
+gates A and B. Serves D4 and D5 in
 [the architecture decisions](../../context/docs/2026-09-27-architecture-decisions.md).
 
 ## Layout
@@ -31,14 +37,43 @@ reporter. Serves D4 and D5 in
 - `web/` — the page: Vite-built vanilla TypeScript, a Tiptap `Editor` on
   **only** the converted spike 1 schema (no StarterKit, no extension that
   adds a node or mark), `Collaboration`, `CollaborationCaret`, the wrapped
-  workarounds, and a Markdown side panel.
+  workarounds, brief 02's editing extensions (below), and a Markdown side
+  panel.
+- `src/editing/` (brief 02) — the schema-free editing logic that is pure
+  enough to unit-test headless, no DOM: `freshSrc.ts` (a top-level block
+  created by splitting must not inherit another block's `src`/`gap` --
+  also invalidates a survivor's stale trailing `gap` when new content is
+  inserted right after it, e.g. by a paste; see its own file comment),
+  `pasteMarkdown.ts` (the Markdown-or-not paste rule and the inline-vs-block
+  decision), `copyMarkdown.ts` (a selection's `Slice` to Markdown),
+  `inputRulePatterns.ts` (heading/list/blockquote/fence/thematic-break
+  regexes and attr extractors), `tableNav.ts` (Tab/Shift-Tab cell
+  navigation, plain position arithmetic -- not `prosemirror-tables`, which
+  needs a `tableRole` on every NodeSpec).
+- `web/src/editing/` (brief 02) — the Tiptap wiring around the above, one
+  file per concern: `inputRulesExtension.ts` (real `InputRule`s, so
+  Backspace-undo is free), `enterConversions.ts` (code fence/thematic break
+  fire on Enter, not as input rules; their own Backspace-undo is
+  reconstructed structurally from the node's hint attrs), `listKeymap.ts`,
+  `tableKeymap.ts`, `markShortcuts.ts` (Mod-B/I/E), `linkShortcut.ts`
+  (Mod-K, a plain in-page popup, no `window.prompt`), `pasteRule.ts`,
+  `copyRule.ts`. `web/src/main.ts`'s extensions array has a comment on the
+  one ordering dependency among these (Tiptap tries a LATER extension's
+  keyboard shortcut first).
 - `e2e/` — Playwright tests. `serverHarness.ts` starts/stops a real
   `server/main.ts` child process per test against a temporary seeds
   directory and database; `fixtures.ts` wraps that as a Playwright fixture;
   `gateReporter.ts` is the custom reporter; `smoke.spec.ts` is gate `[A]`'s
-  smoke test.
+  original smoke test. Brief 02 added `gateA-typing.spec.ts`,
+  `gateA-shortcuts.spec.ts`, `gateA-lists.spec.ts`, `gateA-table.spec.ts`,
+  `gateB-inputrules.spec.ts`, `gateB-paste.spec.ts`, `gateB-copy.spec.ts`,
+  and their fixtures under `e2e/fixtures/` (small hand-written `.md` files,
+  each with untouched neighbour blocks so a test can assert the full
+  serialized Markdown and prove nothing else moved).
 - `test/` — vitest unit tests (schema equivalence, byte-for-byte
-  round-trip through a Tiptap-built document, workaround plugin order).
+  round-trip through a Tiptap-built document, workaround plugin order, and
+  brief 02's `src/editing/` modules: `freshSrc`, `pasteMarkdown`,
+  `copyMarkdown`, `inputRulePatterns`, `tableNav`).
 - `corpus/handwritten/` — 28 small hand-authored fixtures, copied from
   spike 5, used by the unit round-trip test and available to e2e tests.
 - `corpus/manifest.json`, `corpus/needed.json`, `scripts/fetch-corpus.mjs`
@@ -99,15 +134,19 @@ which are spike 5/spike 2 concerns this brief has no use for), `web/`,
 ```bash
 npm ci                 # install
 npm run setup          # Playwright browsers (.pw-browsers/, git-ignored) + the two fetched corpus files
-npm test               # vitest: 31 unit tests
+npm test               # vitest: 69 unit tests
 npm run typecheck      # tsc --noEmit
 npm run gates          # builds the page, runs the Playwright gates, prints the gate table
 npm start              # builds if needed, seeds from examples/, serves on 127.0.0.1:4480 (relay 4481)
 ```
 
-`npm run gates` currently runs gate `[A]`'s smoke test only (later briefs
-add gates B through K); the reporter marks every gate with no tests
+`npm run gates` runs gates `[A]` (22 tests) and `[B]` (23 tests); later
+briefs add gates C through K. The reporter marks every gate with no tests
 "not run", not a failure. Every gate that does run passes.
+
+Mod-E (inline code) is this spike's own choice of shortcut: Google Docs has
+none for inline code. Documented where it's wired,
+`web/src/editing/markShortcuts.ts`.
 
 Ports: the Playwright fixture picks a random free port in 4400-4449 per
 test (charter's range for this spike); `npm start` uses 4480 (page) and
@@ -115,14 +154,15 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
 
 ## Verified
 
-- `npx vitest run` — 3 files, 31 tests, all passing (schema equivalence
-  against the full page extension list; the 28-file handwritten corpus
-  round-tripping byte-for-byte through a Tiptap-built document; workaround
-  plugin order).
+- `npx vitest run` — 8 files, 69 tests, all passing (brief 01's schema
+  equivalence, corpus round-trip and workaround-order tests, plus brief
+  02's `freshSrc`, `pasteMarkdown`, `copyMarkdown`, `inputRulePatterns` and
+  `tableNav` tests).
 - `npx tsc --noEmit` — clean.
-- `npm run gates` — builds the page, runs gate `[A]` in Chromium, passes,
-  prints the table, writes `results/gates.md`/`gates.json`, exits 0.
-  `lsof -nP -iTCP:4400-4499 -sTCP:LISTEN` is empty afterward.
+- `npm run gates` — builds the page, runs gates `[A]` and `[B]` in
+  Chromium, 45/45 passing, prints the table, writes
+  `results/gates.md`/`gates.json`, exits 0. `lsof -nP -iTCP:4400-4499
+  -sTCP:LISTEN` is empty afterward.
 - `npm start` — prints the open URL; `curl` of the page returns 200; a
   real Ctrl-C (verified by sending `SIGINT` to the whole process group,
   not just the top pid — confirmed with `ps -o pid,ppid,pgid` that
@@ -136,7 +176,7 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
 
 ## Notes for the next brief
 
-- The built page bundle is about 596 KB minified (182 KB gzipped) as a
+- The built page bundle is about 608 KB minified (186 KB gzipped) as a
   single chunk — Vite warns about chunk size. Worth watching as more
   extensions are added (brief 03's Mermaid rendering especially); code
   splitting is one option if it grows further.
@@ -149,3 +189,20 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
   that property being internal to Tiptap's own TypeScript types —
   confirmed directly with a throwaway probe script before relying on it in
   `test/workaroundOrder.spec.ts`.
+- Brief 02: real Playwright `.click()`/rapid `page.keyboard.press()` loops
+  raced ahead of ProseMirror's own DOM-selection sync in headless
+  Chromium more than once (a `Home` right after `.click()` landing on the
+  stale selection; a tight `ArrowRight` loop losing most presses; a
+  `Shift+End`/`Shift+ArrowRight` selection extending far past the intended
+  range). The fix each time was polling for the actual end state
+  (`state.selection`) before the next keystroke, not adding blind delays --
+  see `e2e/gateA-typing.spec.ts`'s `placeCaret` and the builder log for the
+  specifics. Worth the next e2e-writing brief reading that log before
+  assuming a caret/selection is where a `.click()`/keypress sequence
+  "should" have put it.
+- `serializeDoc`'s `gap` attribute genuinely needs the survivor's `gap`
+  invalidated (not just the new block's), whenever content is inserted
+  right after an existing top-level block — not only on a fresh Enter
+  split. See `src/editing/freshSrc.ts`'s file comment (the paste-into-the-
+  last-block finding) if gate C/D/E's own edits turn up a similar "stale
+  separator" symptom.
