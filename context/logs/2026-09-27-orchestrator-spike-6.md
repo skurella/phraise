@@ -29,3 +29,13 @@ Read: AGENTS.md, charter, decisions doc on this branch, amendment sections on th
 ## 16:12 — plan written
 
 [Plan](../plans/2026-09-27-spike-6-plan.md): module layout, CRDT interface, Y.Doc layout, git layout, relay, generations, daemon, gates, task order. [Brief 01](../plans/2026-09-27-spike-6-brief-01-foundation.md) written.
+
+## 18:18 — milestone 1 built, full gates run, reviewed
+
+Workers: brief 01 foundation (13 tests), brief 02 git storage (15 tests), brief 03 engine (20 tests), brief 04 relay and gates A to E. Dispatches used: 5 of about 18.
+
+Full `npm run gates` by the orchestrator: A pass (relay state 830 B, byte-identical to an independent seed), B pass (1 forged update rejected), C pass, D pass (12 checks), E pass (50 corpus files, 94 edits, 0 containment violations; 108.6 s). Total 1 min 54 s. No port left listening.
+
+Review (brief 05, reviewer log `2026-09-27-reviewer-spike-6-m1.md`): **blocker** — forged updates sent as sync step 2 bypass the check (same apply path server-side), reproduced by the reviewer; gate B only tested the update message. Other gates judged non-vacuous. Look-ahead: whole-document walks in `blockStatesAt`, restore when head moved past the draft base not handled yet. Milestone 1 is therefore not closed until the forgery fix lands; folded into brief 06 as task 1 to save a dispatch.
+
+Decision: forgery rule becomes a clock rule for all message types (other users' clocks the relay lacks are forgery unless the document is in a recovery window after a state loss). Residual stated.
