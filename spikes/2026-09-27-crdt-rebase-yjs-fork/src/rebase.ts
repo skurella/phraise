@@ -121,3 +121,23 @@ export function computeRebaseUpdate(
   const update = Y.encodeStateAsUpdate(fork, svBeforeEdits);
   return { update, rebaseId };
 }
+
+/**
+ * Rebases that forked from the same base to different targets (orchestrator,
+ * after review). Such siblings merge into a blend of both targets and the
+ * `base` pointer resolves by map LWW to one of them, so the doc matches
+ * neither commit. Rebases must be serialized per document (one runner or a
+ * lease); this detector lets any replica notice a violation and recover,
+ * for example by re-seeding from the real branch head per decision D1.
+ */
+export function baseConflicts(doc: Y.Doc): RebaseRecord[][] {
+  const byBase = new Map<string, RebaseRecord[]>();
+  doc.getMap(PHRAISE_MAP).forEach((v, k) => {
+    if (!k.startsWith("rebase:")) return;
+    const r = v as RebaseRecord;
+    const list = byBase.get(r.baseId) ?? [];
+    list.push(r);
+    byBase.set(r.baseId, list);
+  });
+  return [...byBase.values()].filter((l) => new Set(l.map((r) => r.id)).size > 1);
+}

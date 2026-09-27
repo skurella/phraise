@@ -87,6 +87,23 @@ Latest `npm run fuzz` (seed 20260927):
 
 Idempotence under fuzz: 108 dual-rebase trials, 0 byte mismatches.
 
+### Review follow-ups (after brief 06)
+
+- Needs-review now compares node attributes plus the formatted delta, not
+  plain text, so mark-only and attribute-only upstream changes are flagged;
+  resurrected blocks keep their marks. Regression test:
+  `test/review-regressions.spec.ts`.
+- `baseConflicts(doc)` in `src/rebase.ts` detects sibling rebases from one
+  base to different targets. They merge into a blend and the `base` pointer
+  resolves by LWW to one of them, so rebases must be serialized per
+  document; the detector lets a replica notice and recover by re-seeding.
+- Gate H's row now prints the `human-delete-vs-edit` count next to the
+  gated categories. H passes only under the reading "no local text is lost
+  because of the rebase"; under the literal reading it fails in about 8
+  percent of trials, from human-vs-human delete-vs-edit.
+- Later sections that describe a relay-storm fix in `receive()` describe
+  superseded code; the relay is now per-transaction (revision item 1).
+
 ## Layout (brief 1: core)
 
 - `src/schema.ts` — the ProseMirror schema (plan section 2): `doc`,

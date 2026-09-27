@@ -79,6 +79,25 @@ export function collectBlocks(root: Y.XmlFragment): BlockRef[] {
   return out;
 }
 
+/**
+ * Signature of a block at `snapshot` for change detection: node attributes
+ * plus the formatted delta, so mark-only and attribute-only changes count
+ * (orchestrator revision after review: plain-text comparison missed them).
+ * null if the block is not visible there.
+ */
+export function blockSignatureAt(block: BlockRef, snapshot: Y.Snapshot | undefined): string | null {
+  if (!isVisibleAt(block.item, snapshot)) return null;
+  const xmlText = getXmlText(block.element);
+  const delta = xmlText ? (xmlText.toDelta(snapshot) as any[]) : [];
+  return JSON.stringify([block.element.getAttributes(snapshot), delta]);
+}
+
+/** The block's formatted delta at `snapshot`, for resurrection. */
+function blockDeltaAt(block: BlockRef, snapshot: Y.Snapshot): any[] {
+  const xmlText = getXmlText(block.element);
+  return xmlText ? (xmlText.toDelta(snapshot) as any[]) : [];
+}
+
 /** The block's text at `snapshot` (current doc state if omitted), or null if not visible there. Exported for gates that need to compare specific blocks (e.g. gate F). */
 export function blockContentAt(block: BlockRef, snapshot: Y.Snapshot | undefined): string | null {
   if (!isVisibleAt(block.item, snapshot)) return null;
@@ -141,7 +160,7 @@ function nearestLiveAncestor(blockItem: any): any {
 // blocks.
 function resurrect(
   block: BlockRef,
-  text: string,
+  delta: any[],
   rebaseId: string,
   review: Y.Map<any>
 ): void {
@@ -152,10 +171,16 @@ function resurrect(
   for (const k in attrs) {
     if (attrs[k] !== null && attrs[k] !== undefined) newBlock.setAttribute(k, attrs[k]);
   }
-  if (text.length > 0) {
+  if (delta.length > 0) {
+    // Keep marks as they were at P (formatted delta, not plain text).
     const yText = new Y.XmlText();
-    yText.insert(0, text);
     newBlock.insert(0, [yText]);
+    let at = 0;
+    for (const op of delta) {
+      if (typeof op.insert !== "string") continue;
+      yText.insert(at, op.insert, op.attributes ?? {});
+      at += op.insert.length;
+    }
   }
   let toInsert: Y.XmlElement = newBlock;
   if (LIST_NAMES.has(ancestor.nodeName)) {
@@ -201,9 +226,9 @@ export function integrate(doc: Y.Doc, P: Y.Snapshot, myClientId: number): void {
 
       const blocks = collectBlocks(root);
       for (const block of blocks) {
-        const aContent = blockContentAt(block, snapA);
-        const bContent = blockContentAt(block, snapB);
-        const pContent = blockContentAt(block, P);
+        const aContent = blockSignatureAt(block, snapA);
+        const bContent = blockSignatureAt(block, snapB);
+        const pContent = blockSignatureAt(block, P);
         const upstreamChanged = aContent !== bContent;
         const localChanged = aContent !== pContent;
 
@@ -217,7 +242,7 @@ export function integrate(doc: Y.Doc, P: Y.Snapshot, myClientId: number): void {
           const baseClock = snapA.sv.get(myClientId) ?? 0;
           const xmlText = getXmlText(block.element);
           if (xmlText && hasOwnVisibleEditSince(xmlText, myClientId, baseClock, P)) {
-            resurrect(block, pContent ?? "", record.id, review);
+            resurrect(block, blockDeltaAt(block, P), record.id, review);
           }
         }
       }

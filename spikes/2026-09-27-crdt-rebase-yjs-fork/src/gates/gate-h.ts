@@ -30,14 +30,17 @@ export function runGateHDetailed(): GateHDetailed {
 
 export function runGateH(): GateResult {
   const { report, failing, pass } = runGateHDetailed();
+  // Reviewer finding: show the excluded human-vs-human loss in the gate row
+  // itself, so the narrower reading of "no local text lost" is visible.
+  const humanLoss = `human-delete-vs-edit (reported, not gated: another human deleted the block) in ${report.failingTrials["human-delete-vs-edit"] ?? 0} trials`;
   const detail = pass
-    ? `${TRIALS} trials, all four gated categories zero (runtime ${report.totalMs}ms)`
+    ? `${TRIALS} trials, rebase-caused local-text-lost/exception/diverged/F-violation all zero; ${humanLoss} (runtime ${report.totalMs}ms)`
     : failing
         .map((c) => `${c}=${report.failureCounts[c]} (${report.failingTrials[c]} trials)`)
         .join(", ") + ` — repro: ${report.firstFailures[0]?.reproCommand ?? "n/a"}`;
 
   return {
-    name: "H: 500 word-granularity fuzz trials (exception/diverged/local-text-lost/F-violation all zero)",
+    name: "H: 500 word-granularity fuzz trials (exception/diverged/rebase-caused local-text-lost/F-violation all zero)",
     pass,
     detail,
   };
