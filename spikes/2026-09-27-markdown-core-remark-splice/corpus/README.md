@@ -4,7 +4,7 @@ This directory contains test data for the Markdown round-trip spike: real-world 
 
 ## Contents
 
-- `manifest.json`: Pinned references to 280 real-world Markdown files (183 npm READMEs + 97 design documents)
+- `manifest.json`: Pinned references to 266 real-world Markdown files (179 npm READMEs + 87 design documents; 14 entries with non-permissive or unknown licenses were removed by the orchestrator, including all emberjs/rfcs files)
 - `specs.json`: CommonMark and GFM spec files used to extract examples
 - `handwritten/`: 26 committed edge-case Markdown files covering specific constructs
 - `fetched/`: Downloaded files (git-ignored), organized by source
@@ -37,7 +37,7 @@ From permissively licensed RFC/design doc repositories:
 - **golang/proposal** (25 files): `design/*.md` - Go language proposals
 - **kubernetes/enhancements** (25 files): `keps/**/README.md` - Kubernetes Enhancement Proposals
 - **nodejs/node** (10 files): `doc/api/*.md` - Node.js API documentation
-- **emberjs/rfcs** (7 files): `text/*.md` - Ember.js RFCs
+- **emberjs/rfcs**: removed, license not determinable
 
 Selection rule: Files are sorted deterministically within each repo and category. Every k-th file is selected where k = ceil(total / target count), ensuring reproducible selection across runs.
 
@@ -113,7 +113,7 @@ The script:
 6. Prints a summary and exits 0 on success or non-zero if anything failed
 
 Expected counts after fetch:
-- `corpus/fetched/real/`: 280 files (manifest entries)
+- `corpus/fetched/real/`: 266 files (manifest entries)
 - `corpus/fetched/commonmark/`: 655 files (examples numbered 0001-0655)
 - `corpus/fetched/gfm/`: 672 files (examples numbered 0001-0672)
 
