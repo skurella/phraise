@@ -1,6 +1,6 @@
 # Brief 02: stack 14 foundation, gates A, B, C, Yjs 13/14 compatibility probe
 
-Status: dispatched
+Status: done
 Author: spike 5 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Plan: [spike 5 plan](2026-09-27-spike-5-plan.md) (the "Choices" and "Common gate harness" sections are part of this brief)

@@ -1,5 +1,14 @@
 # Stack 14: `@y/y` 14.0.0-rc.26 + `@y/prosemirror` 2.0.0-13, on Hocuspocus
 
+> **Orchestrator note (final, 2026-09-27).** Findings: [spike 5 findings](../../context/docs/2026-09-27-spike-5-findings-collab-stack.md).
+> Two corrections to the builder narrative below. (1) B3's failure is not
+> confined to whole-document replaces: case 4, replacing one image node with
+> one whose `url` and link both differ (what an "edit image" dialog does), also
+> keeps the old link, in the editor that made the edit too
+> (`scratch/probe-atom-mark-change.ts`). (2) Gate C path B now waits for full
+> editor convergence before comparing; its 234/266 is unchanged, so every
+> failure there is this binding bug, not timing.
+
 Status: brief 06 (gate F: spike 2's rebase port, live editors + relay) done,
 on top of brief 04 (Hocuspocus relay, gates B3, G, E, D) and brief 02 (gates
 A, B, C-equivalent, Yjs 13/14 compatibility probe). See

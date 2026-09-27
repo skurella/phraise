@@ -1,5 +1,12 @@
 # Stack 13: Yjs 13.6.33 + @tiptap/y-tiptap + Hocuspocus 4.7
 
+> **Orchestrator note (final, 2026-09-27).** Findings: [spike 5 findings](../../context/docs/2026-09-27-spike-5-findings-collab-stack.md).
+> The gate C "flake" described under Known limitations was a harness race:
+> path B compared editor 2 once its text length matched, before the separate
+> root-attrs and leafMarks updates had arrived. `gates/gateC.ts` now waits for
+> full ProseMirror JSON equality first. Three gate C runs from fresh databases
+> and the final full run gave 266/266 on both paths.
+
 Status: brief 01 (gates A, B, C), brief 03 (gates B3, D, E, G; the gate
 C corpus-size addendum) and brief 05 (gate F) done. See
 [brief 01's log](../../context/logs/2026-09-27-builder-spike-5-stack13-core.md),

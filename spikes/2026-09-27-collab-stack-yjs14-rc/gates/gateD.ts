@@ -187,7 +187,11 @@ async function runCaretAndUndo(port: number, dbPath: string): Promise<GateDCheck
     await new Promise((r) => setTimeout(r, 200));
     const aliceAwareness = a.provider.awareness!.getStates();
     const bobAwareness = b.provider.awareness!.getStates();
-    const hasBothUsers = [...aliceAwareness.values()].some((s: any) => s.user?.name === 'Alice') || [...bobAwareness.values()].some((s: any) => s.user?.name === 'Alice');
+    // Orchestrator fix after review: each side must see the other's state
+    // (the old check ORed two 'Alice' lookups, which a client's own state
+    // always satisfies).
+    const names = (m: Map<number, any>) => [...m.values()].map((s: any) => s.user?.name);
+    const hasBothUsers = names(aliceAwareness).includes('Bob') && names(bobAwareness).includes('Alice');
     checks.push({
       name: 'Caret: awareness state present for both users',
       pass: hasBothUsers,

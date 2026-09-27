@@ -1,6 +1,6 @@
 # Brief 03: stack 13 gates G, E, D (persistence, attribution, Tiptap)
 
-Status: dispatched
+Status: done
 Author: spike 5 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Plan: [spike 5 plan](2026-09-27-spike-5-plan.md). Charter: [spike 5 charter](2026-09-27-spike-5-charter-collab-stack.md), "Rules for every agent in this spike" binds you.

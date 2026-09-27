@@ -1,6 +1,6 @@
 # Brief 06: gate F on stack 14, spike 2's rebase ported to Yjs 14
 
-Status: dispatched
+Status: done
 Author: spike 5 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Plan: [spike 5 plan](2026-09-27-spike-5-plan.md). Charter: [spike 5 charter](2026-09-27-spike-5-charter-collab-stack.md), gate F; "Rules for every agent in this spike" binds you.

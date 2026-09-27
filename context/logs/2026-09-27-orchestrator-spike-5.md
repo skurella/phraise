@@ -58,3 +58,6 @@ Also probed yjs/y-prosemirror#241 (swap bold for code in one transaction): syncs
 ## 15:14 — Brief 06 handback: gate F passes on stack 14 (d390072), diff via lib0 delta.diff (same diff as the B3 bug path, so a commit that changes an image's url and link together would hit it; spike 2's schema has no images, so untested). Running both full gate suites.
 
 ## 15:23 — Full runs: stack 13 all pass (A, B, B2, B3, C 266/266 both paths, D, E, F, F-variant, G); stack 14 A, B, D, E, F, G pass, B3 and C path B (234/266) fail on the upstream atom-mark bug. Brief 07 (review) dispatched.
+
+## 15:49 — Review received; findings doc written
+Reviewer (fresh clone at a717e37): stack 13 clean-checkout full run all pass; stack 14 matches committed results; no vacuous gates; one weak check in stack 14 gate D (awareness check could not fail), fixed by me and re-run (7/7 pass). Reviewer claimed B3 is confined to whole-doc replaces; not so, case 4 (replace one image node) is an ordinary edit; corrected in the stack 14 README note and the findings. Added orchestrator notes at the top of both READMEs.
