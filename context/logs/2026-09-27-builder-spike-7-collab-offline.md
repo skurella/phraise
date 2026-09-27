@@ -194,3 +194,59 @@ Alice's own never resurrects it.
 
 `PLAYWRIGHT_BROWSERS_PATH=.pw-browsers npx playwright test
 e2e/gateE-undo.spec.ts` -> 3/3 passing.
+
+## 21:50 -- gate I: 1/1 passing on first real attempt after a probe
+
+Probed offline simulation first (throwaway spec, deleted before
+committing): `browserContext.setOffline(true)` genuinely cuts an
+already-connected Hocuspocus WebSocket in this headless Chromium --
+status flips to "Offline, changes kept on this device" fast, a second
+context never sees an edit typed while the first is offline, and a
+reload while offline (after awaiting `window.phraise.offlineReady`)
+correctly rebuilds the editor from IndexedDB with the offline edit
+intact. The brief's documented fallback (stop the relay, or route
+around it) was not needed.
+
+One test covering the whole scenario end to end: Alice offline, types;
+Bob (online) types elsewhere and doesn't see it; Alice flushes
+IndexedDB (`storeState(persistence, true)`, exposed as
+`window.phraise.flushIndexeddb()`, deterministic rather than guessing at
+write timing), reloads while still offline, sees her text, types more;
+closes the page and opens a new one in the SAME context while still
+offline (survives a real close/reopen, not just a reload); goes online;
+both converge on a Markdown containing all three edits; a fresh third
+context reads the relay's own stored document and agrees. `builtFrom`
+asserted `'indexeddb'` after the offline reload (no network existed;
+only IndexedDB could have supplied that content).
+
+## 22:05 -- full suite: found and fixed one real parallel-worker flake
+
+`npm run gates` (63 tests across A/B/C/D/E/H/I) flaked once in gate E's
+first test under full 6-worker parallelism (a cross-client markdown
+poll exceeded the default 5s `expect` timeout under CPU contention from
+several concurrent Chromium+relay processes) while passing reliably
+every time run in isolation -- a genuine parallel-load timing issue, not
+a logic bug. Fixed by raising `expect: { timeout: 10_000 }` globally in
+`playwright.config.ts` (documented there). Two subsequent full
+`npm run gates` runs: 63/63 both times, plus a third run after the
+README pass: also 63/63.
+
+## Handback summary
+
+`npm test` -> 138/138 (18 files). `npm run gates` -> 63/63, gate table:
+A 22, B 23, C 6, D 4, E 3, H 4, I 1 all PASS; F/G/J/K not run (out of
+this brief's scope). `npx tsc --noEmit` clean. No `test.fixme`s needed --
+every scenario in the brief's scope has a real, verified passing test.
+`lsof -nP -iTCP:4400-4499 -sTCP:LISTEN` empty after every run.
+
+Offline simulated with real `browserContext.setOffline(true)` (confirmed
+via probe to genuinely sever the relay WebSocket); no fallback needed.
+No lost edit, no undo surprise beyond the two documented, real findings
+above (idle-remote-selection non-remapping; local-relay timing needing
+an explicit pause to separate undo groups) -- both are properties of the
+stack/environment, not bugs introduced here, and are recorded for future
+briefs' benefit.
+
+Paths: this log
+`context/logs/2026-09-27-builder-spike-7-collab-offline.md`; README
+`spikes/2026-09-27-web-editor-tiptap/README.md`.
