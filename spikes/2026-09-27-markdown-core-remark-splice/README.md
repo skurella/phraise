@@ -127,9 +127,9 @@ same encoding upstream or an `appendTransaction` plugin -- left to spike 2.
 ## Running
 
 ```bash
-npm install
-node scripts/fetch-corpus.mjs   # once, populates corpus/fetched/ (gitignored)
-npm test
+npm ci
+npm test         # first fetches the corpus into corpus/fetched/ (gitignored); idempotent
+npm run gates    # all gates, about 8 minutes
 ```
 
 ## Gates: `npm run gates`

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "pretest": "node scripts/fetch-corpus.mjs",
     "test": "tsx --test test/*.test.ts",
     "fetch": "node scripts/fetch-corpus.mjs",
     "gates": "tsx gates/index.ts"
