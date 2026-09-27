@@ -137,3 +137,7 @@ The owner relayed an analysis from a side chat. Verified against the evidence:
 - **Also found:** the spike 2 orchestrator's log has entries stamped 06:40 and 06:45 written before 06:34. The lead's own handback logs for spikes 4 and 1 contain estimated times as well (entries 04:45, 04:50, 06:40, 06:45). Those are approximate; entries in this file written with `date` are exact.
 
 Procedures changed, decision P13: no wall-clock budgets, timestamps only from `date`, long verification runs belong to the orchestrator. Spike 2 orchestrator informed.
+
+## 07:50 — Spike 2 accepted; spikes 3 and 5 dispatched
+
+Spike 2 verified and opened as PR 5. Spikes 3 (daemon file sync) and 5 (collaboration stack, Yjs 13 or 14) chartered on their own branches and dispatched in parallel, one Opus orchestrator each. Their charters carry the P13 rules inline because PR 2 is not merged yet. Details in the lead's spike 2 handback log on the spike 2 branch.
