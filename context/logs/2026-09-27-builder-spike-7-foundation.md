@@ -48,3 +48,18 @@ Verified: `PLAYWRIGHT_BROWSERS_PATH=.pw-browsers npx playwright install chromium
 `examples/{hello,table,notes}.md`: three small fixtures (heading+paragraphs+list+code block; a table; a blockquote+ordered list+emphasis/link) for `npm start`.
 
 Next: README, a clean `npm ci` from scratch, the full definition-of-done command list, commit.
+
+## 16:29 — clean-checkout verification, commit, handback
+
+Wrote `README.md` (purpose, layout, origin-of-copied-code section per file, commands, verified section, notes for the next brief). Removed `node_modules/`, `dist/`, `.pw-browsers/`, `results/`, `test-results/`, `corpus/fetched/` and the leftover `.import-staging/` (created accidentally at the worktree root during the initial `git archive`, not inside the spike directory — deleted before staging) and re-ran the whole definition-of-done list from a clean state:
+- `npm ci` -> 226 packages, no errors.
+- `npm run setup` -> all three Playwright browsers installed into `.pw-browsers/`, both corpus files fetched.
+- `npm test` -> 3 files, 31 tests, all passed.
+- `npm run gates` -> builds, runs gate `[A]` in Chromium, `1 passed`, table printed, exit 0.
+- `lsof -nP -iTCP:4400-4499 -sTCP:LISTEN` -> empty after `npm run gates`.
+- `npx tsc --noEmit` -> clean.
+- `npm start` -> built `dist/`, printed `Open http://127.0.0.1:4480/?doc=hello.md&user=Alice`, `curl` returned 200. Verified the *real* Ctrl-C path: `ps -o pid,ppid,pgid` showed `npm start` -> `tsx` CLI -> the actual `start.ts` process -> the spawned `server/main.ts` child all sharing one process group; sent `kill -INT` to the negative pgid (the same signal a terminal Ctrl-C delivers to a whole foreground process group) and confirmed all four processes exited and the temp seeds/db directory was removed.
+
+`git status --short` showed only the new spike directory and this log file (gitignored dirs correctly excluded, confirmed with `git status --ignored`). Staged explicitly: `git add spikes/2026-09-27-web-editor-tiptap context/logs/2026-09-27-builder-spike-7-foundation.md` (no `-A`/`.`). Committed as `fe9ab21` on `spike/2026-09-27-web-editor`, not pushed (brief says commit only).
+
+Nothing was left out of the brief's scope; everything in "Scope" items 1-9 is done. Handing back to the orchestrator now.
