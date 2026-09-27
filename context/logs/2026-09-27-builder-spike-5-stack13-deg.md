@@ -1,6 +1,6 @@
 # Log: builder, spike 5, brief 03 (stack 13 gates D, E, G + B3 + C addendum)
 
-Status: in progress
+Status: done (handback)
 Author: builder (Sonnet 5)
 Updated: 2026-09-27
 Plan: [spike 5 plan](../plans/2026-09-27-spike-5-plan.md)
