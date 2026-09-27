@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "fetch": "node scripts/fetch-corpus.mjs",
+    "gates": "tsx gates/index.ts"
   },
   "dependencies": {
     "unified": "^11.0.5",
@@ -18,11 +20,15 @@
     "mdast-util-math": "^3.0.0",
     "prosemirror-model": "^1.23.0",
     "prosemirror-state": "^1.4.3",
-    "prosemirror-transform": "^1.10.2"
+    "prosemirror-transform": "^1.10.2",
+    "yjs": "^13.6.20",
+    "y-prosemirror": "^1.2.15",
+    "diff": "^7.0.0"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
     "tsx": "^4.19.2",
-    "@types/node": "^22.9.0"
+    "@types/node": "^22.9.0",
+    "@types/diff": "^6.0.0"
   }
 }

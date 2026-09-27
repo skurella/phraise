@@ -17,6 +17,15 @@ export interface TraceInfo {
   // harness's path-distribution reporting needs it to type-check).
   kind: 'verbatim' | 'splice' | 're-serialize' | 'unverified' | 'opaque-edit';
   type: string;
+  /**
+   * The exact text this block emitted. Added for the gates harness (gate E's
+   * per-block forced-reserialization byte-identity/verification-rate
+   * metrics): reconstructing a single block's own output from the whole
+   * document's serialized text is fragile (gaps can repeat or be empty), so
+   * the trace reports it directly instead. Purely additive: existing
+   * consumers that only read `kind`/`type` are unaffected.
+   */
+  text: string;
 }
 
 export interface SerializeOpts {
@@ -375,8 +384,9 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
     if (block.type.name === 'raw_block' && !forceReserialize) {
       const src = block.attrs.src as string | null;
       const text = block.textContent;
-      trace?.({ kind: src != null && text === src ? 'verbatim' : 'opaque-edit', type: block.type.name });
-      return src != null && text === src ? src : text;
+      const out = src != null && text === src ? src : text;
+      trace?.({ kind: src != null && text === src ? 'verbatim' : 'opaque-edit', type: block.type.name, text: out });
+      return out;
     }
     if (!forceReserialize) {
       const src = block.attrs.src as string | null;
@@ -391,7 +401,7 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
           reparsed = undefined;
         }
         if (reparsed && reparsedCount === 1 && semanticEq(reparsed, block)) {
-          trace?.({ kind: 'verbatim', type: block.type.name });
+          trace?.({ kind: 'verbatim', type: block.type.name, text: src });
           return src;
         }
         if (!noSplice) {
@@ -402,7 +412,7 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
             spliced = null;
           }
           if (spliced != null) {
-            trace?.({ kind: 'splice', type: block.type.name });
+            trace?.({ kind: 'splice', type: block.type.name, text: spliced });
             return spliced;
           }
         }
@@ -417,7 +427,7 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
     } catch {
       verified = false;
     }
-    trace?.({ kind: verified ? 're-serialize' : 'unverified', type: block.type.name });
+    trace?.({ kind: verified ? 're-serialize' : 'unverified', type: block.type.name, text: result });
     return result;
   }
 

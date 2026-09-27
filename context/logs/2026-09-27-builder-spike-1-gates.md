@@ -87,3 +87,74 @@ Verified with test/positions.test.ts (new): a paragraph nested in a
 blockquote reports its own 1-line span (not the blockquote's 3-line span),
 and a paragraph nested in a list item reports its own line, not the whole
 list's range. `npm test`: 11/11 green (9 previous + 2 new).
+
+## 05:40 — gates/ harness built
+
+Added `yjs`, `y-prosemirror`, `diff` (+`@types/diff`) deps. Built `gates/`:
+`lib/corpus.ts` (load+quick-subset), `lib/prng.ts` (mulberry32 seeded from
+file id + seed), `lib/diffHunks.ts` (line-diff containment via `diffLines`),
+`lib/words.ts` (gate B eligible-word finder per spec), `lib/topSpans.ts`
+(top-level block PM/line spans), `lib/parsedFile.ts` (parse-once cache),
+`lib/report.ts`, `gateA.ts`..`gateE.ts`, `index.ts` (CLI, `--quick`). Wired
+`npm run fetch` / `npm run gates` / `npm run gates -- --quick`. Added
+`gates` to tsconfig `include` so `tsc --noEmit` covers it; clean.
+
+`src/serialize.ts` change: added a `text` field to `TraceInfo` (the exact
+string each block emitted) -- purely additive, needed for gate E's per-block
+forced-reserialization byte-identity/verification-rate metrics without
+fragile reconstruction from the whole-document output string.
+
+## 05:55 — quick run (--quick) surfaced two real y-prosemirror bugs (not ours)
+
+First `--quick` run: A3 (Yjs round trip) failed 13/164 files with my initial
+"lost lead/eol" detector reporting 0 -- wrong cause. Debugged with a
+throwaway script comparing `doc`/`doc2` node-by-node: every real-world
+mismatch was `[![alt](img-url)](link-url)` (an image wrapped in a link mark)
+losing the *outer link* after the y-prosemirror round trip -- confirmed via
+`node.marks` before/after: `['link']` -> `[]`. y-prosemirror's XmlFragment
+encoding does not preserve marks on non-text inline leaf nodes (image,
+hard_break), only on text runs. This is a materially bigger problem than the
+doc-level lead/eol loss I'd found earlier manually (that one didn't even
+trigger in the quick sample, since real-world files rarely have a nonempty
+`lead`). Updated `gateA.ts` to detect both causes precisely
+(`a3docAttrLoss`, `a3leafMarkLoss`) instead of one blanket flag; re-ran,
+0 unexplained A3 failures.
+
+## 06:05 — gate B failures investigated, confirmed genuine (not harness bugs)
+
+Quick run: gate B file-pass-rate ~67%, well under the 98% threshold.
+Investigated the two dominant failure categories by hand before trusting
+the numbers:
+
+- `semantic-mismatch` (e.g. commonmark/0251, `"> bar\n>\nbaz\n"`): editing
+  the word in the blockquote's paragraph forces a re-serialize (splice
+  declines), which emits `"> zebra"` -- dropping the original's trailing
+  bare `">"` line. That line was load-bearing: without it, re-parsing
+  `"> zebra\nbaz\n"` makes `"baz"` a *lazy continuation* of the blockquote's
+  paragraph per CommonMark (no blank line, previous line was quote-paragraph
+  text), merging two top-level blocks into one. Root cause: `serializeDoc`
+  reuses the *original* gap string between two blocks, but a reserialized
+  block's own re-parse shape can require a different gap (here: a blank
+  line) to stay separated from its neighbor -- nothing currently checks
+  inter-block interaction, only each block's own isolated re-parse. This is
+  a real, spike-relevant limitation of the block-preserving design as
+  currently implemented; not attempting a general fix (would need to detect
+  and locally insert blank-line separation whenever a reserialized block's
+  neighbor could lazily continue it) given the remaining session budget --
+  logging it as a finding for the lead/findings doc instead of patching
+  under time pressure.
+- `diff-outside-paragraph-but-inside-block` (e.g.
+  real/golang-proposal-design11502securitypolicymd, editing one word in an
+  ordered list item): splice doesn't apply to list-item content, so the
+  whole list re-serializes; `mdast-util-to-markdown`'s
+  `incrementListMarker: true` renumbers all items sequentially even when the
+  source used repeated `"1."` for every item, so the diff spans the whole
+  list, not just the edited word. This is exactly the charter's own named
+  stretch goal ("a list-item edit touching only that item rather than the
+  whole list") -- expected, not a bug.
+
+Both mechanisms verified with throwaway debug scripts (not committed).
+Conclusion: gate B's low pass rate reflects genuine current limitations of
+the splice/re-serialize design on nested-block edits and blank-line-
+dependent lazy continuation, not a bug in the gates harness. Reporting
+honestly per the brief ("do not weaken gate definitions to raise numbers").
