@@ -54,3 +54,10 @@ Started the first full gate run in the background (npm run gates).
 
 ## 11:51 — dispatch 5: researcher, brief 05 editors (Sonnet)
 
+
+## 12:00 — dispatch 5 returned; first full gate run
+Researcher log committed. Key: VS Code reloads clean buffers silently and refuses to save a dirty buffer over a newer file without a Compare/Overwrite choice; vim warns on any mtime change (our rename always trips W11 unless autoread); Claude Code's Edit/Write refuse when mtime moved since read; Typora evidence thin.
+Full run 1 (npm run gates): A B C D E G H J pass; F 3348/3350 (the 2 spike 1 footnote cases); I 287/300 with 21 'duplicated' and 1 'lost'. Diagnosis: 'duplicated' counted deleted copies in the Y doc, which a save that restructures a block (table to paragraph and back) leaves behind: a classification bug, reverted to visible copies. The 'lost' seed: the serializer had escaped the token's last character (&#x38;) inside bold with entity-encoded spaces; the editor deleted the visible prefix, the harness did not record it. Fixed in harness; added a metric for entity escapes, an output-quality finding for spike 1's serializer.
+
+## 12:00 — dispatch 6: reviewer, brief 06 (Sonnet, fresh context)
+
