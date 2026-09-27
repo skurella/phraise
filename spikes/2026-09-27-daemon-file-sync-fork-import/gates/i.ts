@@ -26,6 +26,8 @@ export async function runGateI(opts: GateOpts = {}): Promise<GateResult> {
       resurrected: summary.categories.resurrected,
       echo: summary.categories.echo,
       detach: summary.categories.detach,
+      wholeDocMismatch: summary.categories.wholeDocMismatch,
+      baseMisjudged: summary.baseMisjudged,
       forks: summary.forks,
       coarseTextblocks: summary.coarse,
       repairs: summary.repairs,

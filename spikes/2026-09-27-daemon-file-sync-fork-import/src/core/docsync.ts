@@ -130,6 +130,22 @@ export class DocSync {
     return this.ring.push({ text: v.text, hash: hashText(v.text), snapshot: v.snapshot, origin: 'restore', at: Date.now() });
   }
 
+  /** The base candidates of the next save (plan 3.2): what a restart must persist. */
+  candidates(): Version[] {
+    return this.ring.candidates();
+  }
+
+  /**
+   * Put persisted candidates back after a restart, oldest first, keeping their
+   * origins so the anchor stays the anchor. Persisting only the latest version
+   * was not enough: an editor holding an older buffer then had its save diffed
+   * against a newer base, which deleted the remote edits in between (gate I
+   * fuzz, seed 439041105).
+   */
+  restoreVersions(list: ReadonlyArray<Pick<Version, 'text' | 'snapshot' | 'origin' | 'at'>>): Version[] {
+    return list.map((v) => this.ring.push({ text: v.text, hash: hashText(v.text), snapshot: v.snapshot, origin: v.origin, at: v.at }));
+  }
+
   /** Record a `write` version: the file side certainly has this text, snapshot taken at render time. */
   recordWrite(text: string): Version {
     const snapshot = Y.snapshot(this.doc);
@@ -198,6 +214,7 @@ export class DocSync {
       const aChildren = nodeChildren(currentEncoded(target));
       const bChildren = nodeChildren(newDocEncoded);
       counters = applyDiff(fragment, aChildren, bChildren);
+      if (process.env.PHRAISE_DEBUG) console.error(`    applyDiff: ${JSON.stringify(counters)}`);
     }, ORIGIN_IMPORT);
 
     // Verify: JSON of yDocToDoc(target) equals JSON of newDoc, meta attrs

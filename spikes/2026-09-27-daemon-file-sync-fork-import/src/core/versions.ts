@@ -20,15 +20,39 @@ export function hashText(text: string): string {
   return crypto.createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
+/** Bound on the Myers search so a pathological candidate cannot stall an import. */
+const MAX_EDIT_LENGTH = 20000;
+
 /**
- * Characters in removed plus added lines of a line diff between `a` and
- * `b`. `Diff.diffLines` already returns large unchanged hunks for a common
- * prefix/suffix, so no separate trimming step is needed to get the same
- * result as "trim the common prefix and suffix, then diff the rest".
+ * Edit distance in characters (inserted plus deleted) between `a` and `b`,
+ * after trimming the common prefix and suffix.
+ *
+ * Character level, not line level: Markdown paragraphs are usually one long
+ * line, and a line-level cost ties whenever the user's edit and a remote edit
+ * sit in the same paragraph. The tie went to the newest version and diffed the
+ * remote edit away (found by the gate I fuzz, seeds 439041105 and 439041110).
+ * With a character cost, the true base of a stale save costs |user edits| and
+ * every later version costs that plus the remote edits.
+ *
+ * `limit`: the caller only needs to know whether the cost is below it; the
+ * search gives up past it and returns a value >= limit.
  */
-export function diffCost(a: string, b: string): number {
+export function diffCost(a: string, b: string, limit = Number.POSITIVE_INFINITY): number {
   if (a === b) return 0;
-  const parts = Diff.diffLines(a, b);
+  const n = Math.min(a.length, b.length);
+  let p = 0;
+  while (p < n && a.charCodeAt(p) === b.charCodeAt(p)) p++;
+  let s = 0;
+  while (s < n - p && a.charCodeAt(a.length - 1 - s) === b.charCodeAt(b.length - 1 - s)) s++;
+  const am = a.slice(p, a.length - s);
+  const bm = b.slice(p, b.length - s);
+  const upper = am.length + bm.length;
+  const lower = Math.abs(am.length - bm.length);
+  if (lower >= limit) return lower;
+  if (am.length === 0 || bm.length === 0) return upper;
+  const bound = Math.min(upper, limit, MAX_EDIT_LENGTH);
+  const parts = Diff.diffChars(am, bm, { maxEditLength: bound } as Diff.BaseOptions) as Diff.Change[] | undefined;
+  if (!parts) return Math.max(bound, Math.min(limit, upper));
   let cost = 0;
   for (const part of parts) {
     if (part.added || part.removed) cost += part.value.length;
@@ -92,7 +116,8 @@ export function chooseBase(text: string, candidates: readonly Version[]): BaseCh
   let bestCost = diffCost(best.text, text);
   for (let i = 1; i < candidates.length; i++) {
     const v = candidates[i];
-    const c = diffCost(v.text, text);
+    // A tie goes to the newer candidate, so it only has to reach bestCost.
+    const c = diffCost(v.text, text, bestCost + 1);
     if (c <= bestCost) {
       best = v;
       bestCost = c;

@@ -160,6 +160,9 @@ type Op =
   | { kind: 'delete'; aIdx: number }
   | { kind: 'insert'; bIdx: number };
 
+/** Above this many cells a gap is first split on exact matches (plain LCS). */
+const MAX_GAP_CELLS = 250_000;
+
 function planGapOps(
   aChildren: PMNode[],
   bChildren: PMNode[],
@@ -167,22 +170,81 @@ function planGapOps(
   aEnd: number,
   bStart: number,
   bEnd: number,
+  aHashes: string[],
+  bHashes: string[],
 ): Op[] {
   const aLen = aEnd - aStart;
   const bLen = bEnd - bStart;
   if (aLen === 0 && bLen === 0) return [];
+  if (aLen * bLen > MAX_GAP_CELLS) {
+    const matches = lcsMatches(aHashes.slice(aStart, aEnd), bHashes.slice(bStart, bEnd));
+    if (matches.length > 0) {
+      return splitOnMatches(
+        aChildren,
+        bChildren,
+        aStart,
+        aEnd,
+        bStart,
+        bEnd,
+        matches.map(([i, j]) => [aStart + i, bStart + j] as [number, number]),
+        aHashes,
+        bHashes,
+      );
+    }
+    if (aLen * bLen > 16 * MAX_GAP_CELLS) {
+      // A wholesale rewrite with no common block: no fuzzy pairing.
+      const ops: Op[] = [];
+      for (let i = aStart; i < aEnd; i++) ops.push({ kind: 'delete', aIdx: i });
+      for (let j = bStart; j < bEnd; j++) ops.push({ kind: 'insert', bIdx: j });
+      return ops;
+    }
+  }
 
-  const canPair = (i: number, j: number): boolean => {
+  // Orchestrator change after the gate I fuzz (seed 439041146): spike 2's rule
+  // paired greedily on Dice >= 0.5, so among similar paragraphs it paired the
+  // first eligible one. A wrong pairing turns an edited block into delete plus
+  // insert, and the delete loses whatever a remote peer typed into that block
+  // concurrently. Now: a pair is eligible when the types match and either Dice
+  // or containment (the share of one side's words found in the other, which is
+  // 1 for pure insertions or pure deletions) is at least 0.5; and the gap is
+  // aligned by a DP that maximizes the number of pairs, then their total Dice.
+  const words = (n: PMNode) => n.textContent.split(/\s+/).filter(Boolean);
+  const aWords = Array.from({ length: aLen }, (_, i) => words(aChildren[aStart + i]));
+  const bWords = Array.from({ length: bLen }, (_, j) => words(bChildren[bStart + j]));
+  // An exact semantic match scores 2, above any fuzzy pair (Dice <= 1).
+  const score = (i: number, j: number): number => {
     const an = aChildren[aStart + i];
     const bn = bChildren[bStart + j];
-    if (an.type.name !== bn.type.name) return false;
-    return diceSimilarity(an.textContent, bn.textContent) >= 0.5;
+    if (aHashes[aStart + i] === bHashes[bStart + j]) return 2;
+    if (an.type.name !== bn.type.name) return -1;
+    const aw = aWords[i];
+    const bw = bWords[j];
+    if (aw.length === 0 && bw.length === 0) return 1;
+    if (aw.length === 0 || bw.length === 0) return -1;
+    const bag = new Map<string, number>();
+    for (const w of aw) bag.set(w, (bag.get(w) ?? 0) + 1);
+    let common = 0;
+    for (const w of bw) {
+      const c = bag.get(w) ?? 0;
+      if (c > 0) {
+        common++;
+        bag.set(w, c - 1);
+      }
+    }
+    const dice = (2 * common) / (aw.length + bw.length);
+    const contain = Math.max(common / aw.length, common / bw.length);
+    return Math.max(dice, contain) >= 0.5 ? dice : -1;
   };
 
-  const dp: number[][] = Array.from({ length: aLen + 1 }, () => new Array(bLen + 1).fill(0));
+  // best[i][j]: best (pairs + total dice / (n + 1)) aligning a[i..] with b[j..].
+  const scale = 1 / (Math.min(aLen, bLen) + 1);
+  const pairScore: number[][] = Array.from({ length: aLen }, (_, i) => Array.from({ length: bLen }, (_, j) => score(i, j)));
+  const best: number[][] = Array.from({ length: aLen + 1 }, () => new Array(bLen + 1).fill(0));
   for (let i = aLen - 1; i >= 0; i--) {
     for (let j = bLen - 1; j >= 0; j--) {
-      dp[i][j] = canPair(i, j) ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      const s = pairScore[i][j];
+      const take = s >= 0 ? 1 + s * scale + best[i + 1][j + 1] : -Infinity;
+      best[i][j] = Math.max(take, best[i + 1][j], best[i][j + 1]);
     }
   }
 
@@ -190,11 +252,12 @@ function planGapOps(
   let i = 0;
   let j = 0;
   while (i < aLen && j < bLen) {
-    if (canPair(i, j)) {
-      ops.push({ kind: 'update', aIdx: aStart + i, bIdx: bStart + j });
+    const s = pairScore[i][j];
+    if (s >= 0 && best[i][j] === 1 + s * scale + best[i + 1][j + 1]) {
+      ops.push({ kind: s === 2 ? 'skip' : 'update', aIdx: aStart + i, bIdx: bStart + j });
       i++;
       j++;
-    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+    } else if (best[i][j] === best[i + 1][j]) {
       ops.push({ kind: 'delete', aIdx: aStart + i });
       i++;
     } else {
@@ -213,22 +276,52 @@ function planGapOps(
   return ops;
 }
 
-function planChildOps(aChildren: PMNode[], bChildren: PMNode[]): Op[] {
-  const aHashes = aChildren.map(semanticHash);
-  const bHashes = bChildren.map(semanticHash);
-  const matches = lcsMatches(aHashes, bHashes);
-
+function splitOnMatches(
+  aChildren: PMNode[],
+  bChildren: PMNode[],
+  aStart: number,
+  aEnd: number,
+  bStart: number,
+  bEnd: number,
+  matches: Array<[number, number]>,
+  aHashes: string[],
+  bHashes: string[],
+): Op[] {
   const ops: Op[] = [];
-  let prevA = 0;
-  let prevB = 0;
+  let prevA = aStart;
+  let prevB = bStart;
   for (const [ma, mb] of matches) {
-    ops.push(...planGapOps(aChildren, bChildren, prevA, ma, prevB, mb));
+    ops.push(...planGapOps(aChildren, bChildren, prevA, ma, prevB, mb, aHashes, bHashes));
     ops.push({ kind: 'skip', aIdx: ma, bIdx: mb });
     prevA = ma + 1;
     prevB = mb + 1;
   }
-  ops.push(...planGapOps(aChildren, bChildren, prevA, aChildren.length, prevB, bChildren.length));
+  ops.push(...planGapOps(aChildren, bChildren, prevA, aEnd, prevB, bEnd, aHashes, bHashes));
   return ops;
+}
+
+/**
+ * Patience-style alignment (orchestrator change after the gate I fuzz): anchor
+ * only on blocks whose semantic hash is unique on both sides, then align each
+ * gap with the weighted DP in `planGapOps`, where exact matches score highest.
+ * A plain LCS over all hashes matched a user-edited block that had become
+ * identical to another block ("Sentence with token inside it.") to that other
+ * block, splitting the real pair into a delete and an insert.
+ */
+function planChildOps(aChildren: PMNode[], bChildren: PMNode[]): Op[] {
+  const aHashes = aChildren.map(semanticHash);
+  const bHashes = bChildren.map(semanticHash);
+  const count = new Map<string, number>();
+  for (const h of aHashes) count.set(h, (count.get(h) ?? 0) + 1);
+  for (const h of bHashes) count.set(h, (count.get(h) ?? 0) + 1000);
+  const unique = (h: string) => count.get(h) === 1001;
+  const aU = aHashes.map((h, i) => [h, i] as const).filter(([h]) => unique(h));
+  const bU = bHashes.map((h, j) => [h, j] as const).filter(([h]) => unique(h));
+  const anchors = lcsMatches(
+    aU.map(([h]) => h),
+    bU.map(([h]) => h),
+  ).map(([i, j]) => [aU[i][1], bU[j][1]] as [number, number]);
+  return splitOnMatches(aChildren, bChildren, 0, aChildren.length, 0, bChildren.length, anchors, aHashes, bHashes);
 }
 
 // --- classifying a textblock's children into text-groups and leaves ------
@@ -560,6 +653,15 @@ function applyChildOps(
 export function applyDiff(yParent: Y.XmlFragment, aChildren: PMNode[], bChildren: PMNode[]): DiffCounters {
   const counters = newCounters();
   const ops = planChildOps(aChildren, bChildren);
+  if (process.env.PHRAISE_DEBUG) {
+    const short = (n: PMNode | undefined) => (n ? `${n.type.name}:${JSON.stringify(n.textContent.slice(0, 50))}` : '-');
+    for (const op of ops) {
+      if (op.kind === 'skip') continue;
+      const a = 'aIdx' in op ? aChildren[op.aIdx] : undefined;
+      const b = 'bIdx' in op ? bChildren[op.bIdx] : undefined;
+      console.error(`      ${op.kind} a=${short(a)} b=${short(b)}`);
+    }
+  }
   applyChildOps(yParent, ops, aChildren, bChildren, counters);
   return counters;
 }

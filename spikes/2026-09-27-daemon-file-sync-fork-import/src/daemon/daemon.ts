@@ -10,7 +10,7 @@ import * as Y from 'yjs';
 import { HocuspocusProvider } from '@hocuspocus/provider';
 
 import { DocSync, ORIGIN_IMPORT, type Author, type ImportResult } from '../core/docsync.js';
-import { hashText, type Version } from '../core/versions.js';
+import { chooseBase, hashText, type Version, type VersionOrigin } from '../core/versions.js';
 import { FRAGMENT_NAME, META_MAP_NAME } from '../md/yjs.js';
 import {
   readGitState,
@@ -88,6 +88,32 @@ type GitAction =
   | { kind: 'detached' }
   | { kind: 'reattach' }
   | { kind: 'rebased' };
+
+/** One persisted base candidate, stored content-addressed under `versions/`. */
+interface PersistedVersionRef {
+  key: string;
+  origin: VersionOrigin;
+  at: number;
+}
+
+function versionKey(v: Version): string {
+  const snap = Buffer.from(Y.encodeSnapshot(v.snapshot));
+  return `${v.hash.slice(0, 24)}-${hashText(snap.toString('base64')).slice(0, 16)}`;
+}
+
+/**
+ * Throws unless `snapshot` can be forked from `doc`: every clock it names must
+ * be present. Fails when the local state was lost and the relay's document was
+ * replaced, which is when the daemon must write a conflict copy instead.
+ */
+function assertForkable(doc: Y.Doc, snapshot: Y.Snapshot): void {
+  const sv = Y.encodeStateVector(doc);
+  const have = Y.decodeStateVector(sv);
+  for (const [client, clock] of snapshot.sv) {
+    if ((have.get(client) ?? 0) < clock) throw new Error(`snapshot needs client ${client} clock ${clock}`);
+  }
+  Y.createDocFromSnapshot(doc, snapshot, new Y.Doc({ gc: false }));
+}
 
 function readFullSync(fd: number, size: number): Buffer {
   const buf = Buffer.alloc(size);
@@ -221,16 +247,24 @@ export class Daemon extends EventEmitter {
     if (!persisted?.base) {
       await this.runAdoption(disk);
     } else {
-      this.currentVersion = this.docSync.restore(persisted.base);
+      // Restore every persisted base candidate, not only the latest version: the
+      // editor may hold a buffer older than the last thing the daemon wrote.
+      const restored = persisted.versions?.length
+        ? this.docSync.restoreVersions(persisted.versions)
+        : [this.docSync.restore(persisted.base)];
+      this.currentVersion =
+        restored.filter((v) => v.text === persisted.base!.text).pop() ?? restored[restored.length - 1];
+      this.lastKnown = persisted.base.text;
       if (disk === undefined) {
         await this.runExport();
       } else if (disk === persisted.base.text) {
         await this.runExport();
       } else {
         try {
-          // Validate the persisted snapshot can still be forked before trusting it as a base.
-          Y.createDocFromSnapshot(this.docSync.doc, persisted.base.snapshot, new Y.Doc({ gc: false }));
-          const result = this.docSync.importText(disk, { author: this.localAuthor(), base: this.currentVersion });
+          const choice = chooseBase(disk, this.docSync.candidates());
+          // Validate the chosen snapshot can still be forked before trusting it as a base.
+          assertForkable(this.docSync.doc, choice.base.snapshot);
+          const result = this.docSync.importText(disk, { author: this.localAuthor(), base: choice.base });
           this.recordImportEvent(result, 0);
           this.currentVersion = result.kind === 'ok' ? result.version : result.base;
           this.lastKnown = disk;
@@ -521,6 +555,8 @@ export class Daemon extends EventEmitter {
     this.emit('import', {
       hash: result.version.hash,
       base: result.base.hash,
+      baseOrigin: result.base.origin,
+      cost: result.cost,
       forked: result.forked,
       changedBlocks: result.counters.inserts + result.counters.deletes + result.counters.pairedUpdates,
       coarse: result.counters.coarseTextblocks,
@@ -772,6 +808,26 @@ export class Daemon extends EventEmitter {
       writeAtomic('base.snapshot', Buffer.from(Y.encodeSnapshot(this.currentVersion.snapshot)));
     }
     writeAtomic('ydoc.bin', Buffer.from(Y.encodeStateAsUpdate(this.docSync.doc)));
+
+    // Base candidates, content-addressed so a persist writes only new versions.
+    const versionsDir = path.join(this.stateDir, 'versions');
+    fs.mkdirSync(versionsDir, { recursive: true });
+    const refs: PersistedVersionRef[] = [];
+    for (const v of this.docSync.candidates()) {
+      const key = versionKey(v);
+      const mdPath = path.join(versionsDir, `${key}.md`);
+      if (!fs.existsSync(mdPath)) {
+        fs.writeFileSync(path.join(versionsDir, `${key}.snap`), Buffer.from(Y.encodeSnapshot(v.snapshot)));
+        fs.writeFileSync(mdPath, v.text);
+      }
+      refs.push({ key, origin: v.origin, at: v.at });
+    }
+    writeAtomic('versions.json', JSON.stringify(refs, null, 2));
+    const keep = new Set(refs.flatMap((r) => [`${r.key}.md`, `${r.key}.snap`]));
+    for (const name of fs.readdirSync(versionsDir)) {
+      if (!keep.has(name)) fs.rmSync(path.join(versionsDir, name), { force: true });
+    }
+
     const stateJson: PersistedStateJson = {
       docName: this.docName,
       relayUrl: this.relayUrl,
@@ -785,7 +841,12 @@ export class Daemon extends EventEmitter {
   }
 
   private loadPersistedState():
-    | { base?: Version; ydocUpdate?: Uint8Array; state?: PersistedStateJson }
+    | {
+        base?: Version;
+        ydocUpdate?: Uint8Array;
+        state?: PersistedStateJson;
+        versions?: Array<Pick<Version, 'text' | 'snapshot' | 'origin' | 'at'>>;
+      }
     | undefined {
     const baseMdPath = path.join(this.stateDir, 'base.md');
     const baseSnapPath = path.join(this.stateDir, 'base.snapshot');
@@ -806,6 +867,23 @@ export class Daemon extends EventEmitter {
     const state: PersistedStateJson | undefined = fs.existsSync(statePath)
       ? JSON.parse(fs.readFileSync(statePath, 'utf8'))
       : undefined;
-    return { base, ydocUpdate, state };
+
+    let versions: Array<Pick<Version, 'text' | 'snapshot' | 'origin' | 'at'>> | undefined;
+    const indexPath = path.join(this.stateDir, 'versions.json');
+    if (fs.existsSync(indexPath)) {
+      try {
+        const refs = JSON.parse(fs.readFileSync(indexPath, 'utf8')) as PersistedVersionRef[];
+        const dir = path.join(this.stateDir, 'versions');
+        versions = refs.map((r) => ({
+          text: fs.readFileSync(path.join(dir, `${r.key}.md`), 'utf8'),
+          snapshot: Y.decodeSnapshot(new Uint8Array(fs.readFileSync(path.join(dir, `${r.key}.snap`)))),
+          origin: r.origin,
+          at: r.at,
+        }));
+      } catch {
+        versions = undefined; // fall back to base.md alone
+      }
+    }
+    return { base, ydocUpdate, state, versions };
   }
 }
