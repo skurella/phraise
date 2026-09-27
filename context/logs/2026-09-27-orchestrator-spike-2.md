@@ -39,3 +39,9 @@ Gates G2 and H failed honestly. Dispatch 3 of ~10. I investigated both myself in
 
 ## 06:45 — Lead message received
 Lead asks (cheaply, within budget) to reproduce y-prosemirror losing root doc attrs and marks on inline atom nodes (e.g. link around image), test the same against loro-prosemirror and optionally the Yjs 14 RC binding, and recommend patch, fork, schema change or switch with costs. Folding into brief 04 (Loro).
+
+## 06:34 — Correction and brief 04 dispatched
+The three entries above headed 06:10, 06:40 and 06:45 carry estimated times; the actual time at this entry is 06:34, so they happened between 05:06 and 06:30. Brief 04 (Loro) written and dispatched to a Sonnet builder (dispatch 4).
+
+## 07:05 — Builder 4 (Loro) handback verified; lead procedure corrections noted
+Ran Loro spike myself: 10 tests pass, tsc clean, gates A to F, idempotence, 200-trial mini fuzz all pass (weaker fuzz than Yjs: one human, fewer generators, 6 batch orderings for D). Loro wins on per-character attribution (`getEditorOf`), JSON frontiers, and stable container IDs; loses on binding surface (131 lines reimplemented from loro-prosemirror internals), two API rough edges, 1.9x snapshot size. Risk noted: Loro base pointer is written after the frontiers it records, so chained rebases rely on LWW ordering of the `base` key (untested). Lead's procedure corrections received: no wall-clock budgets in briefs, timestamps only from `date`, long verification runs are mine. Brief 05 (binding fidelity plus Yjs 14 attribution probe) written with an ordered task list; dispatching (dispatch 5).
