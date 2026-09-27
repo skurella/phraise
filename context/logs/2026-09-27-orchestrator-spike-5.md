@@ -17,3 +17,12 @@ Gates A, B, C pass per builder; C 265/266 server-seeded, 266/266 client-loaded; 
 
 ## 08:56 — Verified brief 01; fixed root-attrs race
 Ran full `npm run gates` (64 s): A pass (23 ms median, poll-bound), B pass, negative control shows the loss, C 266/266 on both paths after my fix. Cause of the builder's 1/266: rootAttrsPlugin.appendTransaction compared doc.attrs with the map on every transaction, so when a remote update's fragment observer fired before the map observer it wrote the editor's default attrs over the synced map. npm-bull-readme is the only corpus file with non-default lead. Fix: write only when the transactions changed doc.attrs. Finding for the doc: the workaround is order-sensitive and easy to get subtly wrong; builder also found plugin order matters (leafMarks before rootAttrs).
+
+## 08:57 — Brief 02 dispatched (stack 14 core)
+
+## 09:35 — Brief 02 handback received
+Custom relay works; Hocuspocus alias fails on lib0 0.2/1.0 duplication (per builder); B pass without workarounds; C path A 266/266, path B 234/266 blamed on @y/prosemirror pmNodeDiff; 13->14 read ok, 14->13 fails. Commit 2138c19. Verifying the path B claim and retrying the Hocuspocus alias with lib0 overridden.
+
+## 09:41 — Verified brief 02; two corrections
+1. **Hocuspocus 4.7 does work with Yjs 14.** The builder's crash had two causes, both install-layout: two lib0 majors, and two module instances of @y/y (the npm alias installs @y/y a second time under node_modules/yjs, so Hocuspocus's Doc class differs from @y/prosemirror's; Yjs prints its 'already imported' warning). In a scratch copy with overrides lib0=$lib0 and node_modules/yjs, node_modules/y-protocols symlinked to @y/y, @y/protocols, the builder's own attempt-(a) relay and client synced two editors, carried root attrs and linked images, and /state matched (port 4271, stopped). Needs a postinstall dedupe step or a bundler alias.
+2. **@y/prosemirror 2.0.0-13 has its own atom-mark loss**, reproduced minimally in spikes/...yjs14-rc/scratch/probe-atom-mark-change.ts: when a transaction replaces an inline atom with one whose attrs AND marks differ (an 'edit image' dialog replacing the node; or any whole-doc replace), the new attrs sync but the old mark stays, in the originating editor too. Mark-only changes (removeMark/addMark) sync fine. Stack 13 with workarounds passes all five cases (twin probe in stack 13 scratch/). This is the real cause of stack 14 gate C path B 234/266.
