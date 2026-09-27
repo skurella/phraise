@@ -251,3 +251,73 @@ URL containing `_`/`&`/`?` is not escaped, and a link whose text was edited
 away from its href correctly falls back to `[text](url)`. `npm test`: 19/19
 pass (was 13/13; +6 new). `npx tsc --noEmit`: clean. `npm run gates --quick`:
 all gates still pass, no regression.
+
+## 05:32 -- task 5: harness/README fixes
+
+Gate E detail (`gates/index.ts`): now reports the total count of
+non-default-convention files (not just the passing count) and, when any
+fail, an explicit "Failing non-default files (n): ..." line; the table
+already listed both pass and fail rows, just wasn't summarized. Added the
+same (`nonDefaultTotal`, `nonDefaultFailingIds`) to `results/gates.json`.
+
+README: added the full serializer candidate ladder (verbatim -> text splice
+-> link splice -> textblock splice -> re-serialize, with trace kinds and
+when each applies), a "Tools (`tools/`)" section describing all six scripts,
+and a "The Yjs codec (`src/yjs.ts`)" section explaining what it fixes and why
+(gate A3's two y-prosemirror findings). Committed as its own commit.
+
+## 05:15-05:36 -- task 4: semantic line breaks (attempted; all three earlier
+tasks were done, so per the brief this was in scope)
+
+- `src/compare.ts`: `semanticEq(a, b, opts?)` gained an optional
+  `SemanticEqOpts` (`equateSoftBreaks?: boolean`), threaded recursively.
+  When set, text comparison normalizes `[ \t]*\n[ \t]*` runs to a single
+  space on both sides before comparing -- a lone `\n` with no trailing
+  spaces/backslash is a CommonMark soft break, semantically a space. Only
+  ever passed by serialize.ts's own verification of a
+  `semanticLineBreaks`-reformatted paragraph; every other caller (gates,
+  existing tests) is unaffected (defaults to the old strict behavior).
+- `src/serialize.ts`: `applySemanticLineBreaks(text)` splits after a
+  `.`/`!`/`?` followed by whitespace and an uppercase letter or digit,
+  replacing that whitespace with `\n`, skipping over "protected" spans found
+  by one combined regex first: backtick-delimited inline code (any fence
+  length), `[text](url)`/`[text][ref]` links and images, `<autolink>`, and
+  bare `https?://`/`www.` URLs. Wired in as a custom `paragraph` handler
+  (`makeParagraphHandler`, mirrors the `break` handler's wrap-the-default
+  pattern but there is no "default to fall back to" here -- it just calls
+  `defaultHandlers.paragraph` for the base text, then reformats) registered
+  only when `opts.semanticLineBreaks` is true, on both `reserializeBlock`
+  and `tryTextblockSplice` -- specifically NOT on `tryLinkSplice` (a
+  single-link edit, not a paragraph). Because the mdast `type: 'paragraph'`
+  handler key is what's overridden, it only ever fires for a *real* mdast
+  paragraph node, which naturally satisfies "only a paragraph, never a
+  heading/table cell" -- except `tryTextblockSplice` builds a synthetic
+  `{type:'paragraph', children: phrasing}` wrapper for ANY textblock kind
+  (to hand phrasing content to `toMarkdown`), so that path explicitly gates
+  the handler on `newTextblock.type.name === 'paragraph'` to avoid
+  reformatting a spliced heading/table-cell's fake wrapper.
+  `tryTextblockSplice`'s own existing container-line-prefix logic (added in
+  task 2, for a multi-line re-rendered textblock inside a list/blockquote)
+  turned out to need zero changes: a sentence-per-line paragraph is exactly
+  the "new content is multi-line" case it already re-applies the `>`/list
+  prefix for.
+- Verification at both call sites (`emit()`'s re-serialize check and
+  `tryTextblockSplice`'s own) now passes
+  `{ equateSoftBreaks: semanticLineBreaks }` (`applySLB` in the textblock
+  case, gated on the actual-paragraph check above) to `semanticEq`.
+
+Hand-verified (scratch script, removed after): a 3-paragraph doc, bold-toggle
+one word in the middle paragraph (forces `textblock-splice`, since a mark
+change can never go through the literal text-splice path) with
+`semanticLineBreaks: true` -- output reformats exactly that paragraph to one
+sentence per line, the other two paragraphs are byte-identical, and
+`semanticEq(reparsed, newDoc, {equateSoftBreaks:true})` is `true` (plain
+`semanticEq` without the option is correctly `false`, since the reparsed
+text now has embedded `\n` where the edited doc's PM text has plain spaces).
+
+Added test 11 to `test/fidelity.test.ts`: same scenario as above, asserting
+the three reformatted lines are present verbatim, both neighboring
+paragraphs are present unchanged, and the soft-break-aware `semanticEq`
+holds. `npm test`: 20/20 pass. `npx tsc --noEmit`: clean. `npm run gates
+--quick`: all gates still pass (B2/E numbers essentially unchanged, since
+gates never pass `semanticLineBreaks`).

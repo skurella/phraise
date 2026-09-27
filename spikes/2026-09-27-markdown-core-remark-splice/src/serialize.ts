@@ -208,7 +208,7 @@ function tryLinkSplice(block: PMNode, src: string, ctx: string, style: Style): s
  * that change marks (bold/italic/link) that a literal splice cannot express.
  * Every candidate is still verified before being returned.
  */
-function tryTextblockSplice(block: PMNode, src: string, ctx: string, style: Style): string | null {
+function tryTextblockSplice(block: PMNode, src: string, ctx: string, style: Style, semanticLineBreaks: boolean): string | null {
   const { node: old, positions } = parseBlock(src, ctx, { map: true });
   if (!positions || old.type !== block.type) return null;
 
@@ -279,7 +279,15 @@ function tryTextblockSplice(block: PMNode, src: string, ctx: string, style: Styl
   newTextblock.forEach((n) => nodes.push(n));
   const phrasing = pmInlineToMdast(nodes);
   const options = optionsFor(block, style, true);
-  const tbExtensions = [...toMarkdownExtensions, { handlers: { break: makeBreakHandler(true) } }];
+  // Semantic line breaks (brief 04, task 4) only ever apply to an actual
+  // paragraph textblock -- this wrapper node is `type: 'paragraph'` purely
+  // so mdast-util-to-markdown has something to hand phrasing content to; for
+  // a heading or table cell being textblock-spliced it must not trigger.
+  const applySLB = semanticLineBreaks && newTextblock.type.name === 'paragraph';
+  const tbExtensions = [
+    ...toMarkdownExtensions,
+    { handlers: { break: makeBreakHandler(true), paragraph: makeParagraphHandler(applySLB) } },
+  ];
   let newInline = toMarkdown(
     { type: 'paragraph', children: phrasing.map(simplifyLiteralLinks) } as any,
     { extensions: tbExtensions, ...options } as any
@@ -302,7 +310,7 @@ function tryTextblockSplice(block: PMNode, src: string, ctx: string, style: Styl
 
   const candidate = src.slice(0, innerStart) + replacedInner + src.slice(innerEnd);
   const r = parseBlock(candidate, ctx);
-  return r.count === 1 && semanticEq(r.node, block) ? candidate : null;
+  return r.count === 1 && semanticEq(r.node, block, { equateSoftBreaks: applySLB }) ? candidate : null;
 }
 
 /**
@@ -570,6 +578,43 @@ function makeBreakHandler(useHints: boolean) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Semantic line breaks (brief 04, task 4): one sentence per line, only for a
+// re-serialized or textblock-spliced paragraph.
+// ---------------------------------------------------------------------------
+
+/**
+ * Split after a `.`, `!`, or `?` that is followed by whitespace and then an
+ * uppercase letter or digit, replacing that whitespace with a single
+ * newline (a CommonMark soft break -- semantically still just a space).
+ * Never splits inside a protected span: inline code (backtick-delimited, any
+ * fence length), a link/image (`[...](...)`/`[...][...]`), an autolink
+ * (`<...>`), or a bare URL -- those are matched and passed through untouched
+ * before the sentence-boundary regex ever sees their contents.
+ */
+function applySemanticLineBreaks(text: string): string {
+  const protectedRe = /(`+)[\s\S]*?\1(?!`)|!?\[[^\]\n]*\]\([^)\n]*\)|!?\[[^\]\n]*\]\[[^\]\n]*\]|<[^ <>\n]+>|\bhttps?:\/\/\S+|\bwww\.\S+/g;
+  const splitSentences = (segment: string) => segment.replace(/([.!?])[ \t]+(?=[A-Z0-9])/g, '$1\n');
+
+  let result = '';
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = protectedRe.exec(text))) {
+    result += splitSentences(text.slice(last, m.index));
+    result += m[0];
+    last = m.index + m[0].length;
+  }
+  result += splitSentences(text.slice(last));
+  return result;
+}
+
+function makeParagraphHandler(semanticLineBreaks: boolean) {
+  return (node: any, parent: any, state: any, info: any): string => {
+    const def = defaultHandlers.paragraph(node, parent, state, info);
+    return semanticLineBreaks ? applySemanticLineBreaks(def) : def;
+  };
+}
+
 /**
  * Re-serializer fidelity (brief 04, task 3): a link mark's `kindHint`
  * ('literal', the GFM bare-URL/bare-email autolink form with no surrounding
@@ -602,10 +647,13 @@ function simplifyLiteralLinks(node: any): any {
   return node;
 }
 
-function reserializeBlock(block: PMNode, style: Style, useHints: boolean, eol: '\n' | '\r\n'): string {
+function reserializeBlock(block: PMNode, style: Style, useHints: boolean, eol: '\n' | '\r\n', semanticLineBreaks: boolean): string {
   const mdastNode = useHints ? simplifyLiteralLinks(pmBlockToMdast(block)) : pmBlockToMdast(block);
   const options = optionsFor(block, style, useHints);
-  const reserializeExtensions = [...toMarkdownExtensions, { handlers: { break: makeBreakHandler(useHints) } }];
+  const reserializeExtensions = [
+    ...toMarkdownExtensions,
+    { handlers: { break: makeBreakHandler(useHints), paragraph: makeParagraphHandler(semanticLineBreaks) } },
+  ];
   let out = toMarkdown(mdastNode, { extensions: reserializeExtensions, ...options } as any);
   out = out.replace(/\n+$/, '');
   if (eol === '\r\n') out = out.replace(/\n/g, '\r\n');
@@ -620,6 +668,7 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
   const useHints = opts.useHints ?? true;
   const forceReserialize = opts.forceReserialize ?? false;
   const noSplice = opts.noSplice ?? false;
+  const semanticLineBreaks = opts.semanticLineBreaks ?? false;
   const trace = opts.trace;
 
   clearParseBlockCache();
@@ -667,7 +716,7 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
           let tbSpliced: string | null = null;
           if (!opts.noTextblockSplice) {
             try {
-              tbSpliced = tryTextblockSplice(block, src, ctx, style);
+              tbSpliced = tryTextblockSplice(block, src, ctx, style, semanticLineBreaks);
             } catch {
               tbSpliced = null;
             }
@@ -680,11 +729,11 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
       }
     }
 
-    const result = reserializeBlock(block, style, useHints, eol);
+    const result = reserializeBlock(block, style, useHints, eol, semanticLineBreaks);
     let verified = false;
     try {
       const r = parseBlock(result, ctx);
-      verified = r.count === 1 && semanticEq(r.node, block);
+      verified = r.count === 1 && semanticEq(r.node, block, { equateSoftBreaks: semanticLineBreaks });
     } catch {
       verified = false;
     }

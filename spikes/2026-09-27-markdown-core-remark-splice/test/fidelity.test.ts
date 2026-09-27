@@ -6,7 +6,8 @@
 // does).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMarkdown, serializeDoc } from '../src/index.js';
+import { EditorState } from 'prosemirror-state';
+import { parseMarkdown, serializeDoc, schema, semanticEq, type TraceInfo } from '../src/index.js';
 
 test('hard break hint: a two-space break re-serializes as two spaces, not a backslash', () => {
   const md = 'Line one with a break  \nLine two continues.\n';
@@ -95,4 +96,58 @@ test('literal autolink hint: kept as [text](url) once the visible text no longer
 
   const out = serializeDoc(renamed as any, { forceReserialize: true, useHints: true });
   assert.match(out, /\[the docs\]\(https:\/\/example\.com\/foo\)/, 'must fall back to bracketed form once text != url');
+});
+
+test('semantic line breaks: an edited paragraph is reformatted one sentence per line; neighbours stay byte-identical', () => {
+  const md = [
+    'First paragraph, untouched. It has two sentences already.',
+    '',
+    'Second paragraph has a word to edit. This sentence follows it. And a third one here.',
+    '',
+    'Third paragraph, also untouched. Stays as is.',
+    '',
+  ].join('\n');
+  const { doc } = parseMarkdown(md);
+  doc.check();
+
+  const re = /\bword\b/;
+  let range: { from: number; to: number } | null = null;
+  doc.descendants((node, pos) => {
+    if (range) return false;
+    if (node.isText && node.text) {
+      const m = re.exec(node.text);
+      if (m) range = { from: pos + m.index, to: pos + m.index + m[0].length };
+    }
+    return true;
+  });
+  assert.ok(range, 'expected to find "word" in the doc');
+  const { from, to } = range as { from: number; to: number };
+
+  // A mark-only edit (never a plain word replacement) so it cannot go
+  // through the text-splice path, which never applies semantic line breaks.
+  const tr = EditorState.create({ doc }).tr.addMark(from, to, schema.marks.strong.create());
+  const newDoc = tr.doc;
+  newDoc.check();
+
+  const traces: TraceInfo[] = [];
+  const out = serializeDoc(newDoc, { semanticLineBreaks: true, trace: (info) => traces.push(info) });
+  assert.ok(
+    traces.some((t) => t.kind === 'textblock-splice' || t.kind === 're-serialize'),
+    `expected the edited paragraph to go through textblock-splice or re-serialize, got [${traces.map((t) => t.kind).join(', ')}]`
+  );
+
+  const lines = out.split('\n');
+  assert.ok(lines.includes('First paragraph, untouched. It has two sentences already.'), 'first paragraph must be byte-identical');
+  assert.ok(lines.includes('Third paragraph, also untouched. Stays as is.'), 'third paragraph must be byte-identical');
+
+  assert.ok(lines.includes('Second paragraph has a **word** to edit.'), 'edited paragraph: first sentence on its own line');
+  assert.ok(lines.includes('This sentence follows it.'), 'edited paragraph: second sentence on its own line');
+  assert.ok(lines.includes('And a third one here.'), 'edited paragraph: third sentence on its own line');
+
+  const { doc: reparsed } = parseMarkdown(out);
+  reparsed.check();
+  assert.ok(
+    semanticEq(reparsed, newDoc, { equateSoftBreaks: true }),
+    'must re-parse to a semantically equal doc once soft breaks and single spaces are treated as equal'
+  );
 });

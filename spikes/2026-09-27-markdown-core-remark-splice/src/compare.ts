@@ -38,17 +38,35 @@ function marksEqual(a: readonly Mark[], b: readonly Mark[]): boolean {
   return true;
 }
 
-export function semanticEq(a: PMNode, b: PMNode): boolean {
+export interface SemanticEqOpts {
+  /**
+   * Brief 04, task 4 (semantic line breaks): treat a soft line break
+   * (a lone `\n`, with any adjacent horizontal whitespace) the same as a
+   * single space when comparing text. Only ever passed by serialize.ts's own
+   * verification of a `semanticLineBreaks`-reformatted paragraph -- normal
+   * callers (gates, tests) never set this, so a genuine, user-authored
+   * newline is still a real difference everywhere else.
+   */
+  equateSoftBreaks?: boolean;
+}
+
+function normalizeSoftBreaks(text: string): string {
+  return text.replace(/[ \t]*\n[ \t]*/g, ' ');
+}
+
+export function semanticEq(a: PMNode, b: PMNode, opts?: SemanticEqOpts): boolean {
   if (a === b) return true;
   if (a.type !== b.type) return false;
   if (a.isText) {
-    if (a.text !== b.text) return false;
+    const ta = opts?.equateSoftBreaks ? normalizeSoftBreaks(a.text ?? '') : a.text;
+    const tb = opts?.equateSoftBreaks ? normalizeSoftBreaks(b.text ?? '') : b.text;
+    if (ta !== tb) return false;
   }
   if (!semanticAttrsEqual(a.attrs, b.attrs)) return false;
   if (!marksEqual(a.marks, b.marks)) return false;
   if (a.childCount !== b.childCount) return false;
   for (let i = 0; i < a.childCount; i++) {
-    if (!semanticEq(a.child(i), b.child(i))) return false;
+    if (!semanticEq(a.child(i), b.child(i), opts)) return false;
   }
   return true;
 }

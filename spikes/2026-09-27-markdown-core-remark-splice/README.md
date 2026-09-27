@@ -64,6 +64,15 @@ An `opaque-edit` trace kind covers the analogous case for a `raw_block`
 (front matter, HTML, math, ...) whose text content was itself edited
 directly.
 
+`serializeDoc(doc, { semanticLineBreaks: true })` reformats a paragraph one
+sentence per line whenever it goes through candidate 4 or 5 above (never
+verbatim or a text splice): a custom `paragraph` handler splits after a `.`,
+`!`, or `?` followed by whitespace and an uppercase letter or digit, skipping
+protected spans (inline code, links, autolinks, bare URLs). Since a plain
+`\n` with no trailing spaces/backslash is just a CommonMark soft break (a
+space, semantically), `semanticEq(a, b, { equateSoftBreaks: true })` treats
+one the same as a single space for this mode's own verification only.
+
 ### Tools (`tools/`)
 
 Small standalone scripts (`npx tsx tools/<name>.ts [args]`), not part of
