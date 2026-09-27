@@ -1,6 +1,6 @@
 # Log: spike 1 orchestrator, block-preserving Markdown round trip
 
-Status: active
+Status: done
 Author: spike orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Charter: [spike 1 charter](../plans/2026-09-27-spike-1-charter-markdown-round-trip.md)
@@ -77,3 +77,9 @@ From a fresh clone, `npm test` failed because two tests read the fetched corpus.
 
 ## 06:20 — findings doc and decision register rows S1-1 to S1-8 written
 Timing (tools/timing.ts): median 22 ms parse, 22 ms serialize per README; worst 2 s each for a 240 KB file. Recorded as a risk.
+
+## 06:35 — clean checkout verified
+Fresh clone of the branch at 419773e into the scratchpad: `npm ci`, `npm run gates` (fetches the corpus, all gates pass, exit 0), `npm test` 22/22. Numbers identical to the committed `results/gates.md`.
+
+## 06:36 — handback
+Dispatches used: 5 of about 8 (grinder, core builder, gates builder, structural builder, reviewer). Both builders that ran full gate runs ran out of session before committing final results; I ran and committed them. Handback sent to the lead with gate table, D4 and D10b recommendation, decisions to review first (S1-4, S1-6, S1-2), and what was left out.
