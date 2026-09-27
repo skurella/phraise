@@ -1,9 +1,37 @@
-# Stack 14: `@y/y` 14.0.0-rc.26 + `@y/prosemirror` 2.0.0-13, a custom relay
+# Stack 14: `@y/y` 14.0.0-rc.26 + `@y/prosemirror` 2.0.0-13, on Hocuspocus
 
-Status: brief 02 (gates A, B, C-equivalent, Yjs 13/14 compatibility probe) done. See
-[the log](../../context/logs/2026-09-27-builder-spike-5-stack14-core.md) for the
-full narrative, including the two real bugs found and fixed along the way and
-one that was found and **not** fixed (a genuine upstream bug, out of scope).
+Status: brief 04 (Hocuspocus relay, gates B3, G, E, D) done, on top of brief
+02 (gates A, B, C-equivalent, Yjs 13/14 compatibility probe). See
+[brief 02's log](../../context/logs/2026-09-27-builder-spike-5-stack14-core.md)
+and [brief 04's log](../../context/logs/2026-09-27-builder-spike-5-stack14-deg.md)
+for the full narrative.
+
+**Relay decision (brief 04, task 1): Hocuspocus 4.7 now works and is the
+primary relay.** Brief 02's attempt (a) (Hocuspocus + npm `overrides`
+aliasing `yjs`/`y-protocols` to `@y/y`/`@y/protocols`) crashed the moment a
+real client connected, root-caused to two incompatible `lib0` major
+versions coexisting in one process (Hocuspocus's own `^0.2.117` vs `@y/y`'s
+`^1.0.0-rc.29`) -- an `npm:`-aliased package installs under the overridden
+name's own directory, physically separate on disk from the real scoped
+package despite identical content, so Yjs's cross-import guard still fires
+and the two `lib0` copies never dedupe. **Fix**: `scripts/postinstall-dedupe.mjs`,
+run as this package's own `postinstall`, replaces `node_modules/yjs` and
+`node_modules/y-protocols` with **symlinks** to `node_modules/@y/y` and
+`node_modules/@y/protocols` after every install, plus a `"lib0": "$lib0"`
+override (npm's "resolve every dependent's range against the root's own
+version" syntax) so Hocuspocus's own nested `lib0` copy is forced onto the
+project's single `lib0@1.0.0-rc.33`. Confirmed directly: exactly one `lib0`
+directory exists anywhere under `node_modules` after install, `(await
+import('yjs')).Doc === (await import('@y/y')).Doc`, and a real client can
+connect, sync and edit without crashing
+(`scratch/tmp-hp-dedupe-test.ts`, removed once the finding was logged --
+its result is what this paragraph reports). `src/relay-hocuspocus.ts` /
+`src/client-hocuspocus.ts` (promoted from brief 02's
+`relay-attempt-a-hocuspocus.ts` / `client-attempt-a-hocuspocus.ts`, renamed)
+are now what every gate below uses. The brief 02 custom relay is kept as
+`src/relay-custom.ts` / `src/client-custom.ts`, selectable via
+`startRelay({ relay: 'custom' })` -- gate A runs on both (see "Gates"
+below); every other gate runs on Hocuspocus only, per the brief.
 
 ## Goal
 
@@ -27,9 +55,13 @@ copied from stack 13's own directory
 `corpus/specs.json`, `corpus/handwritten/*.md`, `scripts/fetch-corpus.mjs`,
 `scripts/quick-roundtrip.ts`, `gates/lib/edits.ts` (gate B's edit script,
 kept byte-identical in substance, per the brief -- only the binding calls in
-`src/client.ts` differ). `src/index.ts` was adjusted (no
-`encodeLeafMarks`/`decodeLeafMarks` re-exports -- there is no leaf-marks
-workaround in this stack).
+the client differ, in what was then `src/client.ts` and is now
+`src/client-hocuspocus.ts`/`src/client-custom.ts`). `src/index.ts` was
+adjusted (no `encodeLeafMarks`/`decodeLeafMarks` re-exports -- there is no
+leaf-marks workaround in this stack). **Brief 04 addendum**: `src/schema.ts`
+is no longer byte-identical to spike 1's -- it gained the four canonical
+`y-attributed-*` marks gate E part (b) needs (additive only; see that
+gate's README entry below for exactly what was added and why).
 
 Spike 2's Yjs 14 binding probe (branch `spike/2026-09-27-crdt-rebase` at
 `88bd85c`, directory `spikes/2026-09-27-crdt-rebase-binding-probe/`,
@@ -48,62 +80,93 @@ was copied (it uses its own tiny schema, not spike 1's).
   with `ynodeToPmnode(ytype, schema)`. Both of stack 13's losses (root `doc`
   attrs, marks on inline atom nodes) are structurally fixed in this binding
   -- see the file's header for why.
-- `src/relay.ts`, `src/client.ts` -- **attempt (b)**, the relay and client
-  actually used by the gates (below): a minimal custom relay on `ws` and
-  `@y/protocols`, and a small hand-rolled provider on the client side, both
-  speaking the same wire protocol as the reference `y-websocket`
-  implementation. See "Relay attempts" below for why, and why not Hocuspocus.
-- `src/relay-attempt-a-hocuspocus.ts`, `src/client-attempt-a-hocuspocus.ts`
-  -- **attempt (a)**, kept for reference/reproducibility, not used by the
-  gate runner: Hocuspocus 4.7 + SQLite persistence with npm `overrides`
-  aliasing `yjs`/`y-protocols` to `@y/y`/`@y/protocols`. Crashes the moment a
-  real client connects (see below); not wired into `scripts/gates.ts`.
-- `src/harness.ts` -- `startRelay()`/`stopRelay()`, identical in substance to
-  stack 13's (spawns whichever `src/relay.ts` as a real child process).
-- `gates/gateA.ts`, `gates/gateB.ts`, `gates/gateC.ts` -- the three gates,
-  same shape as stack 13's; `gates/lib/edits.ts` (byte-identical to stack
-  13's) and `gates/lib/equality.ts` (adapted: no codec/no-codec distinction,
-  since there is no workaround and no `plain:` negative control here).
-- `scripts/gates.ts` -- the gate runner, same shape as stack 13's.
+- `src/relay-hocuspocus.ts`, `src/client-hocuspocus.ts` -- **the primary
+  relay from brief 04 on** (renamed/promoted from brief 02's
+  `relay-attempt-a-hocuspocus.ts` / `client-attempt-a-hocuspocus.ts`):
+  Hocuspocus 4.7 + SQLite persistence, npm `overrides` aliasing
+  `yjs`/`y-protocols`/`lib0`, PLUS the `postinstall` symlink dedupe that
+  actually makes it work (see "Relay decision" above). Used by gates
+  B3/D/E/G and by gate A/B/C's default. Extended this brief with
+  `onAuthenticate`/`onChange` attribution wiring (`src/attribution.ts`),
+  `--debounce`/`--maxDebounce`/`--no-attribution` flags, and a SIGTERM
+  handler (`flushPendingStores`) for gate G's graceful-restart scenario.
+- `src/relay-custom.ts`, `src/client-custom.ts` -- brief 02's **attempt
+  (b)**, renamed (unchanged in substance): a minimal custom relay on `ws`
+  and `@y/protocols`, kept as the `relay: 'custom'` alternative (gate A
+  runs on both -- see "Relay decision" above).
+- `src/harness.ts` -- `startRelay()`/`stopRelay()`; extended this brief with
+  a `relay: 'hocuspocus' | 'custom'` flavor (default `'hocuspocus'`) that
+  picks which of the two relay scripts above to spawn, plus
+  `debounce`/`maxDebounce`/`noAttribution` passthrough for the Hocuspocus
+  flavor.
+- `src/attribution.ts` -- gate E part (a)'s design: `@y/y`'s own
+  `IdMap`/`createContentAttribute`, not a hand-rolled map (see the
+  "Gates" section's E entry for the full account and why).
+- `src/tiptapExtensions.ts` -- the generic schema-to-Tiptap-extensions
+  converter (copied unchanged in substance from stack 13's; it's
+  schema-agnostic).
+- `src/tiptapClient.ts` -- gate D's Tiptap 3 live client: custom
+  `Extension.create()` wrappers around `@y/prosemirror`'s
+  `syncPlugin`/`yCursorPlugin`/`yUndoPlugin` (see the "Gates" section's D
+  entry for line counts and why Tiptap's own collaboration extensions
+  cannot be used here).
+- `gates/gateA.ts`, `gates/gateB.ts`, `gates/gateC.ts` -- the three gates
+  from brief 02, extended this brief: `gateA.ts` takes a `relay` flavor
+  param (runs on both); `gateB.ts`/`gateC.ts` now default to the Hocuspocus
+  client. `gates/lib/edits.ts` (byte-identical to stack 13's) and
+  `gates/lib/equality.ts` (adapted: no codec/no-codec distinction, since
+  there is no workaround and no `plain:` negative control here).
+- `gates/gateB3.ts`, `gates/gateD.ts`, `gates/gateE.ts` (+
+  `gates/gateE-suggestion.ts`), `gates/gateG.ts` -- this brief's four new
+  gates; see "Gates" below for each.
+- `scripts/postinstall-dedupe.mjs` -- this brief's fix for the Hocuspocus
+  dedupe problem (see "Relay decision" above); runs as this package's own
+  `postinstall`.
+- `scripts/gates.ts` -- the gate runner, extended with rows B3, D, E, G and
+  gate A's both-relays comparison.
 - `compat/` -- a **separate subpackage** (own `package.json`, own
   `node_modules`, no npm `overrides`) for task 6's Yjs 13 / Yjs 14
   compatibility probe: real `yjs@13.6.33` + `y-prosemirror@1.3.7` alongside
   `@y/y` + `@y/prosemirror`, unaliased. `compat/scripts/compat.ts` (`npm run
-  compat` from `compat/`) -- see "Compatibility probe" below.
-- `scratch/` -- standalone debugging scripts written while chasing the two
-  bugs below (`probe-alias.mjs`, `smoke-one-client.ts`,
-  `smoke-two-clients.ts`, `debug-pathb-pair.ts`); not part of the gate
+  compat` from `compat/`) -- see "Compatibility probe" below. Unchanged
+  this brief.
+- `scratch/` -- standalone debugging scripts (brief 02's
+  `probe-alias.mjs`, `smoke-one-client.ts`, `smoke-two-clients.ts`,
+  `debug-pathb-pair.ts`; this brief's `probe-atom-mark-change.ts` (gate
+  B3's basis), `probe-collision.ts` and `probe-suggestion-mode.ts`, both
+  showing a failed first attempt and the fix); not part of the gate
   runner, excluded from `tsconfig.json`, kept as reproducible evidence.
 
-## Relay attempts (brief task 2)
+## Relay decision detail (brief 04 task 1; brief 02 task 2's attempts)
 
-**(a) Hocuspocus 4.7 + npm `overrides` aliasing `yjs`/`y-protocols` to
-`@y/y`/`@y/protocols` -- fails.** `npm install` needed `yjs`/`y-protocols`
-removed from direct `dependencies` (an explicit direct dependency conflicts
-with an `overrides` entry for the same name; they only need to exist as
+**Brief 02's attempt (a): Hocuspocus 4.7 + npm `overrides` aliasing
+`yjs`/`y-protocols` to `@y/y`/`@y/protocols` -- crashed then, fixed now.**
+`npm install` needed `yjs`/`y-protocols` removed from direct
+`dependencies` (an explicit direct dependency conflicts with an
+`overrides` entry for the same name; they only need to exist as
 Hocuspocus's own peerDependencies, which the override then redirects).
-Install then succeeds, and the relay alone starts and serves `/state` fine
--- but the moment a real client connects and the sync handshake runs, it
-crashes with `RangeError: Maximum call stack size exceeded` in
-`lib0/encoding.js`'s `writeAny`. Root cause, confirmed directly: the
+Install then succeeded, and the relay alone started and served `/state`
+fine -- but the moment a real client connected and the sync handshake ran,
+it crashed with `RangeError: Maximum call stack size exceeded` in
+`lib0/encoding.js`'s `writeAny`. Root cause, confirmed directly then: the
 top-level `node_modules/lib0` (used by `@hocuspocus/common`/`server`/
-`provider`, which declare `lib0: ^0.2.117`) is `0.2.118`, while the aliased
-`yjs` (really `@y/y`) and `@y/prosemirror` each carry their **own nested**
-`node_modules/lib0` at `1.0.0-rc.33` (satisfying `@y/y`'s `lib0:
-^1.0.0-rc.29`) -- two incompatible major versions of `lib0`'s
-`Encoder`/`Decoder` coexist in one process, and the sync handshake ends up
-handing an object built by one to code built against the other. This is a
-transitive dependency-range split baked into the packages' own published
-`package.json`s, not fixable locally. Kept as
-`src/relay-attempt-a-hocuspocus.ts` / `src/client-attempt-a-hocuspocus.ts`
-for reference; `@hocuspocus/*` and the `overrides` block remain in
-`package.json` so that code still resolves, but nothing in the gate runner
-uses it.
+`provider`, which declare `lib0: ^0.2.117`) was `0.2.118`, while the
+aliased `yjs` (really `@y/y`) and `@y/prosemirror` each carried their
+**own nested** `node_modules/lib0` at `1.0.0-rc.33` -- two incompatible
+major versions of `lib0`'s `Encoder`/`Decoder` coexisting in one process.
+**This brief's fix**: `scripts/postinstall-dedupe.mjs` (see "Relay
+decision" at the top of this README) replaces the override-installed
+directories with symlinks to the real `@y/*` packages, so there is exactly
+one copy of each on disk. Confirmed working end to end: gates A, B, C, B3,
+D, E and G all pass against Hocuspocus (except the two documented upstream
+issues below).
 
-**(b) A minimal custom relay on `ws` and `@y/protocols` -- works, used by
-the gates.** `src/relay.ts` + `src/client.ts` (see "Layout" above). Two real
-bugs found and fixed before this worked (full detail, including the exact
-crashes and the debugging steps, in the log):
+**Brief 02's attempt (b): a minimal custom relay on `ws` and
+`@y/protocols`.** `src/relay-custom.ts` + `src/client-custom.ts` (renamed
+this brief, unchanged in substance -- see "Layout" above). Kept as the
+`relay: 'custom'` alternative per this brief's task 1. Two real bugs found
+and fixed while building it (full detail, including the exact crashes and
+the debugging steps, in the brief 02 log):
 
 1. The **same duplicate-`lib0` problem as attempt (a)**, one level deeper:
    this stack's own code imports bare `lib0/encoding`/`lib0/decoding`
@@ -126,7 +189,8 @@ crashes and the debugging steps, in the log):
    `Maximum call stack`, both lib0 `error.create()`-produced errors whose
    `.stack` is frozen at module-load time, which is genuinely confusing
    until you know that). Fixed by tightening the guard to `<= 1` in both
-   `src/relay.ts` and `src/client.ts` (comments there explain why).
+   `src/relay-custom.ts` and `src/client-custom.ts` (renamed this brief;
+   comments there explain why).
 
 **(c) Stock Hocuspocus with real Yjs 13 relaying Yjs 14 clients --
 measured, not built, per the brief ("expected to fail; record how").** See
@@ -148,10 +212,10 @@ messages even before any Yjs-version question arises.
 ## Running
 
 ```bash
-npm ci
-npm run fetch        # corpus/fetched/ (gitignored), if missing
-npm run gates:quick  # gates A, B, C on a 5-file corpus sample -- ~4s
-npm run gates        # same, C over the full real corpus (266 files) -- ~65s
+npm ci                # runs postinstall-dedupe.mjs automatically
+npm run fetch         # corpus/fetched/ (gitignored), if missing
+npm run gates:quick   # A (both relays), B, C (5-file sample), B3, D, E, G (short) -- ~15s
+npm run gates         # same, full corpus for C, full D/E/G scenarios -- ~90s
 npx tsc --noEmit
 
 cd compat && npm install && npm run compat && npx tsc --noEmit
@@ -165,15 +229,17 @@ block, plus a process-level exit hook); checked directly with
 
 ## Gates
 
-- **A. Relay**: same script as stack 13's gate A (two live editors, each
-  typing into a different paragraph, then 20 single-character round trips).
-  **PASS**, median round-trip latency 23.0ms (stack 13: ~20-23ms; same
-  polling-interval caveat as stack 13's gate A applies here too -- not a
-  real network measurement).
-- **B. Schema fidelity while editing**: the plan's identical scripted edit
-  sequence (`gates/lib/edits.ts`, byte-identical to stack 13's) on
-  `fixtures/live.md`, **with no workaround plugins at all** (there are
-  none). **PASS**: editor1, editor2 and the relay's stored document are
+- **A. Relay**, run on BOTH relay flavors (brief 04 task 1): same script as
+  stack 13's gate A (two live editors, each typing into a different
+  paragraph, then 20 single-character round trips). **PASS on both** --
+  custom relay ~23ms median round-trip latency, Hocuspocus ~22-23ms median
+  -- no material difference (same polling-interval caveat as stack 13's
+  gate A applies to both -- not a real network measurement).
+- **B. Schema fidelity while editing** (now against Hocuspocus): the plan's
+  identical scripted edit sequence (`gates/lib/edits.ts`, byte-identical to
+  stack 13's) on `fixtures/live.md`, **with no workaround plugins at all**
+  (there are none). **PASS**: editor1, editor2 and the relay's stored
+  document are
   semantically equal and byte-identical on `serializeDoc`; every linked
   image (`badge.svg` across split/join, `logo.png`, `icon.png` -- a link
   mark added live mid-session -- and `pasted.png` from the paste step) kept
@@ -181,8 +247,12 @@ block, plus a process-level exit hook); checked directly with
   workaround to demonstrate the absence of). Brief-specific extra check:
   the number of Yjs updates stops growing after settling -- **stable at 23**
   immediately after convergence and 500ms later.
-- **C. Corpus round trip (no workaround needed)**: both of stack 13's gate C
-  paths, over the full 266-file real corpus.
+- **C. Corpus round trip (no workaround needed)**, now against Hocuspocus,
+  both of stack 13's gate C paths, over the full 266-file real corpus.
+  Task 6: encoded state size confirmed to match brief 02's custom-relay
+  figure (18.70MB then, 18.73-18.74MB here across runs -- the same order,
+  small run-to-run variance from timestamp-bearing bytes, not a relay
+  difference).
   - **Path A (server-seeded, fresh document per file): 266/266.** This is
     how Phraise actually loads documents (D1: re-seed from commits), and
     it's perfect.
@@ -216,6 +286,162 @@ block, plus a process-level exit hook); checked directly with
 
   Compare: spike 1's own plain-y-prosemirror measurement, 160/294; stack
   13's gate C (with its two workarounds): 265/266 path A, 266/266 path B.
+
+- **B3. Inline atom link edits** (brief 04 task 2): five cases from
+  `scratch/probe-atom-mark-change.ts`, run live against Hocuspocus. **FAIL,
+  as the brief expects**: cases 0-2 (initial state, an image link's own
+  href change, unlinking it) pass; cases 3-4 (a whole-document replace, and
+  a single-node `replaceWith`, each changing an image's own `url` attr
+  together with its `link` mark's `href` in the same edit) both fail --
+  the new `url` lands but the OLD mark is kept. Root cause, as far as this
+  brief's budget allows finding it cheaply (a local, reverted
+  `node_modules` instrumentation confirmed the branch taken, see the log):
+  the failing cases DO take the "structural window" `delta.diff` path in
+  `@y/prosemirror`'s `sync-utils.js` `pmNodeDiff` (not the "modify in
+  place" fast path that skips marks by construction), so the mark loss
+  happens one layer deeper, inside `lib0`'s own generic `delta.diff`
+  (`node_modules/lib0/src/delta/delta.js:4473`) -- not fully bisected
+  further (diminishing returns for a spike-level finding). Reported as-is,
+  not worked around, per the brief.
+
+- **D. Tiptap 3**: **PASS.** Checked npm directly before writing any code:
+  `@tiptap/extension-collaboration@3.31.3`'s own `peerDependencies` are
+  `{ yjs: '^13', '@tiptap/y-tiptap': '^3.0.7' }` -- hard-pinned to Yjs 13,
+  same as stack 13 uses. No `@y/tiptap`, `@tiptap/y-prosemirror` or
+  `@y/y-tiptap` package exists on npm (all 404). So Tiptap 3.31.3 **core**
+  (`@tiptap/core`, `@tiptap/pm`, exact same version as stack 13) works
+  fine, but its own collaboration/cursor/undo extensions cannot be used at
+  all here. **What replaced them** (`src/tiptapClient.ts`, ~35 lines total):
+  three thin `Extension.create()` wrappers around `@y/prosemirror`'s own
+  `syncPlugin()` (~10 lines), `yCursorPlugin(awareness)` (~8 lines), and
+  `yUndoPlugin(undoManager)` plus Mod-Z/Mod-Y/Mod-Shift-Z keyboard
+  shortcuts calling `undoCommand`/`redoCommand` directly (~14 lines) --
+  the same pattern the upstream Tiptap 3 demo the brief names uses, for the
+  same reason (its own comment: "we deliberately do NOT use
+  `@tiptap/extension-collaboration`: it wraps the OLD y-prosemirror
+  ySyncPlugin and is incompatible with the new attribution binding"). All
+  checks pass: single `prosemirror-model`/`prosemirror-state` instance
+  (`npm ls`), the generic schema converter's Tiptap-generated schema is
+  equivalent to `src/schema.ts`, gate B's script converges through two live
+  Tiptap editors (editor1 = editor2 = relay, every linked image keeps its
+  mark), each editor renders the other's caret, and alice's undo removes
+  only her own change.
+
+- **E. Attribution**, two parts (brief 04 task 4). **PASS.**
+
+  **(a) Server-side mapping**, ported to `@y/y`'s own `IdMap`/
+  `createContentAttribute` (`src/attribution.ts`) instead of a hand-rolled
+  map, per the brief: `createContentIdsFromUpdate(update)` decodes an
+  incoming update's content ids into an `IdSet` (the modern equivalent of
+  stack 13's `Y.parseUpdateMeta`, from `yjs-attributing.md`'s own worked
+  example), `createIdMapFromIdSet(idset, [createContentAttribute('user',
+  user), createContentAttribute('at', serverReceivedAt)])` tags every
+  range, and `mergeIdMaps` folds each update in; `encodeIdMap`/`decodeIdMap`
+  persist it inside the document's own `phraise-attribution` node (via
+  `getAttr`/`setAttr` -- `@y/y`'s `Doc` has no more `getMap`/`getText`,
+  every shared type comes from `.get(name)`), so it rides the existing
+  SQLite persistence for free, same as stack 13's design and for the same
+  reasons. What stays hand-rolled, and why: forged-client-ID collision
+  detection (a first-writer-wins audit log `IdMap` has no first-class
+  notion of) -- derived by reading the first `user` attribute already on
+  file for a client before merging a new update under a different user.
+  Same listing/reconnect/reload/restart/size checks as stack 13, all pass;
+  attribution overhead ~25-30% of document size on the small test fixture
+  (absolute bytes are tiny either way at this corpus size).
+
+  One real bug found and fixed while building the collision test (kept as
+  `scratch/probe-collision.ts`): forging a raw update under alice's real
+  clientID by starting a brand-new empty `Y.Doc` and reassigning its
+  clientID makes that doc's own clock for the client start at 0, which
+  **collides** with the clock range alice's real edits already occupy in
+  the actual document -- Yjs treats a fully-already-known struct as
+  redundant and produces an **empty** outgoing update (nothing new to
+  broadcast), so the forgery silently never reaches `recordAttribution` at
+  all (which returns immediately on an empty content-id set). Fixed by
+  syncing the forging doc with alice's current full state first (a real
+  attacker who can read the synced document has this too), so its clock
+  bookkeeping continues genuinely new values -- a real,
+  indistinguishable-from-legitimate forged continuation, which the
+  collision check then correctly flags.
+
+  **(b) Suggestion mode** (`gates/gateE-suggestion.ts`), following the
+  upstream demo: a second `Y.Doc` (`suggestionDoc`, seeded from the live
+  doc), bound with `Y.createDiffRenderer(ydoc, suggestionDoc, {
+  attributions })` and `configureYProsemirror({ ytype, renderer })`; alice
+  edits the live document directly; bob works in suggestion mode: inserts
+  text, deletes a word, adds a link to an image. **Works, with one real
+  gotcha needing a second attempt** (both kept in
+  `scratch/probe-suggestion-mode.ts`): tagging the `attributions` ContentMap
+  with `createContentAttribute('insert'/'delete', 'bob')` **after** bob's
+  edits already happened came back with `userIds: []` every time --
+  `DiffRenderer` reads the ContentMap fresh inside its own
+  `beforeObserverCalls` listener **at the time of each transaction**, not
+  once at construction, permanently baking in whatever attribution existed
+  in the map at that exact moment; populating it afterward was too late.
+  Fixed by registering our OWN `beforeObserverCalls` listener on
+  `suggestionDoc` **before** constructing the `DiffRenderer` (whose
+  constructor attaches its own listener for the same event) -- Yjs fires
+  same-event listeners in registration order, so tagging the map with
+  `tr.insertSet`/`tr.deleteSet` from our listener always runs first. With
+  that fix: alice's view of the suggestion doc shows `y-attributed-insert`/
+  `-delete`/`-format` marks with `userIds: ["bob"]`; `acceptChanges`/
+  `rejectChanges` behave correctly (reject restores the deleted word,
+  accept keeps the insert as real content, using real doc positions -- an
+  earlier `textContent.indexOf`-based position calc under-counted after the
+  image atom and produced a wrong accept range, fixed too); only the
+  explicitly accepted insert reaches the live document, the untouched
+  link-format suggestion correctly stays pending.
+
+  **Schema hardening** (`src/schema.ts`): the four canonical marks
+  (`y-attributed-insert`/`-delete`/`-format`/`-attrs`) were added, since
+  ATTRIBUTION.md is explicit they are not configurable and must be declared
+  by name. **Scope note**: this test's scenario is entirely inline (insert
+  text, delete a word, add a link mark to an image inside one existing
+  paragraph) and never suggests a whole block insert/delete, so no node's
+  `marks:` content expression needed to change -- every node with inline
+  content (`paragraph`, `heading`, `table_cell`) already defaults to
+  "allow all marks" with no explicit `marks:` field. A real Phraise
+  integration that also suggests whole-block changes would additionally
+  need the container relaxations and `--attributed` variants ATTRIBUTION.md
+  describes (`doc`, `blockquote`, `bullet_list`, `ordered_list`, `table`,
+  `table_row` currently omit `marks:`, which ProseMirror resolves to "no
+  marks on my block children") -- not implemented here, out of scope for
+  what gate E's scenario exercises. `y-attributed-attrs` (the node-attr
+  variant) was added for completeness but never exercised by this scenario
+  either.
+
+  **Serialization leak**: confirmed real. `serializeDoc` (spike 1's
+  serializer) **throws** `Cannot handle unknown node \`y-attributed-format\``
+  on ANY document that still carries an unresolved `y-attributed-*` mark --
+  the serializer has no notion of these marks at all and cannot skip them.
+  A real integration **must** strip every `y-attributed-*` mark before
+  calling `serializeDoc`, or resolve (accept/reject) every suggestion
+  first; there is no automatic exclusion.
+
+  **Is suggestion mode usable for Phraise?** For the inline case (text
+  insert/delete/format inside existing blocks), yes, with modest
+  integration cost: the four marks in the schema, a `beforeObserverCalls`
+  listener ordered before the renderer's own to populate attribution, and a
+  mark-stripping pass before serialization. For whole-block suggestions
+  (suggesting to delete/insert an entire paragraph, list item, table row,
+  etc.), the container relaxation and `--attributed` variant work described
+  above and in ATTRIBUTION.md is real, non-trivial additional schema work
+  this brief did not need to do and did not do.
+
+- **G. Persistence and reconnect**: same four scenarios as stack 13's gate
+  G, against Hocuspocus. **PASS, all four.** G1 (SIGTERM restart): content
+  intact, new edits propagate after reconnect. G2 (SIGKILL, before and
+  after the debounce): the live client's own memory always retains its
+  edit; the relay has it too once a reconnect resyncs it, regardless of
+  whether the debounced SQLite write landed before the kill. G3 (edits
+  made while the relay is fully down): both editors keep accepting local
+  transactions with no connection at all, and converge with the relay once
+  it restarts. G4 (an editor goes offline mid-session, both sides edit the
+  same paragraph AND the same image's link concurrently, then it
+  reconnects): both text insertions survive (CRDT interleaves rather than
+  drops concurrent inserts), the same-node link conflict resolves
+  deterministically to one of the two concurrent writes (not corrupted or
+  duplicated), and all three (editor1, editor2, relay) converge.
 
 ## Compatibility probe (brief task 6 / task 2's attempt (c))
 
@@ -255,17 +481,35 @@ high-level type wrapper (`Y.XmlFragment` vs `Y.Node`) is not.
 - Gate C path B: see above -- 234/266, root-caused to an upstream
   `@y/prosemirror` diffing bug specific to whole-document-replacing
   transactions, not to this spike's schema/parser/serializer or its own
-  relay/client code (path A, which never does this, is 266/266).
+  relay/client code (path A, which never does this, is 266/266). Unchanged
+  by the relay switch to Hocuspocus (confirmed: same 234/266, same failure
+  list, this brief).
+- Gate B3: cases 3-4 FAIL as the brief expects (an upstream
+  `@y/prosemirror` mark-vs-attr co-change bug, not this spike's code) --
+  see the "Gates" section's B3 entry for the root-cause account.
 - Gate A's latency number is a polling artifact, not a real network
-  measurement (identical caveat to stack 13's gate A).
-- `src/relay-attempt-a-hocuspocus.ts` / `client-attempt-a-hocuspocus.ts` are
-  reference-only: they compile (`npx tsc --noEmit` at the top level
-  includes them and is clean) but are known to crash at runtime the moment
-  a real client connects (see "Relay attempts (a)"); not exercised by
-  `npm run gates`.
-- Rows D through G ("later brief") and H ("Maturity") are reported as "not
-  run" in `results/gates.md` per the brief -- H's fuller maturity write-up
-  (release cadence, breaking changes, open issues) is the orchestrator's
-  own primary-source gate per the plan; this brief's compat probe above
-  covers the "documents written by 13 read by 14 and the reverse" half of
-  it specifically, since task 6 assigned that measurement here.
+  measurement (identical caveat to stack 13's gate A, and to both relay
+  flavors here).
+- A cosmetic side effect of the schema hardening added for gate E part (b):
+  every gate now logs `[y/prosemirror] a view-side change removed the
+  render-only attribution format "y-attributed-attrs"; it was swallowed`
+  once, and `[y/prosemirror] these node types do not allow the attribution
+  marks this binding renders: ...` when a renderer is configured (gate E
+  only) -- both are the binding's own bind-time/runtime audits reacting to
+  the four marks now being declared in the schema at all, regardless of
+  whether a gate touches attribution. Confirmed harmless: every other gate
+  (A, B, C, B3, D, G) passes identically with or without these warnings
+  present, since none of them ever populate a `y-attributed-*` mark.
+- Gate E part (b)'s schema hardening is scoped to what its own inline-only
+  scenario needs (the four marks; no container relaxation, no
+  `--attributed` variants) -- see that gate's own entry above for exactly
+  what a whole-block suggestion scenario would additionally require.
+- `src/relay-custom.ts` / `client-custom.ts` (brief 02's attempt (b),
+  renamed) remain fully working and are still exercised (gate A only, per
+  the brief's "alternative behind a flag").
+- Row F ("later brief") and H ("Maturity") are reported as "not run" in
+  `results/gates.md` per the brief -- H's fuller maturity write-up (release
+  cadence, breaking changes, open issues) is the orchestrator's own
+  primary-source gate per the plan; this brief's (and brief 02's) compat
+  probe above covers the "documents written by 13 read by 14 and the
+  reverse" half of it specifically.

@@ -13,7 +13,7 @@ import 'global-jsdom/register';
 import fs from 'node:fs';
 import path from 'node:path';
 import { startRelay, type RelayHandle } from '../src/harness.js';
-import { createLiveClient, waitUntil, type LiveClient } from '../src/client.js';
+import { createLiveClient, waitUntil, type LiveClient } from '../src/client-hocuspocus.js';
 import { parseMarkdown } from '../src/parse.js';
 import { serializeDoc } from '../src/serialize.js';
 import { replaceWholeDoc } from './lib/edits.js';

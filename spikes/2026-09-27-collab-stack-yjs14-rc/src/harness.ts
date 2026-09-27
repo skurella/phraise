@@ -8,7 +8,20 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const RELAY_ENTRY = path.join(__dirname, 'relay.ts');
+
+/**
+ * Brief 04, task 1: Hocuspocus 4.7 (src/relay-hocuspocus.ts) is now the
+ * primary relay -- the postinstall symlink dedupe (scripts/postinstall-dedupe.mjs)
+ * fixes the lib0 major-version crash that made brief 02's attempt (a) fail
+ * (see the log and README for the full story). The custom relay from brief
+ * 02 (src/relay-custom.ts, the ws/@y/protocols one) is kept as the
+ * `relay: 'custom'` alternative, per the brief.
+ */
+export type RelayFlavor = 'hocuspocus' | 'custom';
+
+function relayEntry(flavor: RelayFlavor): string {
+  return path.join(__dirname, flavor === 'custom' ? 'relay-custom.ts' : 'relay-hocuspocus.ts');
+}
 // `node --import tsx/esm <file>` runs the file in-process under Node's own
 // ESM loader hook. The `tsx` CLI (`node_modules/.bin/tsx`) instead re-execs
 // a second Node process internally, which then survives a SIGKILL of the
@@ -65,15 +78,28 @@ export interface StartRelayOptions {
   seeds: string;
   /** Milliseconds to wait for the ready line before giving up. Default 15000. */
   timeoutMs?: number;
+  /** Default 'hocuspocus'. 'custom' spawns src/relay-custom.ts instead (brief 04 task 1's alternative-behind-a-flag). */
+  relay?: RelayFlavor;
+  /** Hocuspocus only: override the SQLite extension's onStoreDocument debounce (default 2000ms/10000ms). Ignored by the custom relay (which persists synchronously on every update). */
+  debounce?: number;
+  maxDebounce?: number;
+  /** Hocuspocus only, gate E's size measurement: run with attribution recording disabled entirely. */
+  noAttribution?: boolean;
 }
 
 export function startRelay(opts: StartRelayOptions): Promise<RelayHandle> {
   installExitHook();
-  const { port, db, seeds, timeoutMs = 15000 } = opts;
+  const { port, db, seeds, timeoutMs = 15000, relay = 'hocuspocus' } = opts;
+  const args = ['--port', String(port), '--db', db, '--seeds', seeds];
+  if (relay === 'hocuspocus') {
+    if (opts.debounce !== undefined) args.push('--debounce', String(opts.debounce));
+    if (opts.maxDebounce !== undefined) args.push('--maxDebounce', String(opts.maxDebounce));
+    if (opts.noAttribution) args.push('--no-attribution');
+  }
   return new Promise((resolve, reject) => {
     const proc = spawn(
       process.execPath,
-      ['--import', 'tsx/esm', RELAY_ENTRY, '--port', String(port), '--db', db, '--seeds', seeds],
+      ['--import', 'tsx/esm', relayEntry(relay), ...args],
       { stdio: ['ignore', 'pipe', 'pipe'], cwd: path.join(__dirname, '..') },
     );
 

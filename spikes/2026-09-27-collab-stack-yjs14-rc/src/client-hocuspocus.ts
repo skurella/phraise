@@ -29,6 +29,14 @@ export interface LiveClientOptions {
 export interface LiveClient {
   ydoc: Y.Doc;
   provider: HocuspocusProvider;
+  /**
+   * The dedicated network transport for this client (gate G/E:
+   * disconnect()/connect() on THIS, not on `provider` -- same note as stack
+   * 13's client.ts: HocuspocusProvider.connect()/disconnect() are no-ops
+   * whenever an explicit websocketProvider was supplied at construction,
+   * which createLiveClient always does here (for the WebSocketPolyfill).
+   */
+  websocketProvider: HocuspocusProviderWebsocket;
   view: EditorView;
   waitForSynced(): Promise<void>;
   destroy(): void;
@@ -78,6 +86,7 @@ export async function createLiveClient(opts: LiveClientOptions): Promise<LiveCli
   return {
     ydoc,
     provider,
+    websocketProvider,
     view,
     waitForSynced: () => waitForProviderSynced(provider),
     destroy() {

@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Spike 5, brief 02: stack 14 (@y/y 14.0.0-rc.26, @y/prosemirror 2.0.0-13) with live ProseMirror editors under jsdom, and spike 1's schema/parser/serializer, no workarounds.",
+  "description": "Spike 5, brief 04: stack 14 (@y/y 14.0.0-rc.26, @y/prosemirror 2.0.0-13) on a Hocuspocus 4.7 relay (yjs/y-protocols/lib0 deduped onto @y/y/@y/protocols by npm overrides + a postinstall symlink step), with a minimal custom relay kept as a --relay custom alternative.",
   "scripts": {
+    "postinstall": "node scripts/postinstall-dedupe.mjs",
     "fetch": "node scripts/fetch-corpus.mjs",
     "gates": "tsx scripts/gates.ts",
     "gates:quick": "tsx scripts/gates.ts --quick",
@@ -27,6 +28,8 @@
     "prosemirror-view": "^1.37.0",
     "prosemirror-commands": "^1.6.2",
     "diff": "^7.0.0",
+    "@tiptap/core": "3.31.3",
+    "@tiptap/pm": "3.31.3",
     "@y/y": "14.0.0-rc.26",
     "@y/prosemirror": "2.0.0-13",
     "@y/protocols": "1.0.6-rc.1",
@@ -48,6 +51,7 @@
   },
   "overrides": {
     "yjs": "npm:@y/y@14.0.0-rc.26",
-    "y-protocols": "npm:@y/protocols@1.0.6-rc.1"
+    "y-protocols": "npm:@y/protocols@1.0.6-rc.1",
+    "lib0": "$lib0"
   }
 }

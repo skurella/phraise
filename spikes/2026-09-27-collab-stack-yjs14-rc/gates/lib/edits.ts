@@ -70,7 +70,7 @@ export function findPos(view: EditorView, pred: (node: import('prosemirror-model
   return found;
 }
 
-export { waitUntil } from '../../src/client.js';
+export { waitUntil } from '../../src/client-hocuspocus.js';
 
 /**
  * Gate C path (b): "loaded client-side into editor 1 through a transaction

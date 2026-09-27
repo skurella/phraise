@@ -13,7 +13,7 @@
 import 'global-jsdom/register';
 import { Mark } from 'prosemirror-model';
 import { startRelay, type RelayHandle } from '../src/harness.js';
-import { createLiveClient, waitUntil, type LiveClient } from '../src/client.js';
+import { createLiveClient, waitUntil, type LiveClient } from '../src/client-hocuspocus.js';
 import { schema } from '../src/schema.js';
 import { findPos, insertText, pasteHTMLAt, splitBlockAt, joinBackwardAt, addMarkAt, deleteRange } from './lib/edits.js';
 import { checkEquality, decodeRelayState, linkedImages } from './lib/equality.js';

@@ -2,9 +2,14 @@
 // Brief 02 task 4: two editors connected to one relay type into different
 // paragraphs and each sees the other's text; report round-trip latency
 // (median of 20 single-character edits). Same shape as stack 13's gate A.
+//
+// Brief 04 task 1: runs against BOTH relay flavors ('hocuspocus', now the
+// primary, and 'custom', kept as the alternative-behind-a-flag) so the
+// runner can report any difference between them.
 import 'global-jsdom/register';
-import { startRelay, type RelayHandle } from '../src/harness.js';
-import { createLiveClient } from '../src/client.js';
+import { startRelay, type RelayHandle, type RelayFlavor } from '../src/harness.js';
+import { createLiveClient as createHocuspocusClient } from '../src/client-hocuspocus.js';
+import { createLiveClient as createCustomClient } from '../src/client-custom.js';
 import { findPos, insertText, waitUntil } from './lib/edits.js';
 
 export interface GateAResult {
@@ -23,10 +28,17 @@ function endOfParagraphContaining(view: import('prosemirror-view').EditorView, n
   return pos + node.nodeSize - 1;
 }
 
-export async function runGateA(opts: { port: number; seedsDir: string; dbDir: string }): Promise<GateAResult> {
+export async function runGateA(opts: {
+  port: number;
+  seedsDir: string;
+  dbDir: string;
+  relay?: RelayFlavor;
+}): Promise<GateAResult> {
+  const flavor = opts.relay ?? 'hocuspocus';
+  const createLiveClient = flavor === 'custom' ? createCustomClient : createHocuspocusClient;
   let relay: RelayHandle | undefined;
   try {
-    relay = await startRelay({ port: opts.port, db: opts.dbDir, seeds: opts.seedsDir });
+    relay = await startRelay({ port: opts.port, db: opts.dbDir, seeds: opts.seedsDir, relay: flavor });
     const [a, b] = await Promise.all([
       createLiveClient({ url: relay.wsUrl, docName: DOC_NAME, token: 'alice' }),
       createLiveClient({ url: relay.wsUrl, docName: DOC_NAME, token: 'bob' }),

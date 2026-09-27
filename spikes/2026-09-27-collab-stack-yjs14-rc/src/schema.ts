@@ -265,6 +265,62 @@ const marks: Record<string, MarkSpec> = {
       },
     ],
   },
+
+  // Brief 04, gate E part (b): @y/prosemirror's suggestion mode / attribution
+  // rendering (ATTRIBUTION.md, the doc the brief names) requires exactly
+  // these four mark NAMES -- "not configurable", per that doc -- to be
+  // present in the schema before a renderer is ever configured, or the
+  // bind-time audit warns that nothing will render and the first suggested
+  // edit throws `RangeError: Invalid content for node ...`. Added here
+  // (this spike's own schema copy) for gate E part (b) only; every other
+  // gate is unaffected (these are additive mark TYPES, not a change to any
+  // existing node/mark spec).
+  //
+  // Scope note (see the README's "Suggestion mode" section for the full
+  // account): gate E part (b)'s scenario is entirely inline -- insert text,
+  // delete a word, add a link mark to an image, all within one existing
+  // paragraph -- so it never needs a whole PARAGRAPH (or other block) to
+  // itself carry a `y-attributed-*` NODE mark. Every node with inline
+  // content (`paragraph`, `heading`, `table_cell`) already defaults to
+  // "allow all marks" with no `marks:` field at all (ProseMirror's own
+  // default for a node with inline content), so no node's `marks:`
+  // expression needed to change for this scenario. A real Phraise
+  // integration that also suggests whole-block inserts/deletes would need
+  // the container relaxations and `--attributed` variants ATTRIBUTION.md
+  // describes (`doc`, `blockquote`, `bullet_list`, `ordered_list`, `table`,
+  // `table_row` all currently omit `marks:`, so ProseMirror resolves that to
+  // "no marks on my children" for THEIR block-level children specifically)
+  // -- not implemented here, out of scope for what this gate's scenario
+  // exercises.
+  'y-attributed-insert': {
+    attrs: { userIds: { default: [] as string[] }, timestamp: { default: null as number | null } },
+    toDOM: () => ['y-ins', 0],
+    parseDOM: [{ tag: 'y-ins' }],
+  },
+  'y-attributed-delete': {
+    attrs: { userIds: { default: [] as string[] }, timestamp: { default: null as number | null } },
+    toDOM: () => ['y-del', 0],
+    parseDOM: [{ tag: 'y-del' }],
+  },
+  'y-attributed-format': {
+    attrs: {
+      userIds: { default: [] as string[] },
+      userIdsByAttr: { default: {} as Record<string, string[]> },
+      timestamp: { default: null as number | null },
+    },
+    toDOM: () => ['y-fmt', 0],
+    parseDOM: [{ tag: 'y-fmt' }],
+  },
+  // Node-level (attrs {"nodeKey": {userIds,timestamp}}), for suggested
+  // NODE-attribute changes (e.g. a heading's level). Declared for
+  // completeness per ATTRIBUTION.md's "four canonical marks", but not
+  // exercised by gate E part (b)'s scenario (which never suggests a node
+  // attribute change) -- see the scope note above.
+  'y-attributed-attrs': {
+    attrs: { changes: { default: null as Record<string, unknown> | null } },
+    toDOM: () => ['y-attrs', 0],
+    parseDOM: [{ tag: 'y-attrs' }],
+  },
 };
 
 export const schema = new Schema({ nodes, marks });
