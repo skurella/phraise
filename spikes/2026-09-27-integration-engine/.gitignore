@@ -1,0 +1,7 @@
+node_modules/
+corpus/fetched/
+data/
+results/*.sqlite
+dist/
+*.log
+*.tmp
