@@ -39,3 +39,17 @@ Findings from the builder to carry:
 - Paste tests dispatch a real ClipboardEvent rather than Mod-V (brief's fallback); copy tests use real Mod-C and Mod-V.
 
 Wrote brief 03 (gates C, H, styling). Dispatching (dispatch 3).
+
+## 17:46 — keyboard selection probe
+
+Probed real keyboard selection myself with a headless Chromium script against the server on port 4490 (stopped afterwards). With a 100 ms settle before reading `editor.state.selection`, Home, End, Cmd+Left, Shift+ArrowRight across a block boundary, Shift+Cmd+Right and Shift+ArrowDown all select exactly as expected, and the DOM selection matches the editor state. Two causes of the builder's trouble, neither a product bug: reading the state before the browser's `selectionchange` has been processed, and macOS key conventions (Shift+End extends to the end of the document on macOS; line end is Cmd+Right). Fix list: gate A's "select across two paragraphs" and the copy tests should select with the keyboard, polling until the selection settles.
+
+## 18:44 — brief 03 accepted; my screenshots; brief 04 written
+
+Brief 03 (dispatch 3) handed back: C 6/6, H 4/4, A and B still pass, 117 unit tests. Commits `75514c1`, `4d3073e`. I re-ran: 55/55 gates, 117 unit tests, nothing listening.
+
+Builder findings: the two spike 1 failure constructs suggested in the brief now verify; the builder fuzzed CommonMark examples (46 unverifiable) and chose example 20, unlinking the autolink `<https://example.com?find=\*>`. The gate H test unlinks through `unsetMark('link')`, not through UI; fix list: unlink through the link UI. Per-block check cache: cold 1235 ms on the 240 KB file, about 6 ms warm after one edit. Main chunk 914 KB raw, 280 KB gzip; KaTeX is static, Mermaid is split out.
+
+My own screenshots of express README, the source-blocks fixture and the table fixture (probe server on 4490, stopped). Styling problems for the fix list: paragraphs have no vertical margin, so separate paragraphs read as one; no gap after source cards; table header row neither bold nor shaded; footnote definitions and link references show Markdown source in monospace (visible syntax, which gate J forbids in normal editing); footnote reference chip says "FOOTNOTE REF" rather than a superscript number; front matter shows `---` delimiters. Badge images show as broken (network images in headless; check later).
+
+Wrote brief 04 (D, E, I); dispatching (dispatch 4).
