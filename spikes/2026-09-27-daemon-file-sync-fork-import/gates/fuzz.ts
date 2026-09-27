@@ -421,7 +421,12 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
             rec.deletedBy === 'local' &&
             rec.insertedBy === 'remote' &&
             importedPairs.some((p) => !p.baseText.includes(rec.token) && !p.savedText.includes(rec.token));
-          const copies = fileText.split(core).length - 1;
+          // Copies in the Y document too: a duplicate the editor later deleted
+          // one copy of looks like a resurrection in the file.
+          const copies = Math.max(
+            fileText.split(core).length - 1,
+            locateToken(daemon.docSync.doc.getXmlFragment('prosemirror'), core, true).copies,
+          );
           if (copies > 1) {
             // A save judged against too old a base re-inserts text the editor
             // already had (plan 3.2: the chosen failure mode under ambiguity).

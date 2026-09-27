@@ -318,6 +318,7 @@ export class DocSync {
 
     if (forked) {
       const update = Y.encodeStateAsUpdate(target, svBeforeDiff!);
+      // PHRAISE_DEBUG: report fuzz tokens that the merge made invisible.
       const toks = (d: Y.Doc) => new Set(d.getXmlFragment(FRAGMENT_NAME).toString().match(/ZZTOK\w+/g) ?? []);
       const before = process.env.PHRAISE_DEBUG ? toks(this.doc) : undefined;
       Y.applyUpdate(this.doc, update, ORIGIN_IMPORT);
@@ -325,42 +326,11 @@ export class DocSync {
         const after = toks(this.doc);
         const gone = [...before].filter((t) => !after.has(t));
         if (gone.length) {
-          // Find the (now deleted) items holding each vanished token's text.
-          const found: string[] = [];
-          const walk = (t: any, path: string) => {
-            if (t instanceof Y.XmlText) {
-              const items: any[] = [];
-              for (let it = (t as any)._start; it; it = it.right) items.push(it);
-              const all = items.map((it) => (typeof it.content?.str === 'string' ? it.content.str : '')).join('');
-              for (const g of gone) {
-                const at = all.indexOf(g.slice(5, 12));
-                if (at < 0) continue;
-                let pos = 0;
-                const parts: string[] = [];
-                for (const it of items) {
-                  const str = typeof it.content?.str === 'string' ? it.content.str : '';
-                  if (pos + str.length > at - 8 && pos < at + g.length) parts.push(`${it.id.client}:${it.id.clock}+${it.length}${it.deleted ? 'D' : ''}=${JSON.stringify(str)}`);
-                  pos += str.length;
-                }
-                found.push(`${g} in ${path} (text deleted=${(t as any)._item?.deleted}): ${parts.join(' ')}`);
-              }
-            } else if (t) {
-              let k = 0;
-              for (let it = t._start; it; it = it.right, k++) {
-                const ty = (it.content as any)?.type;
-                if (ty) walk(ty, `${path}/${k}${it.deleted ? 'D' : ''}`);
-              }
-            }
-          };
-          walk(this.doc.getXmlFragment(FRAGMENT_NAME), '');
-          const dec = Y.decodeUpdate(update);
-          const ds: string[] = [];
-          dec.ds.clients.forEach((ranges: any[], client: number) => ranges.forEach((r) => ds.push(`${client}:${r.clock}+${r.len}`)));
-          console.error(`    ITEMS ${found.join(' || ')}`);
-          console.error(`    UPDATE-DS ${ds.join(' ')} forkClient=${target.clientID} base=${base.origin}`);
-          console.error(`    BASE-SV ${JSON.stringify([...base.snapshot.sv.entries()])}`);
+          console.error(
+            `    MERGE REMOVED ${gone.join(' ')}; fork had them before diff: ${gone.map((t) => (target as any).__toksBefore?.has(t))}; ` +
+              `saved text has them: ${gone.map((t) => text.includes(t))}`,
+          );
         }
-        if (gone.length) console.error(`    MERGE REMOVED ${gone.join(' ')}; fork had them before diff: ${gone.map((t) => (target as any).__toksBefore?.has(t))}; saved text has them: ${gone.map((t) => text.includes(t))}`);
       }
     }
 

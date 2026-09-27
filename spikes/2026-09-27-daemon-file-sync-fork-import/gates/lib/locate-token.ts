@@ -11,19 +11,23 @@ export interface TokenLocation {
   found: boolean;
   /** Some enclosing element (or the text type itself) is deleted. */
   inDeletedBlock: boolean;
+  /** How many copies of the token exist, deleted ones included. */
+  copies: number;
   /** The token's own items are deleted. */
   textDeleted: boolean;
 }
 
-export function locateToken(fragment: Y.XmlFragment, core: string): TokenLocation {
-  const result: TokenLocation = { found: false, inDeletedBlock: false, textDeleted: false };
+export function locateToken(fragment: Y.XmlFragment, core: string, countAll = false): TokenLocation {
+  const result: TokenLocation = { found: false, inDeletedBlock: false, textDeleted: false, copies: 0 };
   const walk = (type: any, ancestorDeleted: boolean): void => {
-    if (result.found) return;
+    if (result.found && !countAll) return;
     if (type instanceof Y.XmlText) {
       const items: any[] = [];
       for (let it = type._start; it; it = it.right) items.push(it);
       const strs = items.map((it) => (typeof it.content?.str === 'string' ? (it.content.str as string) : ''));
       const all = strs.join('');
+      result.copies += all.split(core).length - 1;
+      if (result.found) return;
       const at = all.indexOf(core);
       if (at < 0) return;
       result.found = true;
