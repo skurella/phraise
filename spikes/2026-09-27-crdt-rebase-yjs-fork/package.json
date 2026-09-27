@@ -6,9 +6,11 @@
   "description": "Spike 2: Yjs fork-at-base rebase core (schema, markdown, seeding, two-way diff, rebase).",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gates": "tsx scripts/gates.ts"
   },
   "dependencies": {
+    "approx-string-match": "^2.0.0",
     "diff": "^7.0.0",
     "markdown-it": "^14.1.0",
     "prosemirror-markdown": "^1.13.1",
@@ -20,6 +22,7 @@
     "@types/diff": "^7.0.0",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^3.0.5"
   }

@@ -5,3 +5,8 @@ export * from "./seed.js";
 export * from "./diff.js";
 export * from "./rebase.js";
 export * from "./text.js";
+export * from "./integrate.js";
+export * from "./replica.js";
+export * from "./comments.js";
+export * from "./attribution.js";
+export * from "./reseed.js";
