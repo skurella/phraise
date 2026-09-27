@@ -448,3 +448,69 @@ Verification: `npx tsc --noEmit` clean; `npx vitest run` 26 files,
 
 Next: Firefox/WebKit projects + cross-browser reporter table, then final
 commands (fresh-clone check).
+
+## 23:36 -- Firefox and WebKit projects, cross-browser reporter table
+
+`playwright.config.ts`: two new projects, `firefox` and `webkit`, each
+`grep: /\[[ABCD]\]/` (not anchored to the start -- several gate A/B spec
+files nest a test inside its own `test.describe`, and Playwright's project
+`grep` matches the full title path, describe titles included, not just the
+test's own leaf title; confirmed empirically after the anchored version
+silently matched fewer tests than expected).
+
+`e2e/gateReporter.ts`: a second, informational table, gate x browser,
+built from a `perBrowser` map keyed by browser then gate letter;
+`projectNameOf(test)` walks a `TestCase`'s parent `Suite` chain to the one
+whose `.project()` is defined (confirmed against the real
+`playwright/types/testReporter.d.ts` shape, not guessed) to get the
+browser name. The primary table, gate verdict, and `results/gates.json`'s
+top-level `overallStatus` all stay keyed on chromium alone, exactly as
+before -- the new data is additive (`gates.json` gains a `crossBrowser`
+key; `gates.md` gains a second section). Verified with `--project=webkit`
+alone: prints "PASS (5/5)" for gate A under webkit while the PRIMARY table
+correctly still says gate A is "not run" (since chromium didn't run in
+that invocation) -- confirmed the Chromium-only/informational split
+actually works, not just compiles.
+
+**Firefox could not be exercised on this machine -- a real, confirmed
+environment limitation, not a test-writing problem.** `.pw-browsers`
+already had firefox installed from brief 01's `npm run setup:browsers`;
+every attempt to even LAUNCH it (via Playwright, and directly by hand,
+bypassing Playwright entirely) failed with "Could not find profile
+folder" in headless mode. Diagnosed methodically before giving up on it:
+- A fresh `playwright install --force firefox` (in case the original
+  install was corrupted) made no difference -- identical failure.
+- The SAME direct launch failed identically with this Bash tool's own
+  sandbox explicitly disabled (`dangerouslyDisableSandbox: true`), ruling
+  out MY tool's sandbox as the cause.
+- Running the SAME binary WITHOUT `-headless` surfaced the real underlying
+  error, invisible in headless mode's own generic fallback message:
+  `sandbox_extension_issue_file_to_process failed for .../plugin-
+  container.app: 1 (Operation not permitted)`, plus several macOS
+  `NSWorkspaceNotificationCenter`/XPC connection errors from Firefox's own
+  GPU helper process. This is a macOS sandbox-extension/entitlement
+  failure at the OS level, for Firefox's own internal multi-process
+  helpers -- not a Playwright config issue, not a profile-path issue
+  (despite what the headless-mode error message claims), and not
+  something a test change can fix. Also independently consistent with
+  `codesign`/`spctl` reporting the installed Firefox app bundle's own
+  signature as invalid ("code has no resources but signature indicates
+  they must be present") on this machine.
+- **WebKit, installed the same way from the same brief, launches and runs
+  cleanly** -- confirmed with a real run (gate A, `--project=webkit`):
+  5/5 passing, and the cross-browser table showed it correctly.
+
+Given the charter's own "where cheap" framing for this brief, and that
+Firefox cannot even launch on this specific machine (confirmed
+methodically, not assumed), Firefox is left configured (the `firefox`
+project exists in `playwright.config.ts` and would run on a machine where
+the binary actually launches) but not exercised further here; WebKit
+carries the actual cross-browser gates A-D data for this run. This is
+recorded here rather than silently dropped, per the brief's own "record
+every scenario that fails in another browser and why, without
+special-casing tests to hide it" -- Firefox's failure is a launch failure,
+before any test-specific behavior could even be observed, so there is
+nothing to special-case.
+
+Running the full gate A-D suite on WebKit now (`--project=webkit`, whole
+suite) to get the real cross-browser numbers/failures to report.

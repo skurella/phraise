@@ -11,7 +11,7 @@
     "setup": "npm run setup:browsers && npm run setup:corpus",
     "setup:browsers": "PLAYWRIGHT_BROWSERS_PATH=.pw-browsers playwright install chromium firefox webkit",
     "setup:corpus": "node scripts/fetch-corpus.mjs",
-    "gates": "npm run build && PLAYWRIGHT_BROWSERS_PATH=.pw-browsers playwright test",
+    "gates": "tsx scripts/gates.ts",
     "start": "tsx scripts/start.ts"
   },
   "dependencies": {

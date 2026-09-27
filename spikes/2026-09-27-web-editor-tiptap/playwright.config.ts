@@ -49,6 +49,22 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    // Room for firefox and webkit (brief 06 adds them).
+    // Brief 07: Firefox and WebKit, gates A/B/C/D only ("where cheap" --
+    // the charter's own budget, and the plan's own "cheap gates" framing
+    // for this brief). `grep` restricts each project to exactly the test
+    // titles starting `[A]`/`[B]`/`[C]`/`[D]`, matching every spec file
+    // (including `smoke.spec.ts`'s own `[A]` test) without needing a
+    // separate file list. The gate verdict and exit code stay on
+    // Chromium (`gateReporter.ts`'s own primary table); these two
+    // projects only feed its second, informational cross-browser table.
+    // Not anchored to the start: several gate A/B spec files nest a test
+    // inside its own `test.describe(...)`, and Playwright's `grep` matches
+    // against the full title path (describe titles + test title), not
+    // just the test's own title.
+    // Firefox does not launch on the owner's machine (macOS sandbox refuses its
+    // helper processes; see the brief 07 builder log), so it is opt-in:
+    // PHRAISE_FIREFOX=1 npm run gates.
+    ...(process.env.PHRAISE_FIREFOX ? [{ name: 'firefox', grep: /\[[ABCD]\]/, use: { ...devices['Desktop Firefox'] } }] : []),
+    { name: 'webkit', grep: /\[[ABCD]\]/, use: { ...devices['Desktop Safari'] } },
   ],
 });
