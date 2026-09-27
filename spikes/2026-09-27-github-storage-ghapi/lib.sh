@@ -21,6 +21,10 @@ EVIDENCE_DIR="${PHRAISE_SPIKE_EVIDENCE:-$SPIKE_DIR/evidence}"
 MAX_WRITES=300
 MIN_GAP=1.1
 GATE="${GATE:-misc}"
+REPO_NODE_ID="R_kgDOUtgoIw"   # node ID of skurella/phraise, checked 2026-09-27
+# The only two GraphQL mutations allowed, matched by exact string.
+GQL_COMMIT='mutation Commit($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }'
+GQL_UPDATE_REFS='mutation Refs($input: UpdateRefsInput!) { updateRefs(input: $input) { clientMutationId } }'
 
 mkdir -p "$STATE_DIR" "$EVIDENCE_DIR"
 [[ -f "$STATE_DIR/writes" ]] || echo 0 > "$STATE_DIR/writes"
@@ -66,14 +70,23 @@ validate_write() {
           return 0 ;;
         graphql)
           [[ -n "$input" ]] || die "graphql without body"
-          jq -e '.query | test("^mutation [A-Za-z]* *\\(\\$input: *CreateCommitOnBranchInput!\\) *\\{ *createCommitOnBranch\\(input: *\\$input\\)")' "$input" >/dev/null \
-            || die "only createCommitOnBranch mutations are allowed"
-          local repo_nwo branch
-          repo_nwo="$(jq -r '.variables.input.branch.repositoryNameWithOwner' "$input")"
-          branch="$(jq -r '.variables.input.branch.branchName' "$input")"
-          [[ "$repo_nwo" == "$REPO" ]] || die "graphql repo not allowed: $repo_nwo"
-          ref_allowed "refs/heads/$branch" || die "graphql branch not allowed: $branch"
-          return 0 ;;
+          local q; q="$(jq -r .query "$input")"
+          if [[ "$q" == "$GQL_COMMIT" ]]; then
+            local repo_nwo branch
+            repo_nwo="$(jq -r '.variables.input.branch.repositoryNameWithOwner' "$input")"
+            branch="$(jq -r '.variables.input.branch.branchName' "$input")"
+            [[ "$repo_nwo" == "$REPO" ]] || die "graphql repo not allowed: $repo_nwo"
+            ref_allowed "refs/heads/$branch" || die "graphql branch not allowed: $branch"
+            return 0
+          elif [[ "$q" == "$GQL_UPDATE_REFS" ]]; then
+            [[ "$(jq -r '.variables.input.repositoryId' "$input")" == "$REPO_NODE_ID" ]] || die "updateRefs repo not allowed"
+            local n r; n="$(jq '.variables.input.refUpdates | length' "$input")"
+            (( n >= 1 )) || die "updateRefs without refUpdates"
+            while IFS= read -r r; do ref_allowed "$r" || die "updateRefs ref not allowed: $r"; done \
+              < <(jq -r '.variables.input.refUpdates[].name' "$input")
+            return 0
+          fi
+          die "only the fixed createCommitOnBranch and updateRefs mutations are allowed" ;;
       esac ;;
     PATCH|DELETE)
       case "$path" in
@@ -94,7 +107,7 @@ call() {
   local is_write=0 http_method="$method"
   if [[ "$method" == GQLREAD ]]; then
     http_method=POST; path=graphql
-    jq -e '(.query | test("^ *(query|\\{)")) and (.query | test("mutation") | not)' "$input" >/dev/null \
+    jq -e '(.query | test("^ *(query|\\{)")) and (.query | test("mutation[ ({]") | not)' "$input" >/dev/null \
       || die "GQLREAD body is not a read-only query"
   elif [[ "$method" != GET ]]; then
     is_write=1
@@ -211,8 +224,17 @@ gql_commit() {
   local f; f="$(mktemp "$STATE_DIR/in.XXXXXX")"
   jq -n --arg repo "$REPO" --arg b "$1" --arg oid "$2" --arg h "$3" --arg bd "$4" \
         --arg p "$5" --rawfile c <(base64 < "$6" | tr -d '\n') \
-    '{query:"mutation Commit($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
+    --arg q "$GQL_COMMIT" '{query:$q,
       variables:{input:{branch:{repositoryNameWithOwner:$repo,branchName:$b},expectedHeadOid:$oid,
         message:{headline:$h,body:$bd},fileChanges:{additions:[{path:$p,contents:$c}]}}}}' > "$f"
+  call POST graphql "$f"; rm -f "$f"
+}
+
+# CAS update of any allowed ref via GraphQL updateRefs.
+# gql_update_ref <full ref> <beforeOid> <afterOid> <force true|false>
+gql_update_ref() {
+  local f; f="$(jfile --arg q "$GQL_UPDATE_REFS" --arg id "$REPO_NODE_ID" --arg n "$1" \
+    --arg b "$2" --arg a "$3" --argjson force "$4" \
+    '{query:$q,variables:{input:{repositoryId:$id,refUpdates:[{name:$n,beforeOid:$b,afterOid:$a,force:$force}]}}}')"
   call POST graphql "$f"; rm -f "$f"
 }

@@ -38,12 +38,20 @@ check deny PUT "repos/skurella/phraise/contents/README.md"
 check deny POST "repos/skurella/phraise/hooks"
 check deny POST "repos/other/repo/git/blobs"
 check deny PATCH "repos/skurella/phraise"
-Q='mutation Commit($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }'
+Q="$GQL_COMMIT"
 mk() { jq -n -c --arg q "$Q" --arg r "$1" --arg b "$2" '{query:$q,variables:{input:{branch:{repositoryNameWithOwner:$r,branchName:$b}}}}'; }
 check ok   POST graphql "$(mk skurella/phraise spike-scratch/github-storage-c)"
 check deny POST graphql "$(mk skurella/phraise main)"
 check deny POST graphql "$(mk other/repo spike-scratch/github-storage-c)"
 check deny POST graphql '{"query":"mutation { deleteRef(input:{refId:\"x\"}) { clientMutationId } }"}'
+
+U="$GQL_UPDATE_REFS"
+mu() { jq -n -c --arg q "$U" --arg id "$1" --arg n "$2" '{query:$q,variables:{input:{repositoryId:$id,refUpdates:[{name:$n,beforeOid:"a",afterOid:"b"}]}}}'; }
+check ok   POST graphql "$(mu R_kgDOUtgoIw refs/phraise-spike/drafts/d)"
+check deny POST graphql "$(mu R_kgDOUtgoIw refs/heads/main)"
+check deny POST graphql "$(mu R_other refs/phraise-spike/drafts/d)"
+check deny POST graphql "$(jq -n -c --arg q "$U" '{query:$q,variables:{input:{repositoryId:"R_kgDOUtgoIw",refUpdates:[{name:"refs/phraise-spike/x"},{name:"refs/heads/main"}]}}}')"
+check deny POST graphql "$(jq -n -c --arg q "$Q deleteRef" '{query:$q,variables:{input:{branch:{repositoryNameWithOwner:"skurella/phraise",branchName:"spike-scratch/github-storage-c"}}}}')"
 
 echo "selftest: $pass passed, $fail failed"
 rm -rf "$PHRAISE_SPIKE_STATE"
