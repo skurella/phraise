@@ -80,7 +80,7 @@ function escapeMarkdownText(text: string): string {
   return out;
 }
 
-function trySplice(block: PMNode, src: string, ctx: string): string | null {
+function tryTextSplice(block: PMNode, src: string, ctx: string): string | null {
   const { node: old, map } = parseBlock(src, ctx, { map: true });
   if (!map || old.type !== block.type) return null;
 
@@ -96,7 +96,15 @@ function trySplice(block: PMNode, src: string, ctx: string): string | null {
   const run = findLiteralRun(map, start, endOld);
   if (!run) return null;
 
-  const newFrag = block.content.cut(start, endNew);
+  // Positions are relative to the block's content and usually point inside a
+  // nested textblock (list item > paragraph > text), so cutting the block's
+  // own fragment would return the wrapping structure. Resolve both ends and
+  // require them to sit in the same textblock, then cut that textblock's inline
+  // content.
+  const $s = block.resolve(start);
+  const $e = block.resolve(endNew);
+  if ($s.parent !== $e.parent || !$s.parent.isTextblock) return null;
+  const newFrag = $s.parent.content.cut($s.parentOffset, $e.parentOffset);
   let newText: string;
   let newMarks: readonly Mark[];
   if (newFrag.childCount === 0) {
@@ -111,7 +119,10 @@ function trySplice(block: PMNode, src: string, ctx: string): string | null {
   if (!Mark.sameSet(newMarks, run.marks)) return null;
 
   const sAbs = sourceOffsetAt(run, start - run.from);
-  const eAbs = start === endOld ? sAbs : sourceOffsetAt(run, endOld - run.from);
+  // Exclusive end: one past the source offset of the last replaced character,
+  // so that source characters skipped by the alignment after it (an escaping
+  // backslash of the next character, a line prefix) stay in place.
+  const eAbs = start === endOld ? sAbs : sourceOffsetAt(run, endOld - 1 - run.from) + 1;
   const srcS = sAbs - ctx.length;
   const srcE = eAbs - ctx.length;
   if (srcS < 0 || srcE < srcS || srcE > src.length) return null;
@@ -128,6 +139,53 @@ function trySplice(block: PMNode, src: string, ctx: string): string | null {
   if (ok(candidate)) return candidate;
 
   return null;
+}
+
+/**
+ * Link-level splice. When the edited range lies inside one link (its text is
+ * also its syntax: a shortcut reference `[label]`, or a bare URL whose text is
+ * the URL), a text splice cannot express the edit. Re-serialize only that link
+ * from the new document and splice it over the link's source span. Shortcut
+ * and collapsed references whose text changed become full references so they
+ * keep pointing at the same definition.
+ */
+function tryLinkSplice(block: PMNode, src: string, ctx: string, style: Style): string | null {
+  const { node: old, links } = parseBlock(src, ctx, { map: true });
+  if (!links || old.type !== block.type) return null;
+  const start = old.content.findDiffStart(block.content);
+  const diffEnd = old.content.findDiffEnd(block.content);
+  if (start == null || diffEnd == null) return null;
+  const endOld = Math.max(diffEnd.a, start);
+  const endNew = Math.max(diffEnd.b, start);
+  const link = links.find((l) => l.from <= start && endOld <= l.to);
+  if (!link) return null;
+  const newTo = link.to + (endNew - endOld);
+  const $s = block.resolve(link.from);
+  const $e = block.resolve(newTo);
+  if ($s.parent !== $e.parent || !$s.parent.isTextblock) return null;
+  const inline = $s.parent.content.cut($s.parentOffset, $e.parentOffset);
+  const nodes: PMNode[] = [];
+  inline.forEach((n) => nodes.push(n));
+  const oldMark = old.resolve(link.from + 1).marks().find((m) => m.type.name === 'link');
+  if (!oldMark || nodes.length === 0 || !nodes.every((n) => n.marks.some((m) => m.eq(oldMark)))) return null;
+  const phrasing = pmInlineToMdast(nodes);
+  if (phrasing.length !== 1) return null;
+  const top = phrasing[0];
+  if (top.type === 'linkReference' && top.referenceType !== 'full') top.referenceType = 'full';
+  const options = optionsFor(block, style, true);
+  let md = toMarkdown({ type: 'paragraph', children: phrasing } as any, { extensions: toMarkdownExtensions, ...options } as any);
+  md = md.replace(/\n+$/, '');
+  if (md.includes('\n')) return null;
+  const s0 = link.sourceStart - ctx.length;
+  const e0 = link.sourceEnd - ctx.length;
+  if (s0 < 0 || e0 > src.length || e0 < s0) return null;
+  const candidate = src.slice(0, s0) + md + src.slice(e0);
+  const r = parseBlock(candidate, ctx);
+  return r.count === 1 && semanticEq(r.node, block) ? candidate : null;
+}
+
+function trySplice(block: PMNode, src: string, ctx: string, style: Style): string | null {
+  return tryTextSplice(block, src, ctx) ?? tryLinkSplice(block, src, ctx, style);
 }
 
 // ---------------------------------------------------------------------------
@@ -407,7 +465,7 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
         if (!noSplice) {
           let spliced: string | null = null;
           try {
-            spliced = trySplice(block, src, ctx);
+            spliced = trySplice(block, src, ctx, style);
           } catch {
             spliced = null;
           }

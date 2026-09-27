@@ -29,6 +29,88 @@ node scripts/fetch-corpus.mjs   # once, populates corpus/fetched/ (gitignored)
 npm test
 ```
 
+## Gates: `npm run gates`
+
+`gates/` is the executable evidence for decision D4 (see
+[brief 03](../../context/plans/2026-09-27-spike-1-brief-03-gates.md) and the
+[charter](../../context/plans/2026-09-27-spike-1-charter-markdown-round-trip.md)'s
+gate table). One command runs all five success gates over the whole corpus
+and prints a Markdown results table.
+
+```bash
+npm run fetch            # node scripts/fetch-corpus.mjs, if corpus/fetched/ is missing
+npm run gates             # full corpus; also fetches the corpus first if missing
+npm run gates -- --quick  # deterministic subset (every 10th file per set), for fast iteration
+```
+
+Writes `results/gates.md` (the table, per-gate detail, and failure lists with
+excerpts) and `results/gates.json` (the same data, machine-readable). Exits
+non-zero if any gate misses its threshold. `results/` is committed (numbers
+and short excerpts only, never full third-party file content).
+
+Corpus sets, reported separately: `handwritten` (28), `real` (266),
+`commonmark` (655), `gfm` (672). Thresholds apply to **real + handwritten**
+combined ("corpus files"); `commonmark`/`gfm` spec examples are reported
+alongside as stress tests, no threshold.
+
+What each gate measures:
+
+- **A. No-edit round trip** (100%): `serializeDoc(parseMarkdown(md).doc) === md`
+  for every corpus file. Also: **A2**, the same after a `doc.toJSON()` /
+  `Node.fromJSON` round trip; **A3**, the same after a Yjs round trip via
+  y-prosemirror (`prosemirrorToYXmlFragment` / `yXmlFragmentToProseMirrorRootNode`).
+- **B. Single-word edit** (98% of corpus files): for each file and 5 seeded
+  runs, pick one eligible word inside a paragraph (at any depth), replace it
+  via a real ProseMirror `Transaction`, serialize, and require both semantic
+  correctness (the re-parsed output matches the edited doc block-for-block)
+  and containment (every changed line lies inside the edited paragraph's own
+  source line range — not just its enclosing top-level block). Failures are
+  categorized: `semantic-mismatch`, `diff-outside-paragraph-but-inside-block`,
+  `diff-outside-block`, `exception`.
+- **C. Opaque and special constructs**: front matter, raw HTML, MDX/JSX,
+  math, footnote definitions, link reference definitions, Mermaid and other
+  fenced code, and tables. Reports per-construct file/block counts, gate A
+  pass rate, gate B file pass rate, and — for every gate B edit — whether
+  every other top-level block of one of these kinds stayed byte-identical
+  outside the edited block.
+- **D. Editor-model fidelity** (100%): the schema is a real
+  `prosemirror-model` `Schema`; `doc.check()` passes for every parsed and
+  every edited document; edits are `Transaction`s by construction; rolls up
+  A2/A3.
+- **E. Style detection** (>= 10 non-default files pass): for files whose
+  detected conventions (bullet marker, emphasis marker, fence, heading
+  style, thematic break, line endings) differ from the schema defaults,
+  forces a full re-serialization and checks it reproduces the same
+  conventions for whichever ones actually appear in the forced output.
+  Also reports, as information, the fraction of top-level blocks whose
+  forced re-serialization is byte-identical to `src` (hints on/off) and the
+  fraction that verify as semantically equal.
+
+### Findings from the first full run
+
+- **A3 (Yjs/y-prosemirror)**: two confirmed y-prosemirror limitations, not
+  bugs in this spike's code. (1) The XmlFragment encoding has no slot for
+  the root *doc* node's own attrs, so `lead`/`eol` always come back at
+  schema defaults — affects files with a non-empty `lead` (leading blank
+  lines) or CRLF endings. (2) More impactful: marks on a non-text inline
+  leaf node are silently dropped — most commonly the `link` mark wrapping an
+  `image` node, i.e. `[![alt](img)](href)` loses its outer link and becomes
+  `![alt](img)`. See `results/gates.md` for the affected-file lists.
+- **B (single-word edit)**: two genuine limitations of the current
+  splice/re-serialize implementation, found by hand-tracing failures before
+  trusting the aggregate numbers (see the builder log for the full
+  diagnosis): (1) reserializing a blockquote (or any block) reuses the
+  *original* gap between it and the next block, but the reserialized text
+  can lack whatever originally prevented CommonMark lazy continuation (e.g.
+  a trailing bare `>` line), silently merging two top-level blocks —
+  `semantic-mismatch`. (2) Editing a word inside a list item forces the
+  whole list to re-serialize (splice doesn't reach into list items yet), and
+  `mdast-util-to-markdown`'s `incrementListMarker: true` renumbers every
+  item even when the source repeated `1.` throughout, spreading the diff
+  across the whole list — `diff-outside-paragraph-but-inside-block`. The
+  charter already names per-list-item splice as a stretch goal, not core
+  scope.
+
 ## Test results (last run)
 
 - Handwritten corpus (28 files): byte-identical, 100% verbatim path.

@@ -102,6 +102,16 @@ export interface TextRun {
 
 interface MapCollector {
   runs: { value: string; literal: boolean; marks: readonly Mark[]; sourceOffsets: (number | null)[] }[];
+  /** Source spans of mdast link and linkReference nodes, in document order. */
+  links: { start: number; end: number }[];
+}
+
+/** A link in a parsed block: its PM range (relative to the block's content) and its source span. */
+export interface LinkSpan {
+  from: number;
+  to: number;
+  sourceStart: number;
+  sourceEnd: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -218,6 +228,7 @@ function walkInline(node: any, source: string, marks: readonly Mark[], out: PMNo
       return;
     }
     case 'link': {
+      if (map && node.position) map.links.push({ start: node.position.start.offset, end: node.position.end.offset });
       const m = schema.marks.link.create({
         href: node.url ?? '',
         title: node.title ?? null,
@@ -228,6 +239,7 @@ function walkInline(node: any, source: string, marks: readonly Mark[], out: PMNo
       return;
     }
     case 'linkReference': {
+      if (map && node.position) map.links.push({ start: node.position.start.offset, end: node.position.end.offset });
       const m = schema.marks.link.create({
         href: '',
         title: null,
@@ -523,6 +535,8 @@ export function buildDefsContextFromDoc(doc: PMNode): string {
 export interface ParseBlockResult {
   node: PMNode;
   map?: TextRun[];
+  /** Link ranges with their source spans; undefined when they could not be matched one to one. */
+  links?: LinkSpan[];
   /** Number of top-level blocks the source parsed into; anything but 1 means the block is not self-describing. */
   count: number;
 }
@@ -580,7 +594,7 @@ export function parseBlock(src: string, ctx: string, opts?: { map?: boolean }): 
     }
   }
   const remaining = tree.children.slice(skip);
-  const mapCollector: MapCollector | undefined = opts?.map ? { runs: [] } : undefined;
+  const mapCollector: MapCollector | undefined = opts?.map ? { runs: [], links: [] } : undefined;
 
   let node: PMNode;
   if (remaining.length === 0) {
@@ -597,19 +611,69 @@ export function parseBlock(src: string, ctx: string, opts?: { map?: boolean }): 
   let map: TextRun[] | undefined;
   if (mapCollector) {
     map = [];
+    // Adjacent mdast text leaves with equal marks are merged into one PM text
+    // node (by mergeAdjacentText and by Fragment.fromArray), so collector runs
+    // and PM text nodes are not one to one. Consume runs in order and
+    // concatenate them until their values add up to the PM node's text; if
+    // they do not, the node is marked non-literal (never spliced).
     let i = 0;
-    node.descendants((n, pos) => {
-      if (n.isText) {
-        const info = mapCollector.runs[i++];
-        if (info) {
-          map!.push({ from: pos, to: pos + n.nodeSize, literal: info.literal, marks: info.marks, sourceOffsets: info.sourceOffsets });
-        }
+    const runs = mapCollector.runs;
+    node.descendants((n, pos, parent) => {
+      if (!n.isText) return true;
+      const text = n.text ?? '';
+      // Text of code and opaque blocks is not collected as runs; never splice it.
+      if (parent && parent.type.spec.code) {
+        map!.push({ from: pos, to: pos + n.nodeSize, literal: false, marks: n.marks, sourceOffsets: [] });
+        return true;
       }
+      let value = '';
+      let literal = true;
+      const offsets: (number | null)[] = [];
+      while (value.length < text.length && i < runs.length) {
+        const r = runs[i++];
+        value += r.value;
+        literal = literal && r.literal;
+        offsets.push(...r.sourceOffsets);
+      }
+      if (value !== text) literal = false;
+      map!.push({ from: pos, to: pos + n.nodeSize, literal, marks: n.marks, sourceOffsets: offsets });
       return true;
     });
   }
 
-  const result: ParseBlockResult = { node, map, count: remaining.length };
+  let links: LinkSpan[] | undefined;
+  if (mapCollector) {
+    // PM link ranges: maximal runs of inline nodes carrying the same link mark.
+    // Two adjacent mdast links with identical attributes merge into one PM
+    // range; then the counts differ and link-level splicing is disabled.
+    const ranges: { from: number; to: number }[] = [];
+    const scan = (tb: PMNode, base: number) => {
+      let cur: { from: number; to: number; mark: Mark } | null = null;
+      tb.forEach((child, offset) => {
+        const at = base + offset;
+        const lm = child.marks.find((m) => m.type.name === 'link');
+        if (cur && lm && lm.eq(cur.mark)) {
+          cur.to = at + child.nodeSize;
+          return;
+        }
+        if (cur) ranges.push({ from: cur.from, to: cur.to });
+        cur = lm ? { from: at, to: at + child.nodeSize, mark: lm } : null;
+      });
+      if (cur) ranges.push({ from: (cur as { from: number }).from, to: (cur as { to: number }).to });
+    };
+    if (node.isTextblock) scan(node, 0);
+    else
+      node.descendants((n, pos) => {
+        if (!n.isTextblock) return true;
+        scan(n, pos + 1);
+        return false;
+      });
+    if (ranges.length === mapCollector.links.length) {
+      links = ranges.map((r, k) => ({ ...r, sourceStart: mapCollector.links[k].start, sourceEnd: mapCollector.links[k].end }));
+    }
+  }
+
+  const result: ParseBlockResult = { node, map, links, count: remaining.length };
   parseBlockCache.set(cacheKey, result);
   return result;
 }

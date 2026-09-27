@@ -8,7 +8,8 @@ import { Schema, type NodeSpec, type MarkSpec } from 'prosemirror-model';
 
 /** True if an attribute name is meta (ignored by semantic comparison). */
 export function isMetaAttrName(name: string): boolean {
-  return name === 'src' || name === 'gap' || /Hint$/.test(name);
+  // refType (full, collapsed, shortcut) is reference syntax; the identifier is the semantic target.
+  return name === 'src' || name === 'gap' || name === 'refType' || name === 'leafMarks' || /Hint$/.test(name);
 }
 
 // Every top-level-capable block node gets `src`/`gap` meta attrs. They are
@@ -141,6 +142,7 @@ const nodes: Record<string, NodeSpec> = {
     inline: true,
     attrs: {
       breakHint: { default: '  \n' },
+      leafMarks: { default: null as string | null },
     },
   },
 
@@ -154,6 +156,7 @@ const nodes: Record<string, NodeSpec> = {
       refType: { default: null as string | null },
       identifier: { default: null as string | null },
       label: { default: null as string | null },
+      leafMarks: { default: null as string | null },
     },
   },
 
@@ -163,6 +166,7 @@ const nodes: Record<string, NodeSpec> = {
     attrs: {
       kind: { default: 'html' },
       value: { default: '' },
+      leafMarks: { default: null as string | null },
     },
   },
 };

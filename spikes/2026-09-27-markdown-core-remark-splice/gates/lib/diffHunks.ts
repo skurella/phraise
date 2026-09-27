@@ -10,12 +10,30 @@ export interface Hunk {
 }
 
 /**
- * Group `diffLines(oldStr, newStr)` into hunks anchored by old-text line
- * number. A pure insertion (no removed lines) is anchored at the old line
- * it was inserted before/after, with oldStart === oldEnd (a single-line
- * anchor), since it has no width of its own in the old text.
+ * The changed region of the old text, as one envelope hunk: strip the common
+ * line prefix and the common line suffix of old and new, and report what is
+ * left of the old text. This is stricter than grouping an LCS line diff
+ * (several separate hunks count as one envelope spanning all of them) and it
+ * is unambiguous: an LCS diff of a file with repeated identical lines may
+ * attribute a one-line change to a neighbouring identical line, which made
+ * a correct splice look like a change outside the edited paragraph.
+ * A pure insertion is anchored at the old line it was inserted before.
  */
 export function computeHunks(oldStr: string, newStr: string): Hunk[] {
+  if (oldStr === newStr) return [];
+  const a = oldStr.split('\n');
+  const b = newStr.split('\n');
+  let p = 0;
+  while (p < a.length && p < b.length && a[p] === b[p]) p++;
+  let s = 0;
+  while (s < a.length - p && s < b.length - p && a[a.length - 1 - s] === b[b.length - 1 - s]) s++;
+  const oldStart = p + 1;
+  const oldEnd = Math.max(a.length - s, oldStart);
+  return [{ oldStart, oldEnd }];
+}
+
+/** The same envelope with diffLines kept available for callers that want LCS hunks. */
+export function computeLcsHunks(oldStr: string, newStr: string): Hunk[] {
   const parts: Change[] = diffLines(oldStr, newStr);
   let oldLine = 1;
   const hunks: Hunk[] = [];
@@ -33,9 +51,7 @@ export function computeHunks(oldStr: string, newStr: string): Hunk[] {
       if (parts[j].removed) removedCount += parts[j].count ?? countLines(parts[j].value);
       j++;
     }
-    const start = oldLine;
-    const end = oldLine + Math.max(removedCount, 1) - 1;
-    hunks.push({ oldStart: start, oldEnd: end });
+    hunks.push({ oldStart: oldLine, oldEnd: oldLine + Math.max(removedCount, 1) - 1 });
     oldLine += removedCount;
     i = j;
   }

@@ -17,6 +17,7 @@ export interface GateDResult {
   a2PassOk: number;
   a3PassTotal: number;
   a3PassOk: number;
+  a3CodecOk: number;
   a3DocAttrLossCount: number;
   a3LeafMarkLossCount: number;
 }
@@ -26,6 +27,7 @@ export function runGateD(gateA: GateAFileResult[], gateB: FileWordResult[]): Gat
   const docCheckOk = gateA.filter((r) => r.docCheckOk).length;
   const a2PassOk = gateA.filter((r) => r.a2ok).length;
   const a3PassOk = gateA.filter((r) => r.a3ok).length;
+  const a3CodecOk = gateA.filter((r) => r.a3codecOk).length;
   const a3DocAttrLossCount = gateA.filter((r) => r.a3docAttrLoss).length;
   const a3LeafMarkLossCount = gateA.filter((r) => r.a3leafMarkLoss).length;
 
@@ -48,6 +50,7 @@ export function runGateD(gateA: GateAFileResult[], gateB: FileWordResult[]): Gat
     a2PassOk,
     a3PassTotal: gateA.length,
     a3PassOk,
+    a3CodecOk,
     a3DocAttrLossCount,
     a3LeafMarkLossCount,
   };

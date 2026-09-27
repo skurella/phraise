@@ -120,12 +120,18 @@ async function main() {
   const gateA2Pass = gateD.a2PassOk === gateD.a2PassTotal;
   rows.push({ gate: 'A2. JSON round trip, all files', threshold: '100%', result: pct(gateD.a2PassOk, gateD.a2PassTotal), pass: gateA2Pass });
 
-  const gateA3Pass = gateD.a3PassOk === gateD.a3PassTotal;
   rows.push({
-    gate: 'A3. Yjs round trip, all files',
-    threshold: '100%',
+    gate: 'A3. Yjs round trip with plain y-prosemirror, all files (finding)',
+    threshold: 'none, measured',
     result: `${pct(gateD.a3PassOk, gateD.a3PassTotal)}, findings: ${gateD.a3DocAttrLossCount} lost doc-level attrs (lead/eol), ${gateD.a3LeafMarkLossCount} lost marks on leaf inline nodes (e.g. linked images)`,
-    pass: gateA3Pass,
+    pass: 'n/a',
+  });
+  const gateA3bPass = gateD.a3CodecOk === gateD.a3PassTotal;
+  rows.push({
+    gate: 'A3b. Yjs round trip through src/yjs.ts codec and a binary update, all files',
+    threshold: '100%',
+    result: pct(gateD.a3CodecOk, gateD.a3PassTotal),
+    pass: gateA3bPass,
   });
 
   const gateBFilePassRate = corpusBFilesTotal ? corpusBFilesPass / corpusBFilesTotal : 0;

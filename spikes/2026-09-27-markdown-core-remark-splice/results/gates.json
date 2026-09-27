@@ -1,0 +1,5084 @@
+{
+  "generatedAt": "2026-09-27T02:58:57.064Z",
+  "quick": false,
+  "elapsedMs": 169776,
+  "rows": [
+    {
+      "gate": "A. No-edit round trip, corpus files",
+      "threshold": "100%",
+      "result": "294/294 (100.0%)",
+      "pass": true
+    },
+    {
+      "gate": "A2. JSON round trip, all files",
+      "threshold": "100%",
+      "result": "1621/1621 (100.0%)",
+      "pass": true
+    },
+    {
+      "gate": "A3. Yjs round trip with plain y-prosemirror, all files (finding)",
+      "threshold": "none, measured",
+      "result": "1473/1621 (90.9%), findings: 9 lost doc-level attrs (lead/eol), 140 lost marks on leaf inline nodes (e.g. linked images)",
+      "pass": "n/a"
+    },
+    {
+      "gate": "A3b. Yjs round trip through src/yjs.ts codec and a binary update, all files",
+      "threshold": "100%",
+      "result": "1621/1621 (100.0%)",
+      "pass": true
+    },
+    {
+      "gate": "B. Single-word edit, corpus files (file pass rate)",
+      "threshold": "98%",
+      "result": "293/293 (100.0%) files, 1465/1465 (100.0%) edits",
+      "pass": true
+    },
+    {
+      "gate": "C. Opaque/special constructs survive A and B",
+      "threshold": "every file containing the construct passes A; B containment holds",
+      "result": "frontmatter:2f, raw-html:156f, mdx:2f, math-block:1f, math-inline:5f, footnote-definition:2f, link-reference-definition:102f, mermaid:1f, fenced-code:219f, table:62f",
+      "pass": true
+    },
+    {
+      "gate": "D. Editor-model fidelity",
+      "threshold": "100%",
+      "result": "schema=prosemirror-model:true, doc.check() 1621/1621 (100.0%), edited doc.check() 5565/5565 (100.0%)",
+      "pass": true
+    },
+    {
+      "gate": "E. Style detection, non-default files passing",
+      "threshold": ">= 10 files",
+      "result": "149 files",
+      "pass": true
+    }
+  ],
+  "setACounts": {
+    "handwritten": {
+      "total": 28,
+      "ok": 28,
+      "a2": 28,
+      "a3": 28
+    },
+    "real": {
+      "total": 266,
+      "ok": 266,
+      "a2": 266,
+      "a3": 132
+    },
+    "commonmark": {
+      "total": 655,
+      "ok": 655,
+      "a2": 655,
+      "a3": 648
+    },
+    "gfm": {
+      "total": 672,
+      "ok": 672,
+      "a2": 672,
+      "a3": 665
+    }
+  },
+  "setBCounts": {
+    "handwritten": {
+      "totalFiles": 28,
+      "na": 0,
+      "withWords": 28,
+      "filesPass": 28,
+      "editsTotal": 140,
+      "editsPass": 140,
+      "singleLine": 140,
+      "pathCounts": {
+        "splice": 138,
+        "re-serialize": 2
+      },
+      "catCounts": {
+        "ok": 140
+      }
+    },
+    "real": {
+      "totalFiles": 266,
+      "na": 1,
+      "withWords": 265,
+      "filesPass": 265,
+      "editsTotal": 1325,
+      "editsPass": 1325,
+      "singleLine": 1324,
+      "pathCounts": {
+        "splice": 1322,
+        "re-serialize": 3
+      },
+      "catCounts": {
+        "ok": 1325
+      }
+    },
+    "commonmark": {
+      "totalFiles": 655,
+      "na": 252,
+      "withWords": 403,
+      "filesPass": 402,
+      "editsTotal": 2015,
+      "editsPass": 2010,
+      "singleLine": 2015,
+      "pathCounts": {
+        "splice": 1974,
+        "re-serialize": 36,
+        "unverified": 5
+      },
+      "catCounts": {
+        "ok": 2010,
+        "semantic-mismatch": 5
+      }
+    },
+    "gfm": {
+      "totalFiles": 672,
+      "na": 255,
+      "withWords": 417,
+      "filesPass": 416,
+      "editsTotal": 2085,
+      "editsPass": 2080,
+      "singleLine": 2085,
+      "pathCounts": {
+        "splice": 2042,
+        "re-serialize": 38,
+        "unverified": 5
+      },
+      "catCounts": {
+        "ok": 2080,
+        "semantic-mismatch": 5
+      }
+    }
+  },
+  "gateC": [
+    {
+      "kind": "frontmatter",
+      "filesContaining": 2,
+      "blockCount": 2,
+      "aPassFiles": 2,
+      "bFilePassFiles": 2,
+      "bFileNaFiles": 0,
+      "crossCheckChecked": 10,
+      "crossCheckPreserved": 10
+    },
+    {
+      "kind": "raw-html",
+      "filesContaining": 156,
+      "blockCount": 5561,
+      "aPassFiles": 156,
+      "bFilePassFiles": 156,
+      "bFileNaFiles": 0,
+      "crossCheckChecked": 9605,
+      "crossCheckPreserved": 9605
+    },
+    {
+      "kind": "mdx",
+      "filesContaining": 2,
+      "blockCount": 9,
+      "aPassFiles": 2,
+      "bFilePassFiles": 2,
+      "bFileNaFiles": 0,
+      "crossCheckChecked": 12,
+      "crossCheckPreserved": 12
+    },
+    {
+      "kind": "math-block",
+      "filesContaining": 1,
+      "blockCount": 3,
+      "aPassFiles": 1,
+      "bFilePassFiles": 1,
+      "bFileNaFiles": 0,
+      "crossCheckChecked": 15,
+      "crossCheckPreserved": 15
+    },
+    {
+      "kind": "math-inline",
+      "filesContaining": 5,
+      "blockCount": 15,
+      "aPassFiles": 5,
+      "bFilePassFiles": 5,
+      "bFileNaFiles": 0,
+      "crossCheckChecked": 0,
+      "crossCheckPreserved": 0
+    },
+    {
+      "kind": "footnote-definition",
+      "filesContaining": 2,
+      "blockCount": 5,
+      "aPassFiles": 2,
+      "bFilePassFiles": 2,
+      "bFileNaFiles": 0,
+      "crossCheckChecked": 25,
+      "crossCheckPreserved": 25
+    },
+    {
+      "kind": "link-reference-definition",
+      "filesContaining": 102,
+      "blockCount": 1944,
+      "aPassFiles": 102,
+      "bFilePassFiles": 102,
+      "bFileNaFiles": 0,
+      "crossCheckChecked": 9715,
+      "crossCheckPreserved": 9715
+    },
+    {
+      "kind": "mermaid",
+      "filesContaining": 1,
+      "blockCount": 2,
+      "aPassFiles": 1,
+      "bFilePassFiles": 1,
+      "bFileNaFiles": 0,
+      "crossCheckChecked": 10,
+      "crossCheckPreserved": 10
+    },
+    {
+      "kind": "fenced-code",
+      "filesContaining": 219,
+      "blockCount": 3630,
+      "aPassFiles": 219,
+      "bFilePassFiles": 218,
+      "bFileNaFiles": 1,
+      "crossCheckChecked": 17675,
+      "crossCheckPreserved": 17675
+    },
+    {
+      "kind": "table",
+      "filesContaining": 62,
+      "blockCount": 161,
+      "aPassFiles": 62,
+      "bFilePassFiles": 62,
+      "bFileNaFiles": 0,
+      "crossCheckChecked": 770,
+      "crossCheckPreserved": 770
+    }
+  ],
+  "gateD": {
+    "schemaIsProseMirrorModel": true,
+    "docCheckTotal": 1621,
+    "docCheckOk": 1621,
+    "editedDocCheckTotal": 5565,
+    "editedDocCheckOk": 5565,
+    "a2PassTotal": 1621,
+    "a2PassOk": 1621,
+    "a3PassTotal": 1621,
+    "a3PassOk": 1473,
+    "a3CodecOk": 1621,
+    "a3DocAttrLossCount": 9,
+    "a3LeafMarkLossCount": 140
+  },
+  "gateE": {
+    "nonDefaultPassCount": 149,
+    "hintsOnByteIdenticalRate": 0.9415475322534631,
+    "hintsOffByteIdenticalRate": 0.9378070814974483,
+    "hintsOnVerificationRate": 0.9979078834754493,
+    "hintsOffVerificationRate": 0.9979078834754493,
+    "blocksMeasured": 31547,
+    "nonDefaultFiles": [
+      {
+        "id": "handwritten/crlf",
+        "nonDefaultFields": [
+          "eol"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\r\n"
+        }
+      },
+      {
+        "id": "handwritten/setext-headings",
+        "nonDefaultFields": [
+          "headingStyle1",
+          "headingStyle2",
+          "setext"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "setext",
+          "headingStyle2": "setext",
+          "setext": true,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "handwritten/style-dash-underscore",
+        "nonDefaultFields": [
+          "emphasis",
+          "rule"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "*",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "handwritten/style-plus-bullets",
+        "nonDefaultFields": [
+          "bullet",
+          "fenceLen",
+          "closeAtx"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "+",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 4,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": true,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "handwritten/style-star-bullets",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis",
+          "strong",
+          "fence",
+          "headingStyle1",
+          "setext"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "_",
+          "fence": "~",
+          "fenceLen": 3,
+          "headingStyle1": "setext",
+          "headingStyle2": "atx",
+          "setext": true,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design11502securitypolicymd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design14386zippackagearchivesmd",
+        "nonDefaultFields": [
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design15292201312typeparamsmd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design17280profilelabelsmd",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design2981gotestjsonmd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design40276goinstallmd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design43810gopmemmd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design45713workspacemd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design48409softmemorylimitsrcmd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design55022pgoimplementationmd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis",
+          "strong"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "_",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design60078loopvarmd",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-design6977overlappinginterfacesmd",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/golang-proposal-designdraftiofsmd",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigapimachinery2334graduateserve",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigapimachinery4153declarativeva",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigapps4017podindexlabelreadmemd",
+        "nonDefaultFields": [
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigarchitecture917gomodulesreadm",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigauth4872hardenkubeletcertvali",
+        "nonDefaultFields": [
+          "rule",
+          "ruleRepetition"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "*",
+          "ruleRepetition": 4,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigcloudprovider1179buildingwith",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigclusterlifecycleclusterapi249",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigclusterlifecyclewgs783compone",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssignode1898hardenedexecreadmemd",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssignode2837podlevelresourcespecr",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssignode5532restartallcontainerso",
+        "nonDefaultFields": [
+          "bulletOrdered",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ")",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigscheduling1923prefernominated",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigsecurity3203autorefreshingoff",
+        "nonDefaultFields": [
+          "strong"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "_",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/kubernetes-enhancements-kepssigstorage559volumesubpathexpans",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/nodejs-node-docapiaddonsmd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/nodejs-node-docapiclimd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/nodejs-node-docapidiagnosticschannelmd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/nodejs-node-docapierrorsmd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/nodejs-node-docapihttp2md",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/nodejs-node-docapinapimd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/nodejs-node-docapiprocessmd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/nodejs-node-docapisingleexecutableapplicationsmd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/nodejs-node-docapitlsmd",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/nodejs-node-docapivfsmd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-axios-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-base64-js-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "headingStyle1"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "setext",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-bee-queue-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-body-parser-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-browserslist-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-bull-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-canvas-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-chai-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-changesets-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-chrono-node-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-commander-readme",
+        "nonDefaultFields": [
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-compression-readme",
+        "nonDefaultFields": [
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-cross-env-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-d3-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-dayjs-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-debug-readme",
+        "nonDefaultFields": [
+          "emphasis",
+          "strong"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "_",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-dotenv-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-echarts-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "+",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-enquirer-readme",
+        "nonDefaultFields": [
+          "emphasis",
+          "rule"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "*",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-env-var-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-eslint-readme",
+        "nonDefaultFields": [
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-expo-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-express-http-proxy-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-express-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-fast-deep-equal-readme",
+        "nonDefaultFields": [
+          "strong"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "_",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-fast-glob-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-fastify-readme",
+        "nonDefaultFields": [
+          "emphasis",
+          "strong"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "_",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-firebase-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-flatted-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-fp-ts-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-fs-extra-readme",
+        "nonDefaultFields": [
+          "headingStyle1",
+          "headingStyle2",
+          "setext"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "setext",
+          "headingStyle2": "setext",
+          "setext": true,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-glob-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-graphql-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-graphql-request-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-gray-matter-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis",
+          "rule"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "*",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-htm-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-http-proxy-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-immer-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-jest-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-jsdom-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-jsonwebtoken-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-karma-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-koa-readme",
+        "nonDefaultFields": [
+          "emphasis",
+          "strong"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "_",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-ky-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-less-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-lint-staged-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-mailgun-js-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-mdx-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-memcached-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-mime-types-readme",
+        "nonDefaultFields": [
+          "strong"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "_",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-minimist-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-mobx-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-mocha-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-mqtt-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-nanoid-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-nock-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-node-fetch-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-node-schedule-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-p-retry-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-passport-readme",
+        "nonDefaultFields": [
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-pg-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-pino-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-playwright-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-postcss-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-prompts-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "rule"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "*",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-protobufjs-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-ramda-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "headingStyle1",
+          "headingStyle2",
+          "setext"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "setext",
+          "headingStyle2": "setext",
+          "setext": true,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-react-dom-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-react-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-react-redux-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-redis-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-redux-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-rimraf-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-rollup-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-sass-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-semver-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "headingStyle1"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "setext",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-stripe-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-tap-readme",
+        "nonDefaultFields": [
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-tar-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-tiny-emitter-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-toml-readme",
+        "nonDefaultFields": [
+          "headingStyle1",
+          "headingStyle2",
+          "setext"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "setext",
+          "headingStyle2": "setext",
+          "setext": true,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-ts-node-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-typeorm-cli-readme",
+        "nonDefaultFields": [
+          "listItemIndent",
+          "eol"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\r\n"
+        }
+      },
+      {
+        "id": "real/npm-unified-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-unzipper-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "strong"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "_",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-uuid-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-uvu-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-webpack-readme",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-winston-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-xml2js-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "headingStyle1",
+          "headingStyle2",
+          "setext",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "setext",
+          "headingStyle2": "setext",
+          "setext": true,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-xmldom-readme",
+        "nonDefaultFields": [
+          "bullet",
+          "emphasis",
+          "headingStyle1",
+          "headingStyle2",
+          "setext"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "setext",
+          "headingStyle2": "setext",
+          "setext": true,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-yargs-readme",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/npm-yup-readme",
+        "nonDefaultFields": [
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text0001privatefieldsmd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text0086pluginregistrarmd",
+        "nonDefaultFields": [
+          "fence"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "~",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text0494cstrandcvecstabilitymd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text0823hashsimplificationmd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text1270deprecationmd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text1560nameresolutionmd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text1845sharedfromslicemd",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "+",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text2091inlinesemanticmd",
+        "nonDefaultFields": [
+          "ruleRepetition",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 4,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text2957cargofeatures2md",
+        "nonDefaultFields": [
+          "bullet"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text3119rustcrateownershipmd",
+        "nonDefaultFields": [
+          "emphasis",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text3254typesteammd",
+        "nonDefaultFields": [
+          "bullet",
+          "listItemIndent"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "*",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "tab",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text3392leadershipcouncilleadershipcouncilrfc",
+        "nonDefaultFields": [
+          "ruleRepetition"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "rule",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "*",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 5,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text3695cfgbooleanliteralsmd",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      },
+      {
+        "id": "real/rust-lang-rfcs-text3892complexnumbersmd",
+        "nonDefaultFields": [
+          "emphasis"
+        ],
+        "isNonDefault": true,
+        "checkedConventions": [
+          "bullet",
+          "emphasis",
+          "fence",
+          "heading(setext/closeAtx)",
+          "eol"
+        ],
+        "pass": true,
+        "style": {
+          "bullet": "-",
+          "bulletOrdered": ".",
+          "emphasis": "_",
+          "strong": "*",
+          "fence": "`",
+          "fenceLen": 3,
+          "headingStyle1": "atx",
+          "headingStyle2": "atx",
+          "setext": false,
+          "closeAtx": false,
+          "rule": "-",
+          "ruleRepetition": 3,
+          "listItemIndent": "one",
+          "eol": "\n"
+        }
+      }
+    ]
+  },
+  "a3DocAttrLossFiles": [
+    "real/npm-bull-readme",
+    "real/npm-htm-readme",
+    "real/npm-typeorm-cli-readme",
+    "commonmark/0097",
+    "commonmark/0117",
+    "commonmark/0229",
+    "gfm/0067",
+    "gfm/0087",
+    "gfm/0197"
+  ],
+  "a3LeafMarkLossFiles": [
+    "real/kubernetes-enhancements-kepssigapimachinery4153declarativeva",
+    "real/kubernetes-enhancements-kepssigapimachinery6164internaltypee",
+    "real/kubernetes-enhancements-kepssiginstrumentation4827components",
+    "real/kubernetes-enhancements-kepssignode1898hardenedexecreadmemd",
+    "real/kubernetes-enhancements-kepssignode2837podlevelresourcespecr",
+    "real/kubernetes-enhancements-kepssignode753sidecarcontainersreadm",
+    "real/kubernetes-enhancements-kepssigsecurity3203autorefreshingoff",
+    "real/npm-amazon-cognito-identity-js-readme",
+    "real/npm-auth0-js-readme",
+    "real/npm-ava-readme",
+    "real/npm-aws-sdk-readme",
+    "real/npm-axios-readme",
+    "real/npm-base64-js-readme",
+    "real/npm-bcryptjs-readme",
+    "real/npm-bee-queue-readme",
+    "real/npm-better-sqlite3-readme",
+    "real/npm-body-parser-readme",
+    "real/npm-bootstrap-readme",
+    "real/npm-buffer-readme",
+    "real/npm-bull-readme",
+    "real/npm-bunyan-readme",
+    "real/npm-canvas-readme",
+    "real/npm-cesium-readme",
+    "real/npm-chai-readme",
+    "real/npm-chalk-readme",
+    "real/npm-changesets-readme",
+    "real/npm-chrono-node-readme",
+    "real/npm-commander-readme",
+    "real/npm-commitlint-readme",
+    "real/npm-compression-readme",
+    "real/npm-cors-readme",
+    "real/npm-cross-env-readme",
+    "real/npm-debug-readme",
+    "real/npm-dotenv-readme",
+    "real/npm-echarts-readme",
+    "real/npm-env-var-readme",
+    "real/npm-eslint-readme",
+    "real/npm-eventemitter3-readme",
+    "real/npm-expo-readme",
+    "real/npm-express-http-proxy-readme",
+    "real/npm-express-readme",
+    "real/npm-express-validator-readme",
+    "real/npm-fast-deep-equal-readme",
+    "real/npm-fast-json-stringify-readme",
+    "real/npm-fastify-readme",
+    "real/npm-firebase-readme",
+    "real/npm-firebase-tools-readme",
+    "real/npm-flatted-readme",
+    "real/npm-fs-extra-readme",
+    "real/npm-gatsby-readme",
+    "real/npm-got-readme",
+    "real/npm-graphql-readme",
+    "real/npm-graphql-request-readme",
+    "real/npm-gray-matter-readme",
+    "real/npm-hapi-readme",
+    "real/npm-hexo-readme",
+    "real/npm-hjson-readme",
+    "real/npm-html-to-text-readme",
+    "real/npm-http-proxy-readme",
+    "real/npm-immer-readme",
+    "real/npm-ioredis-readme",
+    "real/npm-jest-readme",
+    "real/npm-jsonwebtoken-readme",
+    "real/npm-jwt-decode-readme",
+    "real/npm-karma-readme",
+    "real/npm-koa-readme",
+    "real/npm-ky-readme",
+    "real/npm-mailgun-js-readme",
+    "real/npm-marked-readme",
+    "real/npm-mdx-readme",
+    "real/npm-memcached-readme",
+    "real/npm-mime-types-readme",
+    "real/npm-minimist-readme",
+    "real/npm-mobx-readme",
+    "real/npm-mocha-readme",
+    "real/npm-mocha-webpack-readme",
+    "real/npm-mqtt-readme",
+    "real/npm-multer-readme",
+    "real/npm-mysql2-readme",
+    "real/npm-nanoclone-readme",
+    "real/npm-netlify-cli-readme",
+    "real/npm-nock-readme",
+    "real/npm-node-cron-readme",
+    "real/npm-node-fetch-readme",
+    "real/npm-node-schedule-readme",
+    "real/npm-nodemailer-readme",
+    "real/npm-nodemon-readme",
+    "real/npm-npm-run-all-readme",
+    "real/npm-nunjucks-readme",
+    "real/npm-oclif-readme",
+    "real/npm-passport-readme",
+    "real/npm-pino-readme",
+    "real/npm-pkg-readme",
+    "real/npm-playwright-readme",
+    "real/npm-qs-readme",
+    "real/npm-ramda-readme",
+    "real/npm-react-dom-readme",
+    "real/npm-react-hook-form-readme",
+    "real/npm-react-readme",
+    "real/npm-react-redux-readme",
+    "real/npm-react-shallow-renderer-readme",
+    "real/npm-recharts-readme",
+    "real/npm-recoil-readme",
+    "real/npm-redis-readme",
+    "real/npm-redux-readme",
+    "real/npm-redux-thunk-readme",
+    "real/npm-semantic-release-readme",
+    "real/npm-sendgrid-readme",
+    "real/npm-sequelize-readme",
+    "real/npm-socket.io-readme",
+    "real/npm-storybook-readme",
+    "real/npm-stripe-readme",
+    "real/npm-stylus-readme",
+    "real/npm-superjson-readme",
+    "real/npm-swr-readme",
+    "real/npm-three-readme",
+    "real/npm-toml-readme",
+    "real/npm-ts-node-readme",
+    "real/npm-unified-readme",
+    "real/npm-unzipper-readme",
+    "real/npm-url-parse-readme",
+    "real/npm-uuid-readme",
+    "real/npm-validator-readme",
+    "real/npm-vue-test-utils-readme",
+    "real/npm-wait-on-readme",
+    "real/npm-webpack-readme",
+    "real/npm-winston-readme",
+    "real/npm-ws-readme",
+    "real/npm-xml2js-readme",
+    "real/npm-xmldom-readme",
+    "real/npm-yargs-readme",
+    "real/rust-lang-rfcs-text3695cfgbooleanliteralsmd",
+    "commonmark/0519",
+    "commonmark/0533",
+    "commonmark/0641",
+    "commonmark/0642",
+    "gfm/0525",
+    "gfm/0539",
+    "gfm/0658",
+    "gfm/0659"
+  ]
+}

@@ -5,7 +5,7 @@
 import { Node as PMNode } from 'prosemirror-model';
 import * as Y from 'yjs';
 import { prosemirrorToYXmlFragment, yXmlFragmentToProseMirrorRootNode } from 'y-prosemirror';
-import { serializeDoc, schema, type TraceInfo } from '../src/index.js';
+import { serializeDoc, schema, docToYDoc, yDocToDoc, type TraceInfo } from '../src/index.js';
 import type { ParsedFile } from './lib/parsedFile.js';
 
 export interface GateAFileResult {
@@ -14,6 +14,7 @@ export interface GateAFileResult {
   docCheckOk: boolean; // doc.check() passed (gate D: editor-model fidelity)
   a2ok: boolean;
   a3ok: boolean;
+  a3codecOk: boolean; // A3b: through src/yjs.ts codec and an encoded update into a second Y.Doc
   a3docAttrLoss: boolean; // a3 mismatch traceable to y-prosemirror dropping the *doc* node's own attrs (lead/eol)
   a3leafMarkLoss: boolean; // a3 mismatch traceable to y-prosemirror dropping marks on non-text leaf inline nodes (image, hard_break)
   unstableBlocks: number;
@@ -43,6 +44,7 @@ export function runGateAOne(pf: ParsedFile): GateAFileResult {
       docCheckOk: false,
       a2ok: false,
       a3ok: false,
+      a3codecOk: false,
       a3docAttrLoss: false,
       a3leafMarkLoss: false,
       unstableBlocks: 0,
@@ -113,7 +115,20 @@ export function runGateAOne(pf: ParsedFile): GateAFileResult {
     a3ok = false;
   }
 
-  return { id: file.id, ok, docCheckOk, a2ok, a3ok, a3docAttrLoss, a3leafMarkLoss, unstableBlocks, pathCounts, error };
+  // A3b: the Phraise codec (root attrs in a Y.Map, inline-leaf marks encoded
+  // in a meta attr), shipped as a binary update to a second Y.Doc, the way a
+  // relay or a second client would receive it.
+  let a3codecOk = false;
+  try {
+    const y1 = docToYDoc(doc);
+    const y2 = new Y.Doc();
+    Y.applyUpdate(y2, Y.encodeStateAsUpdate(y1));
+    a3codecOk = serializeDoc(yDocToDoc(y2)) === file.md;
+  } catch {
+    a3codecOk = false;
+  }
+
+  return { id: file.id, ok, docCheckOk, a2ok, a3ok, a3codecOk, a3docAttrLoss, a3leafMarkLoss, unstableBlocks, pathCounts, error };
 }
 
 export function runGateA(files: ParsedFile[]): GateAFileResult[] {
