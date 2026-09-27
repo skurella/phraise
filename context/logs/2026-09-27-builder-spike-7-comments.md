@@ -171,3 +171,173 @@ converge after sync).
 
 Next: task 3 (decoration/highlight plugin), task 4 (sidebar, composer,
 floating Comment button, Mod-Alt-M), then gate F's Playwright tests.
+
+## 22:10 -- tasks 2/3/4/5 done: highlights, sidebar, composer, gate F all green
+
+`web/src/comments/liveContext.ts`: `liveAnchoringContext(state)` reads
+`ySyncPluginKey.getState(state).binding`'s `doc`/`type`/`mapping` -- the
+exact fields `localCaretFollow.ts` already reads -- and calls
+`contextFromBinding` (exported from `src/comments/anchor.ts` alongside
+`contextFromYDoc`), so the live path and the headless-test path share one
+constructor.
+
+`web/src/comments/highlightPlugin.ts`: `commentHighlightPlugin` (a plain
+ProseMirror plugin, wrapped as a Tiptap `Extension` in
+`highlightExtension.ts`, same pattern as `PhraiseWorkarounds`). Its plugin
+state recomputes fully on any `docChanged` transaction OR a meta-only
+"refresh" transaction (`refreshCommentHighlights`, called from the
+controller after a local thread action); resolves every unresolved
+thread's anchor via `resolveAnchor`, skips resolved and orphaned threads
+(no decoration at all), and paints the rest with
+`Decoration.inline(start, end, {class, 'data-thread-id'}, {threadId})`,
+`--active` for whichever thread the sidebar has selected.
+
+`web/src/comments/sidebar.ts` (`renderSidebar`, rebuild-from-scratch DOM),
+`web/src/comments/commentTrigger.ts` (`CommentTrigger`: the floating
+"Comment" button, positioned via `editor.view.coordsAtPos`, same
+lazy-DOM-element pattern as `imagePopover.ts`; Mod-Alt-M via
+`addKeyboardShortcuts`), and `web/src/comments/controller.ts`
+(`CommentsController`: owns the only per-tab-local state -- active thread,
+pending composer selection, show-resolved toggle -- and wires the Y.Map
+observer, the highlight plugin's refresh, and the sidebar's rerender
+together). Wired into `web/src/main.ts` via a `commentsRef` mutable
+holder (the two extensions need the `CommentsController`, which itself
+needs the built `Editor` -- a chicken-and-egg problem solved by populating
+the ref right after `new Editor(...)`). `web/index.html` gained
+`#comments-sidebar`; `web/src/style.css` gained the highlight/sidebar/
+composer/floating-button styles (plain, matching brief 03's own choice).
+
+Two real bugs found and fixed while writing `e2e/gateF-comments.spec.ts`
+(`e2e/fixtures/comments.md`, verified byte-identical round-trip before
+use), both confirmed as true failures against the real app first, not
+guessed:
+1. `Decoration.inline(from, to, attrs, spec)` takes attrs and spec as TWO
+   SEPARATE constructor arguments (confirmed by reading
+   `node_modules/prosemirror-view/dist/index.d.ts`'s own signature) -- the
+   first version put `data-thread-id` only in `attrs` (so it would render
+   into the DOM) and tried to read it back off `.spec` in `handleClick`,
+   which is always empty unless a spec object is passed explicitly. Fixed
+   by passing `{threadId: thread.id}` as the fourth argument and reading
+   `.spec.threadId`. Symptom: clicking inside a highlight never activated
+   its thread.
+2. Two separate "the sidebar didn't update" gaps, since the threads
+   `Y.Map` lives OUTSIDE the ProseMirror-bound fragment (by design, so
+   comments never touch the Markdown): (a) a remote thread change (new
+   comment/reply/resolve arriving from another replica) produces no
+   ProseMirror transaction on its own, so nothing told the highlight
+   plugin to recompute -- fixed by calling `refreshCommentHighlights` from
+   the `observeThreads` callback too, not only from this tab's own local
+   actions; (b) a thread becoming ORPHANED is purely a consequence of a
+   DOCUMENT edit (the quoted text being deleted), with no write to the
+   threads map at all -- the highlight plugin already recomputes on every
+   `docChanged` transaction, but the sidebar's own "which group is this
+   thread in" computation only ran from thread-map-triggered or
+   locally-triggered renders, so an orphaning edit left the sidebar
+   showing the thread as still-active until an unrelated action happened
+   to rerender it. Fixed by also calling `render()` (debounced 250ms, same
+   figure `main.ts`'s own Markdown-panel refresh already uses) on every
+   `docChanged` editor transaction. Debouncing this, plus a rerender
+   rebuilding the sidebar's DOM from scratch on every call, meant a third,
+   related fix: `sidebar.ts`'s `captureDraftFocus`/`restoreDraftFocus`
+   preserve whichever reply/composer textarea has focus (its value and
+   caret) across a rebuild, so a document edit arriving elsewhere while a
+   user is mid-reply does not wipe their draft.
+
+Also found while writing the "highlight follows the text" test (not a
+bug): a single logical `Decoration.inline` range can legitimately render
+as MORE than one `<span>` in the DOM once an edit lands strictly inside
+it -- ProseMirror renders one wrapper element per contiguous pre-existing
+inline text node rather than merging adjacent ones under one decoration.
+The test's own `highlightedText()` helper joins `allTextContents()` across
+however many spans exist, in document order, rather than asserting a
+single element.
+
+Gate F (`e2e/gateF-comments.spec.ts`, 6 tests, titled `[F] ...`, two
+contexts (Alice/Bob) + a third (Carol) for the reload/fresh-context test,
+real keyboard (`Shift+ArrowRight` for phrase selection -- the
+orchestrator's own confirmed-working technique, polling
+`editor.state.selection` via `expect.poll` until it settles before
+reading) and mouse (clicks, a real triple-click for "select the whole
+paragraph") only:
+1. Alice selects a phrase, adds a comment via the floating button; the
+   highlight and sidebar thread appear for Alice AND (once synced) Bob;
+   clicking inside the highlight activates the thread; Mod-Alt-M opens a
+   composer for a second selection and Escape cancels it cleanly.
+2. Bob replies; Alice sees it; Alice resolves; the highlight disappears on
+   both; the thread only reappears once "Show resolved" is checked, now
+   showing "Reopen" instead of "Resolve".
+3. The highlight follows the text: Bob types before the phrase in the
+   same paragraph, inserts a new empty paragraph directly above it (caret
+   at position 0, Enter, then types into the new paragraph), and types
+   INSIDE the phrase -- the highlighted text (joined across however many
+   spans) stays exactly the phrase, then exactly the phrase WITH his
+   insertion, on both Alice's and Bob's pages, throughout.
+4. Bob selects the whole paragraph (triple-click) and deletes it
+   (Backspace twice: clears the text, then joins the empty paragraph away)
+   -- both sidebars show the thread under "Orphaned" with its original
+   quote and the note "The text this comment referred to was deleted.";
+   no highlight remains.
+5. The Markdown is byte-identical to the original fixture after adding,
+   replying to, and resolving a comment (comments never touch
+   `FRAGMENT_NAME`'s `Y.XmlFragment`, so this was expected, not a close
+   call, but is asserted directly per the brief).
+6. A comment survives `page.reload()` (same browser, same relay/SQLite
+   persistence every other gate already relies on) and appears, with its
+   highlight, for a fresh third context (Carol).
+
+`PLAYWRIGHT_BROWSERS_PATH=.pw-browsers npx playwright test
+e2e/gateF-comments.spec.ts --repeat-each=5 --workers=1` -> 30/30 passing.
+`npm run gates` (the full suite, gates A-I) -> 78/78 passing, gate F shows
+"6 PASS" alongside every gate that passed before (A 22, B 23, C 6, D 6, E
+3, G 6, H 4, I 2); J/K not run (out of this brief's scope). `npx vitest
+run` -> 24 files, 175/175 (170 previous + 5 new `relativeTime` tests).
+`npx tsc --noEmit` -> clean. `lsof -nP -iTCP:4400-4499 -sTCP:LISTEN` ->
+empty.
+
+Not chased further (documented, not silently dropped): comments spanning
+two blocks are not specially handled -- `buildAnchorRecord` builds
+whatever quote/offsets a cross-block PM range actually has (the quote
+would contain the `\n\n` block separator), and `resolveAnchor` treats it
+like any other range; no test exercises this directly, per the brief's own
+"not in scope: comments spanning two blocks beyond what falls out
+naturally (record the behaviour)". Reply/composer drafts are only
+preserved across a rerender triggered by ANOTHER user's edit or a resolve
+elsewhere in this SAME tab, not across a full page reload (expected;
+nothing asks for that).
+
+## 22:18 -- full-suite flake found and fixed at the cause (matching the established discipline)
+
+`npm run gates` (default worker parallelism, ALL gates A-I together, not
+just gate F in isolation) failed once: `placeCaret`'s final poll (caret
+offset after `Home` + N `ArrowRight` presses) timed out inside gate F's
+first test's Mod-Alt-M section, under real contention from several other
+gates' browsers/relays running concurrently. Never reproduced running
+gate F alone (30/30 at `--repeat-each=5`, `--workers=1`, twice).
+
+Same class of flake brief 05 already root-caused twice for `typeAndVerify`
+(a real, rare CDP input-delivery miss under parallel load, not application
+logic) -- diagnosed the same way rather than assumed: the failure's own
+error showed the offset simply never reached the wanted value within the
+15s suite-wide `expect.poll` timeout, consistent with a dropped/delayed
+keystroke rather than a wrong position. Fixed at the cause, following the
+established pattern exactly: `placeCaret` now retries its whole
+click+Home+ArrowRight-N sequence up to 3 times if a SHORTER (3s) poll
+doesn't converge, logging every retry via `console.log`
+(`[placeCaret-retry] ...`) per the charter's own instruction not to retry
+silently; `selectPhrase`'s `Shift+ArrowRight` extension loop got the same
+treatment (retries the whole placeCaret-then-extend sequence). A
+successful attempt still returns in single-digit milliseconds, so this
+never slows the common case -- confirmed by two consecutive clean
+`npm run gates` runs afterward (78/78 both times, default worker
+parallelism) plus a third `--repeat-each=5` run of gate F alone (30/30).
+No retry has actually fired in any of these post-fix runs (no
+`[placeCaret-retry]`/`[selectPhrase-retry]` lines in the output), matching
+the "rare" characterization -- this hardens against a flake proven to
+happen under full-suite load, not one currently reproducing on demand.
+
+Final state: `npx vitest run` -> 24 files, 175/175. `npx tsc --noEmit` ->
+clean. `npm run gates` -> 78/78 (A 22, B 23, C 6, D 6, E 3, F 6, G 6, H 4,
+I 2; J/K not run), run twice clean. `lsof -nP -iTCP:4400-4499
+-sTCP:LISTEN` -> empty. README updated (title/status briefs 01-06, Layout,
+Origin of copied code, Commands, Verified, a new "Brief 06" findings
+section, and "Notes for the next brief" additions for brief 07).

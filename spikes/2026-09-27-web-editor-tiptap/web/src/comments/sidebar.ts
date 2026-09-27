@@ -195,12 +195,55 @@ function renderComposer(vm: SidebarViewModel): HTMLElement {
   return card;
 }
 
-/** Rebuild the sidebar's DOM from `vm`. Reply-box drafts are NOT preserved
- * across a rerender triggered by someone else's edit arriving mid-typing
- * (a real, accepted limitation of the "rebuild from scratch" approach at
- * spike scale -- see the findings doc). */
+interface DraftFocus {
+  selector: string;
+  value: string;
+  selectionStart: number | null;
+}
+
+/** A rerender rebuilds the sidebar's DOM from scratch (see `renderSidebar`'s
+ * own comment), which would otherwise wipe out whatever the user is
+ * CURRENTLY typing into a reply box or the composer every time a document
+ * edit (this tab's own, or a remote one) triggers a refresh -- found by a
+ * real gate F run needing the sidebar to reflect document edits (a thread
+ * becoming orphaned) promptly, which meant rerendering far more often than
+ * only on thread-map changes. Captures the focused textarea's identity
+ * (composer, or a specific thread's reply box) and its value/caret before
+ * the rebuild, so it can be restored after. */
+function captureDraftFocus(container: HTMLElement): DraftFocus | null {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLTextAreaElement) || !container.contains(active)) return null;
+  if (active.classList.contains('phraise-comment-composer-input')) {
+    return { selector: '.phraise-comment-composer-input', value: active.value, selectionStart: active.selectionStart };
+  }
+  const card = active.closest<HTMLElement>('[data-thread-id]');
+  if (active.classList.contains('phraise-comment-reply-input') && card?.dataset.threadId) {
+    return {
+      selector: `[data-thread-id="${CSS.escape(card.dataset.threadId)}"] .phraise-comment-reply-input`,
+      value: active.value,
+      selectionStart: active.selectionStart,
+    };
+  }
+  return null;
+}
+
+function restoreDraftFocus(container: HTMLElement, draft: DraftFocus | null): void {
+  if (!draft) return;
+  const el = container.querySelector<HTMLTextAreaElement>(draft.selector);
+  if (!el) return;
+  el.value = draft.value;
+  el.dispatchEvent(new Event('input')); // re-runs the reply "input" listener that shows/hides the Reply button
+  el.focus();
+  if (draft.selectionStart != null) el.setSelectionRange(draft.selectionStart, draft.selectionStart);
+}
+
+/** Rebuild the sidebar's DOM from `vm`. A focused reply/composer draft's
+ * text and caret are preserved across the rebuild (see `captureDraftFocus`);
+ * nothing else about the user's transient UI state (e.g. scroll position)
+ * is. */
 export function renderSidebar(container: HTMLElement, vm: SidebarViewModel): void {
   const now = Date.now();
+  const draft = captureDraftFocus(container);
   container.innerHTML = '';
 
   const toolbar = el('div', 'phraise-comments-toolbar');
@@ -238,6 +281,8 @@ export function renderSidebar(container: HTMLElement, vm: SidebarViewModel): voi
     container.appendChild(el('div', 'phraise-comment-group-heading', 'Resolved'));
     for (const p of resolved) container.appendChild(renderThreadCard(p, vm, now));
   }
+
+  restoreDraftFocus(container, draft);
 }
 
 export function scrollThreadIntoView(container: HTMLElement, threadId: string): void {

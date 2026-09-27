@@ -46,10 +46,23 @@ function computeState(ydoc: Y.Doc, state: EditorState, activeThreadId: string | 
     ranges.set(thread.id, { start: resolved.start, end: resolved.end });
     const active = thread.id === activeThreadId;
     decorations.push(
-      Decoration.inline(resolved.start, resolved.end, {
-        class: active ? 'phraise-comment-highlight phraise-comment-highlight--active' : 'phraise-comment-highlight',
-        'data-thread-id': thread.id,
-      }),
+      Decoration.inline(
+        resolved.start,
+        resolved.end,
+        {
+          class: active ? 'phraise-comment-highlight phraise-comment-highlight--active' : 'phraise-comment-highlight',
+          'data-thread-id': thread.id,
+        },
+        // `attrs` (above) is what actually renders into the DOM; `spec` (a
+        // separate constructor argument, confirmed from prosemirror-view's
+        // own `Decoration.inline(from, to, attrs, spec?)` signature) is
+        // what `Decoration.spec` reads back below in `handleClick` -- a
+        // real bug found while running this test the first time: reading
+        // `data-thread-id` back off `.spec` when it was only ever set as a
+        // DOM attr always returned `undefined`, so no click ever activated
+        // a thread.
+        { threadId: thread.id },
+      ),
     );
   }
   return { decorations: DecorationSet.create(state.doc, decorations), ranges };
@@ -93,7 +106,7 @@ export function commentHighlightPlugin(options: CommentHighlightOptions): Plugin
         const pluginState = commentHighlightPluginKey.getState(view.state);
         if (!pluginState) return false;
         const found = pluginState.decorations.find(pos, pos);
-        const threadId = found[0]?.spec['data-thread-id'] as string | undefined;
+        const threadId = (found[0]?.spec as { threadId?: string } | undefined)?.threadId;
         if (!threadId) return false;
         options.onActivate(threadId);
         return false; // don't swallow the click; still places the caret normally

@@ -25,7 +25,46 @@ export class CommentsController {
     private readonly container: HTMLElement,
     private readonly userName: string,
   ) {
-    this.unobserve = observeThreads(ydoc, () => this.render());
+    // A thread change (new/reply/resolve) from ANY replica -- not just this
+    // tab's own actions -- must refresh the highlight decorations too, not
+    // only the sidebar: the threads map lives outside the ProseMirror-bound
+    // fragment (by design, so comments never touch the Markdown), so a
+    // remote thread update reaching this tab over the relay produces NO
+    // ProseMirror transaction on its own -- nothing would otherwise tell
+    // `commentHighlightPlugin` to recompute. Found by the first real gate F
+    // run: Bob's sidebar updated but his highlight never appeared until
+    // this was added.
+    this.unobserve = observeThreads(ydoc, () => {
+      this.refreshHighlights();
+      this.render();
+    });
+
+    // A thread's placement in the sidebar (active/orphaned) is itself a
+    // function of the DOCUMENT, not just the threads map -- a thread
+    // becomes orphaned purely from a document edit (its quoted text
+    // deleted), with no write to the threads map at all. The highlight
+    // plugin already recomputes on every `docChanged` transaction; the
+    // sidebar needs the same trigger, or a delete that orphans a thread
+    // would leave it stuck showing as active until some UNRELATED thread
+    // action happened to call `render()` next. Found by the first real
+    // gate F "orphaned" test run: highlights correctly disappeared but the
+    // sidebar kept showing the thread outside the Orphaned group.
+    //
+    // Debounced (250ms, same figure `main.ts` already uses for the
+    // Markdown panel): every keystroke anywhere in the document is a
+    // `docChanged` transaction, and rebuilding the whole sidebar on every
+    // one of them -- while, say, someone else is typing a long paragraph --
+    // would be wasteful and would repeatedly steal/re-set focus away from
+    // whatever the user is doing in the sidebar (a focused reply/composer
+    // draft survives a rerender via `sidebar.ts`'s own draft-preserving
+    // logic, but there is no reason to rebuild that often in the first
+    // place).
+    let renderTimer: ReturnType<typeof setTimeout> | undefined;
+    this.editor.on('update', ({ transaction }) => {
+      if (!transaction.docChanged) return;
+      if (renderTimer) clearTimeout(renderTimer);
+      renderTimer = setTimeout(() => this.render(), 250);
+    });
   }
 
   destroy(): void {

@@ -1,18 +1,20 @@
-# Spike 7: the web editor, briefs 01-05 (foundation, typing, source blocks, collab/undo/offline, caret/IME/flakes)
+# Spike 7: the web editor, briefs 01-06 (foundation, typing, source blocks, collab/undo/offline, caret/IME/flakes, comments)
 
-Status: briefs 01-05 done. See
+Status: briefs 01-06 done. See
 [the plan](../../context/plans/2026-09-27-spike-7-plan.md),
 [the charter](../../context/plans/2026-09-27-spike-7-charter-web-editor.md),
 [brief 01](../../context/plans/2026-09-27-spike-7-brief-01-foundation.md),
 [brief 02](../../context/plans/2026-09-27-spike-7-brief-02-typing.md),
 [brief 03](../../context/plans/2026-09-27-spike-7-brief-03-source-blocks.md),
-[brief 04](../../context/plans/2026-09-27-spike-7-brief-04-collab-offline.md) and
-[brief 05](../../context/plans/2026-09-27-spike-7-brief-05-caret-ime.md).
+[brief 04](../../context/plans/2026-09-27-spike-7-brief-04-collab-offline.md),
+[brief 05](../../context/plans/2026-09-27-spike-7-brief-05-caret-ime.md) and
+[brief 06](../../context/plans/2026-09-27-spike-7-brief-06-comments.md).
 Logs: [brief 01](../../context/logs/2026-09-27-builder-spike-7-foundation.md),
 [brief 02](../../context/logs/2026-09-27-builder-spike-7-typing.md),
 [brief 03](../../context/logs/2026-09-27-builder-spike-7-source-blocks.md),
 [brief 04](../../context/logs/2026-09-27-builder-spike-7-collab-offline.md),
-[brief 05](../../context/logs/2026-09-27-builder-spike-7-caret-ime.md).
+[brief 05](../../context/logs/2026-09-27-builder-spike-7-caret-ime.md),
+[brief 06](../../context/logs/2026-09-27-builder-spike-7-comments.md).
 
 ## Goal
 
@@ -55,6 +57,16 @@ tracking with a "Saving on this device" status, `pagehide`/
 `visibilitychange` flushing and a `beforeunload` prompt for gate I, plus a
 measurement of how much an offline edit survives closing the page the
 instant after typing.
+Brief 06 added comments (gate F): a thread data model in a `Y.Map` outside
+the document fragment (so comments never touch the Markdown), a headless
+CRDT/quote-selector-fuzzy/orphaned anchor resolver (D3, as amended after
+spike 2) built over a from-scratch ProseMirror-tree plain-text projection
+(not spike 2's single-`Y.XmlText`-per-block one, which this richer schema
+doesn't have), a decoration-based highlight plugin, and a sidebar with a
+composer (floating "Comment" button or Mod-Alt-M), replies, resolve/
+reopen, an "Orphaned" group and a "Show resolved" toggle -- all proved
+with two (and, for persistence, three) real browser contexts and real
+keyboard/mouse input.
 
 ## Layout
 
@@ -253,6 +265,54 @@ instant after typing.
 - `e2e/gateG-ime.spec.ts` (brief 05) — IME composition through the
   DevTools protocol (`page.context().newCDPSession(page)`,
   `Input.imeSetComposition`, `Input.insertText`); see "Brief 05" below.
+- `src/comments/` (brief 06, pure, no ProseMirror/DOM) — `model.ts`
+  (`THREADS_MAP_NAME`, a top-level `Y.Map` of threads, each itself a
+  nested `Y.Map` so its `messages` field can be a `Y.Array`: concurrent
+  replies from two replicas both survive Yjs's own array-CRDT ordering;
+  `createThread`/`addReply`/`setResolved`/`getThread`/`listThreads`/
+  `observeThreads`), `textProjection.ts` (`projectDocText`: a plain-text
+  projection of a ProseMirror `Node` tree, joining textblocks with `\n\n`
+  and representing an inline atom as one `￼` placeholder character,
+  plus `posToOffset`/`offsetToPos`), `anchor.ts` (the D3 anchor record --
+  a CRDT relative-position pair as `Y.relativePositionToJSON`, the quote
+  selector, and creation-time offsets -- `AnchoringContext` built either
+  headlessly via `@tiptap/y-tiptap`'s own `initProseMirrorDoc` or, live,
+  from the editor's `ySyncPlugin` binding's `doc`/`type`/`mapping`;
+  `buildAnchorRecord`/`resolveAnchor`'s CRDT-then-fuzzy-then-orphaned
+  order; `fuzzyAnchor`/`contextOnlyAnchor` ported from spike 2's
+  `src/rebase/comments.ts`, see "Origin of copied code" below), and
+  `relativeTime.ts` (`formatRelativeTime`).
+- `web/src/comments/` (brief 06) — `liveContext.ts` (`liveAnchoringContext`:
+  the live `AnchoringContext` constructor, reading the same binding fields
+  `src/collab/workarounds/localCaretFollow.ts` already does), `highlightPlugin.ts`
+  + `highlightExtension.ts` (`commentHighlightPlugin`/`CommentHighlights`:
+  the decoration plugin -- no marks, no schema change -- recomputing on
+  every `docChanged` transaction or an explicit `refreshCommentHighlights`
+  meta transaction; skips resolved and orphaned threads; the active
+  thread gets a stronger highlight; `handleClick` activates a thread),
+  `commentTrigger.ts` (`CommentTrigger`: the floating "Comment" button,
+  same lazy-DOM-element pattern as `web/src/editing/imagePopover.ts`, and
+  the Mod-Alt-M keyboard shortcut), `sidebar.ts` (`renderSidebar`: threads
+  grouped as active (sorted by resolved position) / Orphaned / Resolved
+  (behind the "Show resolved" toggle), the composer, and
+  `captureDraftFocus`/`restoreDraftFocus` so a focused reply/composer
+  textarea's value and caret survive a rerender triggered by someone
+  else's edit), and `controller.ts` (`CommentsController`: the only
+  per-tab-local state -- active thread, pending composer selection, show-
+  resolved toggle -- and the wiring between the Y.Map observer, the
+  highlight plugin's refresh, and the sidebar's (debounced, 250ms)
+  rerender on document changes).
+- `e2e/gateF-comments.spec.ts` (brief 06) + `e2e/fixtures/comments.md`
+  (verified byte-identical round-trip before use) — gate F, two (and, for
+  the reload/fresh-context test, three) real browser contexts, real
+  keyboard (`Shift+ArrowRight` phrase selection) and mouse; see "Brief 06"
+  below.
+- `test/comments/` (brief 06) — `model.spec.ts` (lifecycle + three
+  concurrent-merge scenarios, two real `Y.Doc`s exchanging
+  `Y.encodeStateAsUpdate`/`Y.applyUpdate`, no relay, no EditorView),
+  `textProjection.spec.ts`, `anchor.spec.ts` (the CRDT/fuzzy/orphaned
+  resolution order and the acceptance rule's hand cases, including the
+  ambiguity guard), `relativeTime.spec.ts`.
 
 ## Origin of copied code
 
@@ -300,21 +360,43 @@ which are spike 5/spike 2 concerns this brief has no use for), `web/`,
 `e2e/`, `test/`, `scripts/start.ts`, `examples/`, and the adapted
 `fetch-corpus.mjs` — is new code written for this spike.
 
+`src/comments/anchor.ts`'s fuzzy-matching functions (`fuzzyAnchor`,
+`contextOnlyAnchor`, `contextSimilarity`, `levenshtein`, `charSimilarity`,
+and the acceptance-rule constants) are ported, not copied unchanged, from
+`origin/spike/2026-09-27-collab-stack` at `eeb3fe2`'s
+`spikes/2026-09-27-collab-stack-yjs13-hocuspocus/src/rebase/comments.ts`
+(brief 06). Spike 2's version resolves offsets through its own
+`docPlainText`/`offsetToPosition` (one `Y.XmlText` per textblock,
+guaranteed by its toy schema); this port resolves them through
+`src/comments/textProjection.ts`'s ProseMirror-`Node`-tree projection
+instead (this schema's textblocks can mix `Y.XmlText` runs with sibling
+inline-atom `Y.XmlElement`s, which spike 2's schema never has to handle),
+and positions are PM positions, not raw `Y.XmlText` character indices.
+The data model (`model.ts`) and the anchor-record builder/resolver
+(`anchor.ts`'s `AnchorRecord`/`buildAnchorRecord`/`resolveAnchor`) are new
+code shaped around D3 as amended, not copied from spike 2's
+`CommentRecord`/`addComment`/`resolveComment` (a different Yjs binding --
+`@tiptap/y-tiptap`'s exported `initProseMirrorDoc`/
+`absolutePositionToRelativePosition`/`relativePositionToAbsolutePosition`,
+not spike 2's own hand-rolled `RelativePosition` walk over a single
+`Y.XmlText`).
+
 ## Commands
 
 ```bash
 npm ci                 # install
 npm run setup          # Playwright browsers (.pw-browsers/, git-ignored) + the two fetched corpus files
-npm test               # vitest: 148 unit tests
+npm test               # vitest: 175 unit tests
 npm run typecheck      # tsc --noEmit
 npm run gates          # builds the page, runs the Playwright gates, prints the gate table
 npm start              # builds if needed, seeds from examples/, serves on 127.0.0.1:4480 (relay 4481)
 ```
 
 `npm run gates` runs gates `[A]` (22 tests), `[B]` (23 tests), `[C]`
-(6 tests), `[D]` (6 tests), `[E]` (3 tests), `[G]` (6 tests), `[H]`
-(4 tests) and `[I]` (2 tests); F, J and K are still out of scope. The
-reporter marks every gate with no tests "not run", not a failure. Every
+(6 tests), `[D]` (6 tests), `[E]` (3 tests), `[F]` (6 tests), `[G]`
+(6 tests), `[H]` (4 tests) and `[I]` (2 tests); J and K are still out of
+scope. The reporter marks every gate with no tests "not run", not a
+failure. Every
 gate that does run passes.
 
 `expect: { timeout: 15_000 }` in `playwright.config.ts` (raised in two
@@ -365,22 +447,29 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
 
 ## Verified
 
-- `npx vitest run` — 20 files, 148 tests, all passing (brief 01's schema
+- `npx vitest run` — 24 files, 175 tests, all passing (brief 01's schema
   equivalence, corpus round-trip and workaround-order tests; brief 02's
   `freshSrc`, `pasteMarkdown`, `copyMarkdown`, `inputRulePatterns` and
   `tableNav` tests; brief 03's `stripEmptyParagraphs`, `rawBlockLabels`,
   `frontMatterPreview`, `sanitizeHtml`, `sourceBlockBoundary` and
   `blockCheckCache` tests; brief 04's `presence`, `editorGate`,
   `syncStatus` and `imageEdit` tests; brief 05's `localCaretFollow` and
-  `pendingWrites` tests, plus `syncStatus`/`workaroundOrder` extended).
+  `pendingWrites` tests, plus `syncStatus`/`workaroundOrder` extended;
+  brief 06's `test/comments/model`, `textProjection`, `anchor` and
+  `relativeTime` tests, 27 in all).
 - `npx tsc --noEmit` — clean.
 - `npm run gates` — builds the page, runs gates `[A]`, `[B]`, `[C]`,
-  `[D]`, `[E]`, `[G]`, `[H]` and `[I]` in Chromium, 72/72 passing, prints
-  the table, writes `results/gates.md`/`gates.json`, exits 0.
+  `[D]`, `[E]`, `[F]`, `[G]`, `[H]` and `[I]` in Chromium, 78/78 passing,
+  prints the table, writes `results/gates.md`/`gates.json`, exits 0.
   `lsof -nP -iTCP:4400-4499 -sTCP:LISTEN` is empty afterward.
-- Whole-suite flake sweep (brief 05): `playwright test --repeat-each=5`
-  at default worker parallelism, run three times in a row after the two
-  flake fixes documented above: 360/360 passing every time.
+- Whole-suite flake sweep (brief 05, before gate F existed):
+  `playwright test --repeat-each=5` at default worker parallelism, run
+  three times in a row after the two flake fixes documented there:
+  360/360 passing every time. Brief 06's own file:
+  `playwright test e2e/gateF-comments.spec.ts --repeat-each=5
+  --workers=1` — 30/30 passing (a full-suite repeat-each sweep including
+  gate F is the orchestrator's own long-verification-run call per the
+  charter, not repeated here).
 - `npm start` — prints the open URL; `curl` of the page returns 200; a
   real Ctrl-C (verified by sending `SIGINT` to the whole process group,
   not just the top pid — confirmed with `ps -o pid,ppid,pgid` that
@@ -522,6 +611,74 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
   measurement test, worked around the same way (a nested `test.describe`
   per extra fixture file, or copying a seed file directly into
   `phraiseServer.seedsDir` at runtime for a test needing many of them).
+
+## Brief 06: comments (gate F), what was found
+
+- **Two real bugs, both confirmed against the real app first (not
+  guessed), before being fixed**:
+  1. `Decoration.inline(from, to, attrs, spec)` takes `attrs` and `spec`
+     as two SEPARATE constructor arguments (confirmed by reading
+     `node_modules/prosemirror-view/dist/index.d.ts`'s own signature).
+     The first version put `data-thread-id` only in `attrs` and tried to
+     read it back off `.spec` in `handleClick`; `.spec` is empty unless a
+     spec object is passed explicitly. Symptom: clicking inside a
+     highlight never activated its thread. Fixed by passing
+     `{threadId: thread.id}` as the fourth argument.
+  2. The threads `Y.Map` lives OUTSIDE the ProseMirror-bound fragment (by
+     design, so comments never touch the Markdown), which means TWO
+     things don't automatically follow from "the highlight plugin
+     recomputes on every `docChanged` transaction": (a) a remote thread
+     change (new comment/reply/resolve from another replica) produces no
+     ProseMirror transaction at all, so nothing told the highlight plugin
+     to recompute — Bob's sidebar updated but his highlight never
+     appeared until `web/src/comments/controller.ts`'s Y.Map observer was
+     made to also call `refreshCommentHighlights`; (b) a thread becoming
+     ORPHANED is purely a consequence of a document edit (the quoted text
+     deleted), with no write to the threads map at all — the sidebar's
+     own "which group is this thread in" grouping only ran from
+     thread-map-triggered or locally-triggered renders, so an orphaning
+     edit left the sidebar showing the thread as still-active. Fixed by
+     also calling `render()` (debounced 250ms) on every `docChanged`
+     editor transaction.
+- **A real, not-a-bug finding**: a single logical `Decoration.inline`
+  range can render as MORE THAN ONE `<span>` once an edit lands strictly
+  inside it — ProseMirror renders one wrapper element per contiguous
+  pre-existing inline text node rather than merging adjacent ones under
+  one decoration. `e2e/gateF-comments.spec.ts`'s `highlightedText()`
+  helper joins `allTextContents()` across however many spans exist
+  (document order) instead of asserting a single element.
+- **A design decision recorded, not a bug**: debouncing the doc-changed
+  sidebar rerender (task above) meant a focused reply/composer textarea
+  could otherwise be wiped by someone else's edit arriving mid-typing, so
+  `sidebar.ts` gained `captureDraftFocus`/`restoreDraftFocus` — the
+  focused field's identity, value and caret are captured before a rebuild
+  and restored after.
+- **`fuzzyAnchor`'s ambiguity guard didn't cover its own fallback path**:
+  found while writing `test/comments/anchor.spec.ts`'s hand case for "a
+  second location scores nearly as well" (two byte-identical copies of
+  one sentence, far enough apart that their 32-character context windows
+  never overlap). The main quote-search path's ambiguity guard correctly
+  refused to pick either occurrence, but execution then fell through to
+  `contextOnlyAnchor` (the "quoted text was edited in place" fallback),
+  which scored each candidate on its own small scale and picked the best
+  one with NO ambiguity check of its own — so it silently picked one of
+  the two identical locations anyway. Fixed by scoring every
+  `contextOnlyAnchor` candidate with the SAME weighted formula the
+  quote-search path uses and applying the same `AMBIGUITY_MARGIN` guard.
+  A genuine correctness gap for a real scenario class (duplicated
+  sections), not just a test artifact — see `anchor.ts`'s own comment on
+  `contextOnlyAnchor` for the full account.
+- Comments are confirmed never to affect the Markdown by construction
+  (`THREADS_MAP_NAME` is a top-level `Y.Map`, never touched by
+  `serializeDoc`, which only ever reads `FRAGMENT_NAME`'s
+  `Y.XmlFragment`) and by test (gate F's own byte-identical assertion
+  after adding/replying/resolving).
+- Not chased further (recorded, not silently dropped): comments spanning
+  two blocks are not specially handled — `buildAnchorRecord` builds
+  whatever quote/offsets a cross-block PM range actually has (the quote
+  would contain the `\n\n` block separator), and `resolveAnchor` treats
+  it like any other range; no test exercises this directly, per the
+  brief's own "not in scope" note.
 
 ## Bundle sizes (brief 03, after the Mermaid split)
 
@@ -690,3 +847,48 @@ accounts for the rest of the increase.
     either nest nested `test.describe`s (fine for 2-3 files) or copy
     files directly into `phraiseServer.seedsDir` at runtime (better for
     many, e.g. one per loop repetition).
+- Brief 06, for brief 07 (scale, styling, screenshots, other browsers) and
+  beyond:
+  - `@tiptap/y-tiptap` exports `initProseMirrorDoc(yXmlFragment, schema) ->
+    { doc, mapping }` (confirmed with types at
+    `node_modules/@tiptap/y-tiptap/dist/src/lib.d.ts`) — a way to get a
+    real ProseMirror `Node` plus its `ProsemirrorMapping` straight from a
+    `Y.XmlFragment`, with NO `EditorView` and no DOM at all. Useful
+    anywhere a headless test (or a server-side process) needs to reason
+    about the document as ProseMirror sees it without spinning up jsdom.
+  - `Decoration.inline(from, to, attrs, spec)`'s `attrs` (what renders
+    into the DOM) and `spec` (what `.spec` reads back, e.g. in
+    `handleClick`) are separate constructor arguments — pass both if you
+    need to both render something AND read it back later; see the
+    "Brief 06" section above for the bug this caused the first time.
+  - A `Y.Map`/`Y.Array` structure that lives OUTSIDE the ProseMirror-bound
+    `Y.XmlFragment` (comments, and presumably any future non-Markdown
+    metadata) does NOT generate ProseMirror transactions when it changes
+    — anything reacting to it (a decoration plugin, a sidebar) needs its
+    OWN explicit observer (`Y.Map.observeDeep`), not just "listen to the
+    editor". Conversely, something that depends on the DOCUMENT (like
+    whether an anchored range still resolves) needs its own `docChanged`
+    listener even if it is not itself stored in the fragment.
+  - `formatRelativeTime`/`renderSidebar`/etc. in `src/comments/` and
+    `web/src/comments/` are a small, reusable example of this spike's
+    established split: pure logic (testable with plain Vitest, no DOM) in
+    `src/`, DOM wiring in `web/src/` — worth following for any future
+    sidebar/panel UI (screenshots, styling work in brief 07 will likely
+    touch this exact split).
+  - `page.keyboard.press('Shift+ArrowRight')` in a loop DOES reliably
+    extend a real text selection character by character in this headless
+    Chromium setup, PROVIDED the real model selection
+    (`editor.state.selection`) is polled until it settles before being
+    read — confirmed directly in `e2e/gateF-comments.spec.ts`'s
+    `selectPhrase` (used to select a 27-character phrase, real keystrokes
+    throughout, no flakes across a `--repeat-each=5` run). Earlier gate
+    files (`gateA-shortcuts.spec.ts`'s `selectWord`, reused by
+    `gateE-undo.spec.ts`) select a word via `editor.commands
+    .setTextSelection` instead, with a comment attributing this to a real
+    `Shift+ArrowRight` sequence being unreliable for cross-position
+    selection — that claim was not re-verified here (this brief only
+    needed to select forward from a known start offset, not confirm or
+    refute the earlier finding), so treat both as true for now: the
+    simple forward-selection shape this brief used works; something about
+    a DIFFERENT shape (cross-position, word-boundary?) may not have,
+    according to the earlier note.
