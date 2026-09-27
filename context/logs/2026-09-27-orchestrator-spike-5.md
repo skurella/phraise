@@ -26,3 +26,11 @@ Custom relay works; Hocuspocus alias fails on lib0 0.2/1.0 duplication (per buil
 ## 09:41 — Verified brief 02; two corrections
 1. **Hocuspocus 4.7 does work with Yjs 14.** The builder's crash had two causes, both install-layout: two lib0 majors, and two module instances of @y/y (the npm alias installs @y/y a second time under node_modules/yjs, so Hocuspocus's Doc class differs from @y/prosemirror's; Yjs prints its 'already imported' warning). In a scratch copy with overrides lib0=$lib0 and node_modules/yjs, node_modules/y-protocols symlinked to @y/y, @y/protocols, the builder's own attempt-(a) relay and client synced two editors, carried root attrs and linked images, and /state matched (port 4271, stopped). Needs a postinstall dedupe step or a bundler alias.
 2. **@y/prosemirror 2.0.0-13 has its own atom-mark loss**, reproduced minimally in spikes/...yjs14-rc/scratch/probe-atom-mark-change.ts: when a transaction replaces an inline atom with one whose attrs AND marks differ (an 'edit image' dialog replacing the node; or any whole-doc replace), the new attrs sync but the old mark stays, in the originating editor too. Mark-only changes (removeMark/addMark) sync fine. Stack 13 with workarounds passes all five cases (twin probe in stack 13 scratch/). This is the real cause of stack 14 gate C path B 234/266.
+
+## 09:44 — Brief 03 dispatched (stack 13 D, E, G, B3)
+
+## 10:47 — Brief 03 handback received
+All pass per builder: B3 5/5, D 6/6, E 5/5 (mapping in a Y.Map in the doc), G 5/5, C 266/266 with 17.19 MB state; one 265/266 flake in four runs. Commits dbe0138, 3f26040. Running full gates myself.
+
+## 10:51 — Verified brief 03 (full gates all pass, 0 listeners); brief 04 dispatched
+Research for brief 04: y-prosemirror CAVEATS.md states v1 documents load in the new binding but the old binding cannot read new documents, so no mixed clients (matches the compat probe). The official Yjs 14 backend @y/hub 0.9.0 is AGPL-3.0 OR PROPRIETARY and needs Redis, Postgres and S3. Suggestion mode is a second Y.Doc plus DiffRenderer (upstream yhub-tiptap-demo).
