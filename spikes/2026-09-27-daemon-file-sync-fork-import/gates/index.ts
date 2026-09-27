@@ -1,10 +1,12 @@
-// Brief 03 task 4: runs every gate in order (A-I; J is brief 04's slot) and
-// prints + writes the results table. `npm run gates` runs the full sizes;
-// `npm run gates:quick` (`--quick`) uses the small sizes brief 03 task 4
-// specifies (A 20, B 10/style, C 20, D and E 10, fuzz 30 trials) so the
-// whole thing finishes in a few minutes. The full run (A 200, B 100/style, C
-// 200, D/E 50, fuzz 300 trials) is the orchestrator's to execute, per the
-// charter ("long verification runs belong to the orchestrator").
+// Brief 03 task 4: runs every gate in order (A-I) and prints + writes the
+// results table. `npm run gates` runs the full sizes; `npm run gates:quick`
+// (`--quick`) uses the small sizes brief 03 task 4 specifies (A 20, B
+// 10/style, C 20, D and E 10, fuzz 30 trials) so the whole thing finishes in
+// a few minutes. The full run (A 200, B 100/style, C 200, D/E 50, fuzz 300
+// trials) is the orchestrator's to execute, per the charter ("long
+// verification runs belong to the orchestrator"). Gate J (brief 04: the 240
+// KB large-file / verification-cache perf gate) has fixed-size measurements
+// of its own regardless of `--quick` (see gates/j.ts).
 import { runGateA } from './a.js';
 import { runGateB } from './b.js';
 import { runGateC } from './c.js';
@@ -14,6 +16,7 @@ import { runGateF } from './f.js';
 import { runGateG } from './g.js';
 import { runGateH } from './h.js';
 import { runGateI } from './i.js';
+import { runGateJ } from './j.js';
 import { writeReport, printTable } from './lib/report.js';
 import type { GateResult } from './lib/types.js';
 
@@ -31,6 +34,7 @@ async function main(): Promise<void> {
     { name: 'G', run: () => runGateG({ quick }) },
     { name: 'H', run: () => runGateH({ quick }) },
     { name: 'I', run: () => runGateI({ quick }) },
+    { name: 'J', run: () => runGateJ({ quick }) },
   ];
 
   for (const g of gates) {
@@ -50,14 +54,6 @@ async function main(): Promise<void> {
       console.log(`gate ${g.name}: FAIL (threw)`);
     }
   }
-
-  rows.push({
-    gate: 'J',
-    requirement: 'see brief 04',
-    pass: true,
-    numbers: {},
-    failures: [],
-  });
 
   printTable(rows);
   writeReport(rows, { quick });

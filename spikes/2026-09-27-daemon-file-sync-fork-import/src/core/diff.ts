@@ -614,28 +614,41 @@ function applyChildOps(
   bChildren: PMNode[],
   counters: DiffCounters,
 ): void {
+  // Perf (brief 04): `Y.XmlFragment#toArray()`/`Y.XmlElement#toArray()` walks
+  // the whole underlying Yjs linked list (live items AND tombstones) every
+  // time it's called. Calling it once per op here -- as this loop used to --
+  // made applying a save's diff O(ops * document length), quadratic in the
+  // top-level block count on a large real document (measured: the 240 KB
+  // corpus file, 1619 top-level blocks, brief 04 gate J profiling). Snapshot
+  // it once before the loop and keep the snapshot in sync with each
+  // insert/delete instead; the cursor semantics (advance on skip/update/
+  // insert, not on delete, since a delete shifts the next item into the same
+  // slot) are unchanged.
   let cursor = 0;
+  const arr = yParent.toArray();
   for (const op of ops) {
     switch (op.kind) {
       case 'skip': {
-        const yChild = yParent.toArray()[cursor] as Y.XmlElement | Y.XmlText;
+        const yChild = arr[cursor] as Y.XmlElement | Y.XmlText;
         syncMatchedPair(yChild, bChildren[op.bIdx], counters);
         cursor++;
         break;
       }
       case 'update': {
-        const yChild = yParent.toArray()[cursor] as Y.XmlElement;
+        const yChild = arr[cursor] as Y.XmlElement;
         updatePairedNode(yChild, aChildren[op.aIdx], bChildren[op.bIdx], counters);
         cursor++;
         break;
       }
       case 'delete':
         yParent.delete(cursor, 1);
+        arr.splice(cursor, 1);
         counters.deletes++;
         break;
       case 'insert': {
         const yNode = buildYNode(bChildren[op.bIdx]);
         yParent.insert(cursor, [yNode]);
+        arr.splice(cursor, 0, yNode);
         counters.inserts++;
         cursor++;
         break;

@@ -1,0 +1,166 @@
+{
+  "quick": true,
+  "generatedAt": "2026-09-27T09:49:11.831Z",
+  "gates": [
+    {
+      "gate": "A",
+      "requirement": "Remote edit reaches the file; untouched blocks stay byte-identical. Latency median/p95.",
+      "pass": true,
+      "numbers": {
+        "trials": 20,
+        "completed": 20,
+        "medianMs": 43,
+        "p95Ms": 59,
+        "maxMs": 59
+      },
+      "failures": []
+    },
+    {
+      "gate": "B",
+      "requirement": "File edit reaches the remote client confined to the edited block, attributed to the local user, per save style.",
+      "pass": true,
+      "numbers": {
+        "perStyle": 10,
+        "in-place.medianMs": 108,
+        "in-place.p95Ms": 572,
+        "in-place.completed": 10,
+        "rename-over.medianMs": 108,
+        "rename-over.p95Ms": 146,
+        "rename-over.completed": 10,
+        "truncate-then-write.medianMs": 109,
+        "truncate-then-write.p95Ms": 135,
+        "truncate-then-write.completed": 10
+      },
+      "failures": []
+    },
+    {
+      "gate": "C",
+      "requirement": "No echo: the daemon's own writes never come back as edits, under rapid alternating edits.",
+      "pass": true,
+      "numbers": {
+        "rounds": 20,
+        "echoCount": 0,
+        "importOfDaemonBytesCount": 0
+      },
+      "failures": []
+    },
+    {
+      "gate": "D",
+      "requirement": "Stale save does not revert remote edits made after its base.",
+      "pass": true,
+      "numbers": {
+        "cases": 10,
+        "passed": 10
+      },
+      "failures": []
+    },
+    {
+      "gate": "E",
+      "requirement": "Concurrent local and remote edits converge; nothing lost; file equals render.",
+      "pass": true,
+      "numbers": {
+        "cases": 10,
+        "passed": 10
+      },
+      "failures": []
+    },
+    {
+      "gate": "F",
+      "requirement": "Imported save reproduces saved bytes exactly (core); daemon does not re-fight the editor.",
+      "pass": true,
+      "numbers": {
+        "corpusFiles": 30,
+        "passRate": 1,
+        "coarseTextblocks": 7,
+        "repairs": 0,
+        "forks": 0,
+        "coreFailures": 0
+      },
+      "failures": []
+    },
+    {
+      "gate": "G",
+      "requirement": "git commit harmless; branch/reset/stash detach; index.lock detected; reattach works; no local-attributed import while detached.",
+      "pass": true,
+      "numbers": {
+        "rows": 8,
+        "passed": 8
+      },
+      "failures": []
+    },
+    {
+      "gate": "H",
+      "requirement": "Restart merges from a persisted base; missing state yields a conflict copy, nothing overwritten.",
+      "pass": true,
+      "numbers": {
+        "cases": 4,
+        "passed": 4
+      },
+      "failures": []
+    },
+    {
+      "gate": "I",
+      "requirement": "30 seeded trials interleaving saves/remote edits/restarts/delays: no exception, convergence, no lost text, no echo.",
+      "pass": true,
+      "numbers": {
+        "trials": 30,
+        "passed": 30,
+        "exception": 0,
+        "divergence": 0,
+        "fileNotRender": 0,
+        "lost": 0,
+        "deleteVsEdit": 3,
+        "resurrected": 0,
+        "echo": 0,
+        "detach": 0,
+        "wholeDocMismatch": 0,
+        "ambiguousDelete": 0,
+        "degradedFinal": 0,
+        "duplicated": 0,
+        "degradedExports": 6,
+        "baseMisjudged": 0,
+        "forks": 93,
+        "coarseTextblocks": 1,
+        "repairs": 0,
+        "noops": 1
+      },
+      "failures": []
+    },
+    {
+      "gate": "J",
+      "requirement": "240 KB file: fresh-save import + resulting export under 500ms median; before/after and end-to-end latencies reported.",
+      "pass": true,
+      "numbers": {
+        "before.parseMarkdownMs": 1308.374458,
+        "after.parseMarkdownMs": 147.155,
+        "before.serializeDocMs": 1264.294042,
+        "after.serializeDocMs": 142.103458,
+        "before.docToYDocMs": 9.017125,
+        "after.docToYDocMs": 6.478417,
+        "before.yDocToDocMs": 2.981125,
+        "after.yDocToDocMs": 2.608667,
+        "before.importFreshMs": 1496.005958,
+        "after.importFreshMs": 189.436917,
+        "before.importStaleForkedMs": 1465.376125,
+        "after.importStaleForkedMs": 201.792166,
+        "before.importPlusExportMs": 3203.321916,
+        "after.importPlusExportMs": 497.933834,
+        "before.renderDetailedMs": 1738.200875,
+        "after.renderDetailedMs": 296.73025,
+        "before.encodeStateAsUpdateMs": 4.974667,
+        "after.encodeStateAsUpdateMs": 4.08475,
+        "before.ydocBinBytes": 845087,
+        "after.ydocBinBytes": 823957,
+        "before.chooseBase8Ms": 41.421125,
+        "after.chooseBase8Ms": 37.763916,
+        "before.gateALatencyMedianMs": 1750,
+        "after.gateALatencyMedianMs": 352,
+        "before.gateBLatencyMedianMs": 1922,
+        "after.gateBLatencyMedianMs": 588,
+        "before.peakRssMb": 646.734375,
+        "after.peakRssMb": 590.609375
+      },
+      "failures": []
+    }
+  ]
+}

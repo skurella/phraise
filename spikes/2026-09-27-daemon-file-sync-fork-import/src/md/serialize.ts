@@ -4,7 +4,7 @@ import { toMarkdown, defaultHandlers } from 'mdast-util-to-markdown';
 import { gfmToMarkdown } from 'mdast-util-gfm';
 import { frontmatterToMarkdown } from 'mdast-util-frontmatter';
 import { mathToMarkdown } from 'mdast-util-math';
-import { parseBlock, parseMdast, buildDefsContextFromDoc, clearParseBlockCache, type TextRun } from './parse.js';
+import { parseBlock, parseMdast, buildDefsContextFromDoc, type TextRun } from './parse.js';
 import { semanticEq } from './compare.js';
 import { detectStyle, type Style } from './style.js';
 import { isMetaAttrName } from './schema.js';
@@ -717,7 +717,11 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
   const semanticLineBreaks = opts.semanticLineBreaks ?? false;
   const trace = opts.trace;
 
-  clearParseBlockCache();
+  // Perf (brief 04): no `clearParseBlockCache()` here any more -- `parseBlock`'s
+  // cache (keyed by the exact ctx+src content) now persists across calls so a
+  // save/export that touches one block reuses every other block's isolation
+  // re-parse from the previous call instead of paying it again. See that
+  // cache's own comment in parse.ts for the full reasoning and the LRU bound.
 
   const eol: '\n' | '\r\n' = doc.attrs.eol === '\r\n' ? '\r\n' : '\n';
   const ctx = buildDefsContextFromDoc(doc);

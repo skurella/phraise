@@ -189,7 +189,12 @@ export class DocSync {
     let boundaryRepairs = 0;
     const blankGap = doc.attrs.eol === '\r\n' ? '\r\n\r\n' : '\n\n';
     const tried = new Set<string>();
-    while (parseMdast(out).children.length !== doc.childCount && boundaryRepairs < 8) {
+    // Perf (brief 04): count top-level blocks once per `out` and reuse it for
+    // both the loop condition and the final `composed` check below, instead
+    // of calling `parseMdast` (a full re-parse of the whole, possibly large,
+    // output) twice for the common case where the loop never runs.
+    let topLevelCount = parseMdast(out).children.length;
+    while (topLevelCount !== doc.childCount && boundaryRepairs < 8) {
       const reparsed = parseMarkdown(out).doc;
       let i = 0;
       while (i < doc.childCount && i < reparsed.childCount && semanticEq(doc.child(i), reparsed.child(i))) i++;
@@ -223,8 +228,9 @@ export class DocSync {
       doc = doc.type.create(doc.attrs, children, doc.marks);
       out = serialize(doc);
       boundaryRepairs++;
+      topLevelCount = parseMdast(out).children.length;
     }
-    const composed = parseMdast(out).children.length === doc.childCount;
+    const composed = topLevelCount === doc.childCount;
     return { text: out, degraded: [...degraded], boundaryRepairs, composed };
   }
 

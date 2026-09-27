@@ -549,16 +549,56 @@ export interface ParseBlockResult {
   count: number;
 }
 
-const parseBlockCache = new Map<string, ParseBlockResult>();
-// Perf: parseBlock is called once per top-level block (self-description check
-// at parse time, splice/verify at serialize time), always with the same `ctx`
-// string for a given document. Re-parsing `ctx` alone just to count how many
-// top-level nodes it produces (`skip`) was O(blocks) reparses of the same
-// text; cache it by content so it is paid once per distinct ctx, not once per
-// block. On a large real-world file with many link/footnote definitions and
-// many blocks this was the dominant cost (see builder log, gate harness
-// profiling, 2026-09-27).
-const ctxSkipCache = new Map<string, number>();
+// Perf (brief 04, spike 3, 2026-09-27): profiling the 240 KB real-world file
+// (corpus/fetched/real/nodejs-node-docapinapimd.md, 1619 top-level blocks)
+// found `parseMarkdown`/`serializeDoc` each cost ~1.3s, and a plain Map here
+// that gets cleared at the start of every `serializeDoc` and the end of
+// every `parseMarkdown` (as this cache originally did, inherited from spike
+// 1) never benefits a SECOND call on the same content: each of the ~1619
+// blocks pays a fresh isolation re-parse (a fixed per-call remark/micromark
+// setup cost, not just proportional to the block's own size) every single
+// time, on every save and every export, even though a save touches one
+// block and leaves every other block's own `src`+`ctx` byte-identical to
+// the previous save. Keyed on the exact `ctx`+`src` content (a real string,
+// never a hash, so there is no collision risk), these two caches now persist
+// ACROSS calls instead of being cleared, bounded by a simple LRU (evict the
+// least-recently-used entry once over the cap) so a long daemon session
+// touching many distinct documents/blocks can't grow them without limit.
+// This turns the steady-state per-save/per-export cost from O(document
+// size) into roughly O(edited block size) for every block the save didn't
+// touch. `clearParseBlockCache()` remains, for tests that want to compare a
+// cold parse against a warm one (see md-roundtrip.test.ts's cache-parity
+// test) and to reset between independent test runs.
+const PARSE_BLOCK_CACHE_MAX = 8000;
+const CTX_SKIP_CACHE_MAX = 500;
+
+class LruMap<K, V> {
+  private readonly map = new Map<K, V>();
+  constructor(private readonly max: number) {}
+  get(key: K): V | undefined {
+    const v = this.map.get(key);
+    if (v === undefined) return undefined;
+    // Touch: re-insert at the end so Map's insertion-order iteration doubles
+    // as recency order (the next eviction takes the first/oldest key).
+    this.map.delete(key);
+    this.map.set(key, v);
+    return v;
+  }
+  set(key: K, value: V): void {
+    if (this.map.has(key)) this.map.delete(key);
+    this.map.set(key, value);
+    if (this.map.size > this.max) {
+      const oldest = this.map.keys().next().value as K | undefined;
+      if (oldest !== undefined) this.map.delete(oldest);
+    }
+  }
+  clear(): void {
+    this.map.clear();
+  }
+}
+
+const parseBlockCache = new LruMap<string, ParseBlockResult>(PARSE_BLOCK_CACHE_MAX);
+const ctxSkipCache = new LruMap<string, number>(CTX_SKIP_CACHE_MAX);
 
 export function clearParseBlockCache(): void {
   parseBlockCache.clear();
@@ -789,7 +829,10 @@ export function parseMarkdown(md: string, opts: ParseOpts = {}): ParseResult {
     changed = true;
     return schema.node('raw_block', { kind: 'unstable:' + block.type.name, src, gap: block.attrs.gap }, src ? [schema.text(src)] : []);
   });
-  clearParseBlockCache();
+  // Perf (brief 04): no `clearParseBlockCache()` here any more -- the cache
+  // it clears now persists across calls on purpose (see its own comment), so
+  // this same self-description check is cheap on the NEXT save that leaves
+  // most blocks unchanged.
   if (changed) doc = schema.node('doc', { lead, eol }, checked);
 
   if (!opts.positions || !posMap) return { doc };
