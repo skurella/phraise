@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.pw-browsers/
+corpus/fetched/
+results/
+test-results/
+*.sqlite
+*.sqlite-journal

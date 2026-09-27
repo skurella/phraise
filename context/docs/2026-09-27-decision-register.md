@@ -6,6 +6,21 @@ Updated: 2026-09-27
 
 Every decision made on the owner's behalf is listed here so it can be reviewed at a glance. **Impact** is how much would have to change if the decision were reversed later: high means a rewrite of a component or the data model, medium means a package or workflow, low means local. **Difficulty** is how contested the call was: hard means credible alternatives with real trade-offs, moderate means a judgement call, easy means the evidence pointed one way. Read the hard and high rows first.
 
+## Decisions from spike 7, web editor
+
+Source: [spike 7 findings](2026-09-27-spike-7-findings-web-editor.md). Rows marked S7 were made by the spike 7 orchestrator; its full Decisions table, S7-1 to S7-13, is in the findings. This section sits here until the register is consolidated.
+
+| ID | Date | Decision | Impact | Difficulty | Made by | Where |
+|---|---|---|---|---|---|---|
+| D11a | 2026-09-28 | The web editor uses Tiptap 3 as a shell with Phraise's own schema and no Tiptap node or mark extensions (S7-1) | high | moderate: gives up Tiptap's ready-made nodes, tables and toolbar bindings, which must be written as commands over our schema; keeps byte preservation safe | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D11b | 2026-09-28 | A third Yjs 13 workaround plugin keeps the local caret correct after remote edits (S7-2). It reads the binding's internals. | high | moderate: fragile against binding updates, guarded by the collaboration gate; the alternative is typing that lands inside words | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D11c | 2026-09-28 | Comments live in shared state beside the document, shown as highlights (S7-7) | high | easy: matches D3 and spike 6's charter | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D11d | 2026-09-28 | Unverifiable blocks become a card with "Keep this" and "Undo my change" (S7-6). To be improved to a rendered before and after. | medium | moderate | orchestrator, accepted with the improvement | [architecture](2026-09-27-architecture-decisions.md) |
+| D11e | 2026-09-28 | Offline by browser persistence and a service worker; the page asks before closing when offline with unsaved changes (S7-8) | medium | easy | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D11f | 2026-09-28 | Serialization moves off the main thread before large documents are supported (S7-11) | medium | moderate | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D11g | 2026-09-28 | Chromium decides the gate verdict; WebKit is reported beside it; Firefox is untested because it does not launch on this machine (S7-13) | medium | moderate: a browser product cannot ship on one engine; acceptable for a spike | orchestrator, accepted for the spike only | findings |
+| P18 | 2026-09-28 | A second upstream report is held for the owner: the caret regression in `@tiptap/y-tiptap` 3.0.6 and later. The issue text is drafted in the spike's builder log. | low | easy | lead | lead log |
+
 Detailed rationale lives in the linked docs; this register is the index.
 
 ## Product and architecture

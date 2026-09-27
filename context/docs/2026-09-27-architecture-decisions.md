@@ -63,6 +63,23 @@ A CLI daemon materializes a live draft into the checked-out file in a working tr
 
 Anthropic explicitly forbids third-party Claude.ai login and routing through subscription credentials, with server-side enforcement since January 2026. OpenAI tolerates it without a contractual right. Phraise offers BYO API key, the MCP server so users bring their own agent, and optionally spawning the unmodified `claude` binary as a sidecar. Revisit if Anthropic ships the paused Agent SDK subscription credit.
 
+## D11. The web editor, decided after spike 7 (2026-09-28)
+
+A real web editor was built and driven with real keyboard events in Chromium, see [spike 7 findings](2026-09-27-spike-7-findings-web-editor.md). The lead re-ran the unit tests and the gates and looked at the screenshots. The editing experience the vision asks for is within reach on this stack. What is missing is product features, not machinery.
+
+1. **Tiptap 3 is the shell; the schema is Phraise's own.** No Tiptap node or mark extension is used, because each would bring its own schema. Editing behaviour comes from extensions that do not touch the schema, and a unit test fails if anything changes it. Serialization converts the editor's document into the document model's own schema instance first.
+2. **A third Yjs 13 workaround is needed.** The binding leaves the local caret at its old offset when someone else types earlier in the same paragraph, so typing lands inside a word. A plugin re-resolves the caret after remote changes. It reads the binding's internals, so an update can break it silently; the collaboration gate is the guard.
+3. **Comments live in shared state beside the document,** not in the Markdown, and are shown as highlights. Anchors follow D3.
+4. **Blocks the editor does not model appear as cards** with a plain-language label, a rendered preview where one exists, and an "Edit source" button. HTML previews are sanitized. Mermaid renders as a diagram.
+5. **When the serializer cannot verify a block,** the block becomes a card showing what will be saved, with "Keep this" and "Undo my change". This is D4's rule in the product. The card currently shows escaped Markdown, which a non-technical user cannot judge; it should show a rendered before and after.
+6. **Offline** is local persistence in the browser plus a service worker for the application shell. Closing the tab within milliseconds of typing while offline can lose the last keystrokes, a platform limit, so the page asks before closing in that state.
+7. **Empty paragraphs are dropped when saving,** since Markdown cannot express them.
+8. **Whole-document serialization must leave the main thread** before documents of 100 KB and more are supported. On a 240 KB file it freezes the page for about a second.
+
+Measured on the 240 KB document: first load 1.5 to 3 s, and 14 to 16 ms from key press to paint at the 95th percentile while a second person types.
+
+Not covered: a toolbar, adding and removing table rows and columns, inserting images, Firefox, which does not launch on the owner's machine, and any test with a real display or a real input method. WebKit fails a few tests in each run, a different set each time, with the caret one position off; in the lead's run that included one typing test, so no gate is reliably clean on WebKit. One keystroke was lost once in 360 runs while another person was composing, unexplained.
+
 ## D9. GitHub App with user-to-server tokens — locked
 
 Attributed commits and comments, fine-grained permissions, higher limits. Org installs need an owner, which is standard friction. GitHub Enterprise Server has rate limits off by default, so self-hosted enterprise is the easy case. Push webhooks plus ETag reconciliation detect external commits.
