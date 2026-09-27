@@ -72,3 +72,15 @@ const md = 'A [![ci](badge.svg)](https://old.example) badge and a [text link](ht
   v1.dispatch(v1.state.tr.replaceWith(pos, pos + 1, repl));
   console.log('case 5 replace one image node, url and href change: e1', imageHref(v1, 'badge3.svg'), '| e2', imageHref(v2, 'badge3.svg'));
 }
+// Case 6 (y-prosemirror issue #241): swap one text mark for another (bold -> code) in one transaction.
+{
+  const [v1, v2] = pair('Some **bold** words.\n');
+  let from = -1;
+  let to = -1;
+  v1.state.doc.descendants((n, pos) => {
+    if (n.isText && n.text === 'bold') { from = pos; to = pos + n.nodeSize; }
+  });
+  v1.dispatch(v1.state.tr.removeMark(from, to, schema.marks.strong).addMark(from, to, schema.marks.code.create()));
+  const marksOf = (v: EditorView) => { let m = ''; v.state.doc.descendants((n) => { if (n.isText && n.text === 'bold') m = n.marks.map((x) => x.type.name).join('+'); }); return m; };
+  console.log('case 6 swap strong for code on text: e1', marksOf(v1), '| e2', marksOf(v2));
+}

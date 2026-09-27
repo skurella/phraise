@@ -104,3 +104,24 @@ v2.destroy();
   w1.destroy();
   w2.destroy();
 }
+
+// Case 6 (y-prosemirror issue #241): swap one text mark for another (bold -> code) in one transaction.
+{
+  const e1 = new Y.Doc();
+  const e2 = new Y.Doc();
+  e1.on('update', (u: Uint8Array) => Y.applyUpdate(e2, u));
+  e2.on('update', (u: Uint8Array) => Y.applyUpdate(e1, u));
+  e1.get('prosemirror').applyDelta(pmnodeToDelta(parseMarkdown('Some **bold** words.\n').doc));
+  const w1 = editor(e1);
+  const w2 = editor(e2);
+  let from = -1;
+  let to = -1;
+  w1.state.doc.descendants((n, pos) => {
+    if (n.isText && n.text === 'bold') { from = pos; to = pos + n.nodeSize; }
+  });
+  w1.dispatch(w1.state.tr.removeMark(from, to, schema.marks.strong).addMark(from, to, schema.marks.code.create()));
+  const marksOf = (v: EditorView) => { let m = ''; v.state.doc.descendants((n) => { if (n.isText && n.text === 'bold') m = n.marks.map((x) => x.type.name).join('+'); }); return m; };
+  console.log('case 6 swap strong for code on text: e1', marksOf(w1), '| e2', marksOf(w2));
+  w1.destroy();
+  w2.destroy();
+}

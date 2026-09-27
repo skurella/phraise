@@ -39,3 +39,12 @@ Research for brief 04: y-prosemirror CAVEATS.md states v1 documents load in the 
 Hocuspocus primary for 14 via postinstall dedupe; B3 FAIL (upstream, expected); D pass with ~35 lines of custom Tiptap extensions; E pass with native IdMap attribution and working suggestion mode (serializer must strip y-attributed marks); G pass. Commit 4d2c59b. Running full gates.
 
 ## 11:43 — Verified brief 04 (full stack 14 gates: A, B, D, E, G pass; B3 and C path B fail on the upstream atom-mark bug; 0 listeners). Brief 05 dispatched (gate F, stack 13).
+
+## 12:37 — Brief 05 handback: gate F passes on stack 13 (commits 4e4bce3..e000014); gate C flake recurred (underscore, path B). Investigating the flake myself.
+
+## Gate H evidence (orchestrator, measured and read)
+- Measured, export surface of `@y/y` (script in scratchpad `churn/churn.mjs`): rc.0 to rc.10 removed 3 exports; rc.10 to rc.20 removed the whole AttributionManager family (8 exports) for Renderers; rc.20 to rc.24 removed 3 (TwosetRenderer, Attributions, baseRenderer); rc.24 (15 Jul) to rc.26 (7 Sep) removed 7 including the core class `Type` (renamed `Node`) and `$ytype`. `@y/prosemirror` 2.0.0-11 to -12 (21 Sep) removed 4 exports (`pmToFragment`, `fragmentToPm`, `deltaAttributionToFormat`, `defaultAttributionConf`); 2.0.0-4 and -8 fail to import against current lib0 ("reading 'nullable'").
+- Read: yjs releases page: 27 v14 RCs from 25 Feb to 7 Sep 2026, most with an empty "Full changelog" body; npm `latest` for @y/y is still rc.7, `beta` is rc.26. y-prosemirror CHANGELOG v2.0.0-12 lists breaking changes and a fix "attributes of the document node sync from Y into the view". Open V2 release checklist yjs/y-prosemirror#234, open questions #235, migration guide not written #261, suggestion bugs #245 #263.
+- Read: y-prosemirror CAVEATS.md "Compatibility with older y-prosemirror": v1 docs load in v2, v1 cannot read v2, no mixed clients. Matches the compat probe.
+- Read: Yjs 13 loss is long-known upstream: ueberdosis/tiptap#4339 (marks on Mention not encoded, open since 2023-08); y-prosemirror PR #213 (marks on inline nodes) closed 2026-01 unmerged for 1.x.
+- Read: @y/hub 0.9.0 (official Yjs 14 backend used by the demos) is AGPL-3.0 OR PROPRIETARY, needs Redis, Postgres, S3. No Hocuspocus issue or release mentions Yjs 14.
