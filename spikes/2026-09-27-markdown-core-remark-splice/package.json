@@ -1,0 +1,28 @@
+{
+  "name": "markdown-core-remark-splice",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "unified": "^11.0.5",
+    "remark-parse": "^11.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-math": "^6.0.0",
+    "mdast-util-to-markdown": "^2.1.2",
+    "mdast-util-gfm": "^3.0.0",
+    "mdast-util-frontmatter": "^2.0.1",
+    "mdast-util-math": "^3.0.0",
+    "prosemirror-model": "^1.23.0",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-transform": "^1.10.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.2",
+    "@types/node": "^22.9.0"
+  }
+}
