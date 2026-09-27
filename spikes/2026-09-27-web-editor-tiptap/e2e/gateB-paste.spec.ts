@@ -21,7 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
-import { LINE_START } from './keys.js';
+import { lineStartKey } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(HERE, 'fixtures', 'paste.md');
@@ -49,7 +49,7 @@ async function focusTarget(page: Page, offset: number): Promise<void> {
   await expect
     .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parent.textContent))
     .toBe('target');
-  await page.keyboard.press(LINE_START);
+  await page.keyboard.press(lineStartKey(page));
   for (let i = 0; i < offset; i++) await page.keyboard.press('ArrowRight');
   await expect.poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parentOffset)).toBe(offset);
 }

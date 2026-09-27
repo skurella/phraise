@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from './fixtures.js';
-import { LINE_END } from './keys.js';
+import { lineEndKey } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CORPUS_DIR = path.resolve(HERE, '..', 'corpus', 'handwritten');
@@ -26,7 +26,7 @@ test('[A] smoke: type into the first paragraph and it round-trips exactly', asyn
   const firstParagraph = page.locator('#editor .ProseMirror p').first();
   await expect(firstParagraph).toHaveText('This file ends without a newline.');
   await firstParagraph.click();
-  await page.keyboard.press(LINE_END);
+  await page.keyboard.press(lineEndKey(page));
   await page.keyboard.type(' hello');
 
   const expected = original.replace('This file ends without a newline.', 'This file ends without a newline. hello');

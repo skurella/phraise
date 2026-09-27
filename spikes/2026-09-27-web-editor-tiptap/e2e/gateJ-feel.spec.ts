@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
 import { clickThenShiftClick } from './mouseSelect.js';
-import { LINE_START, LINE_END } from './keys.js';
+import { lineStartKey, lineEndKey } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.join(HERE, '..', 'screenshots');
@@ -281,14 +281,14 @@ test('[J] screenshot: two named cursors in one paragraph', async ({ page, phrais
   await alice.bringToFront();
   await paragraphAt(alice, 0).click();
   await expect.poll(() => parentText(alice)).toBe(paragraphText);
-  await alice.keyboard.press(LINE_START);
+  await alice.keyboard.press(lineStartKey(alice));
   for (let i = 0; i < 6; i++) await alice.keyboard.press('ArrowRight'); // after "Alice "
   await expect.poll(() => parentOffset(alice)).toBe(6);
 
   await bob.bringToFront();
   await paragraphAt(bob, 0).click();
   await expect.poll(() => parentText(bob)).toBe(paragraphText);
-  await bob.keyboard.press(LINE_END);
+  await bob.keyboard.press(lineEndKey(bob));
   await expect.poll(() => parentOffset(bob)).toBe(paragraphText.length);
 
   // Carol (a third, idle spectator) sees BOTH remote carets decorated with

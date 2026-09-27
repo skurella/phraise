@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
-import { LINE_END } from './keys.js';
+import { lineEndKey } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(HERE, 'fixtures', 'table.md');
@@ -45,7 +45,7 @@ test('[A] click a cell and type', async ({ page, phraiseServer }) => {
   await openAndWait(page, phraiseServer);
 
   await clickCell(page, 'a1');
-  await page.keyboard.press(LINE_END);
+  await page.keyboard.press(lineEndKey(page));
   await expect.poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parentOffset)).toBe('a1'.length);
   await page.keyboard.type('X');
 
@@ -88,7 +88,7 @@ test('[A] Tab in the very last cell does not insert a tab character', async ({ p
   await openAndWait(page, phraiseServer);
 
   await clickCell(page, 'b2');
-  await page.keyboard.press(LINE_END);
+  await page.keyboard.press(lineEndKey(page));
   await page.keyboard.press('Tab');
 
   // No cell to move to and no tab character inserted: the document is

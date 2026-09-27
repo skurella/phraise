@@ -14,7 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
-import { LINE_START } from './keys.js';
+import { lineStartKey } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(HERE, 'fixtures', 'typing.md');
@@ -63,7 +63,7 @@ async function selectionParentOffset(page: Page): Promise<{ text: string; offset
 async function placeCaret(page: Page, locator: Locator, expectedText: string, offset: number): Promise<void> {
   await locator.click();
   await expect.poll(async () => (await selectionParentOffset(page)).text).toBe(expectedText);
-  await page.keyboard.press(LINE_START);
+  await page.keyboard.press(lineStartKey(page));
   for (let i = 0; i < offset; i++) await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await selectionParentOffset(page)).offset).toBe(offset);
 }

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
 import { clickThenShiftClick } from './mouseSelect.js';
-import { LINE_END } from './keys.js';
+import { lineEndKey } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(HERE, 'fixtures', 'copy.md');
@@ -54,7 +54,7 @@ async function placeCaretAtEnd(page: Page, paragraphText: string): Promise<void>
   await expect
     .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parent.textContent))
     .toBe(paragraphText);
-  await page.keyboard.press(LINE_END);
+  await page.keyboard.press(lineEndKey(page));
   await expect
     .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parentOffset))
     .toBe(paragraphText.length);
