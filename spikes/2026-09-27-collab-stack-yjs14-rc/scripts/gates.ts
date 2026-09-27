@@ -1,10 +1,10 @@
 #!/usr/bin/env npx tsx
 // Gate runner for stack 14. `npm run gates` runs every gate over the real
 // corpus and prints a results table; `npm run gates:quick` runs a fast
-// subset (5-file sample for gate C; B3 in full; short versions of D, E, G)
-// for builders. Gate F belongs to a later brief and gate H is the
-// orchestrator's own primary-source write-up; both are reported as
-// "not run" here.
+// subset (5-file sample for gate C; B3 in full; short versions of D, E, G;
+// gate F runs in full under both -- it's cheap, ~4s for the main scenario
+// and the continuous-typing variant together). Gate H is the orchestrator's
+// own primary-source write-up, reported as "not run" here.
 //
 // Ports (charter: stack 14 uses 4240-4269):
 //   4240 A (custom relay), 4241 A (Hocuspocus) -- brief 04 task 1's
@@ -14,6 +14,7 @@
 //   4245-4246 D (convergence, caret/undo)
 //   4247-4251 E (listing/collision, reconnect/reload, restart, size x2)
 //   4252-4256 G (G1, G2 x2, G3, G4)
+//   4257-4258 F (brief 06: main scenario, continuous-typing variant)
 import fs from 'node:fs';
 import path from 'node:path';
 import { runGateA } from '../gates/gateA.js';
@@ -23,6 +24,7 @@ import { runGateB3 } from '../gates/gateB3.js';
 import { runGateD } from '../gates/gateD.js';
 import { runGateE } from '../gates/gateE.js';
 import { runGateG } from '../gates/gateG.js';
+import { runGateF, runGateFContinuousTyping } from '../gates/gateF.js';
 
 const QUICK = process.argv.includes('--quick');
 const RESULTS_DIR = path.resolve('results');
@@ -48,7 +50,7 @@ async function main() {
   const rows: Row[] = [];
   let anyFailure = false;
 
-  console.log(`Running stack 14 gates${QUICK ? ' (quick: 5-file sample for gate C; B3 full; short D/E/G)' : ' (full)'}...\n`);
+  console.log(`Running stack 14 gates${QUICK ? ' (quick: 5-file sample for gate C; B3 full; short D/E/G; F full)' : ' (full)'}...\n`);
 
   // --- Gate A, on BOTH relay flavors (brief 04 task 1) ---
   console.log('Gate A: relay, custom (attempt b, ws/@y/protocols)...');
@@ -155,9 +157,18 @@ async function main() {
   if (!g.pass) anyFailure = true;
   console.log(`  -> ${g.pass ? 'PASS' : 'FAIL'}: ${g.detail}\n`);
 
-  for (const gate of ['F']) {
-    rows.push({ gate: `${gate}. (later brief)`, result: 'not run', numbers: '-' });
-  }
+  // --- Gate F (brief 06): spike 2's rebase port, live editors + relay ---
+  console.log('Gate F: rebase (fork-at-snapshot, live editors, relay-applied rebase)...');
+  const f = await runGateF({ port: 4257, dbPath: path.join(DATA_DIR, 'gateF.sqlite') });
+  const fVariant = await runGateFContinuousTyping({ port: 4258, dbPath: path.join(DATA_DIR, 'gateF-continuous.sqlite') });
+  rows.push({
+    gate: 'F. Rebase port (fork-at-snapshot, live)',
+    result: f.pass && fVariant.pass ? 'PASS' : 'FAIL',
+    numbers: f.checks.map((c) => `${c.pass ? 'OK' : 'FAIL'}: ${c.name}`).join('; ') + `; ${fVariant.pass ? 'OK' : 'FAIL'}: ${fVariant.name}`,
+  });
+  if (!f.pass || !fVariant.pass) anyFailure = true;
+  console.log(`  -> ${f.pass ? 'PASS' : 'FAIL'} (main), ${fVariant.pass ? 'PASS' : 'FAIL'} (continuous-typing variant)\n`);
+
   rows.push({
     gate: 'H. Maturity (Yjs 13/14 compatibility probe)',
     result: 'not run',
@@ -198,6 +209,8 @@ async function main() {
     gateD: d,
     gateE: e,
     gateG: g,
+    gateF: f,
+    gateF_continuousTyping: fVariant,
   };
   fs.writeFileSync(path.join(RESULTS_DIR, 'gates.json'), JSON.stringify(json, null, 2));
 

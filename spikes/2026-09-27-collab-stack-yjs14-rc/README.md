@@ -1,9 +1,11 @@
 # Stack 14: `@y/y` 14.0.0-rc.26 + `@y/prosemirror` 2.0.0-13, on Hocuspocus
 
-Status: brief 04 (Hocuspocus relay, gates B3, G, E, D) done, on top of brief
-02 (gates A, B, C-equivalent, Yjs 13/14 compatibility probe). See
-[brief 02's log](../../context/logs/2026-09-27-builder-spike-5-stack14-core.md)
-and [brief 04's log](../../context/logs/2026-09-27-builder-spike-5-stack14-deg.md)
+Status: brief 06 (gate F: spike 2's rebase port, live editors + relay) done,
+on top of brief 04 (Hocuspocus relay, gates B3, G, E, D) and brief 02 (gates
+A, B, C-equivalent, Yjs 13/14 compatibility probe). See
+[brief 02's log](../../context/logs/2026-09-27-builder-spike-5-stack14-core.md),
+[brief 04's log](../../context/logs/2026-09-27-builder-spike-5-stack14-deg.md)
+and [brief 06's log](../../context/logs/2026-09-27-builder-spike-5-stack14-rebase.md)
 for the full narrative.
 
 **Relay decision (brief 04, task 1): Hocuspocus 4.7 now works and is the
@@ -71,6 +73,18 @@ Spike 2's Yjs 14 binding probe (branch `spike/2026-09-27-crdt-rebase` at
 `doc.get('prosemirror')`) before writing `src/yjs.ts`, but no code from it
 was copied (it uses its own tiny schema, not spike 1's).
 
+**Brief 06 (gate F) addendum**: `src/rebase/schema.ts`, `ids.ts`,
+`markdown.ts` copied **unchanged** from stack 13's own `src/rebase/`
+(itself spike 2's, branch `spike/2026-09-27-crdt-rebase` at `88bd85c`) --
+pure ProseMirror schema / deterministic hashing / markdown-it parser, no
+Yjs API surface at all. `text.ts`, `seed.ts`, `diff.ts`, `rebase.ts`,
+`integrate.ts`, `comments.ts`, `replica.ts`, `liveIntegration.ts`,
+`liveClient.ts` are ported (not copied unchanged) from stack 13's own
+`src/rebase/` onto `@y/y`'s unified `Y.Node` API -- see "Gates" below (gate
+F entry) for the full account of what changed and why, and line-count
+comparisons against both spike 2's original and stack 13's port.
+`gates/gateF.ts` is likewise ported from stack 13's own gate F.
+
 ## Layout
 
 - `src/schema.ts`, `src/parse.ts`, `src/serialize.ts`, `src/style.ts`,
@@ -132,10 +146,32 @@ was copied (it uses its own tiny schema, not spike 1's).
   this brief.
 - `scratch/` -- standalone debugging scripts (brief 02's
   `probe-alias.mjs`, `smoke-one-client.ts`, `smoke-two-clients.ts`,
-  `debug-pathb-pair.ts`; this brief's `probe-atom-mark-change.ts` (gate
-  B3's basis), `probe-collision.ts` and `probe-suggestion-mode.ts`, both
-  showing a failed first attempt and the fix); not part of the gate
-  runner, excluded from `tsconfig.json`, kept as reproducible evidence.
+  `debug-pathb-pair.ts`; brief 04's `probe-atom-mark-change.ts` (gate
+  B3's basis), `probe-collision.ts` and `probe-suggestion-mode.ts`; brief
+  06's `probe-rebase-primitives.ts`, both showing a failed first attempt
+  and the fix); not part of the gate runner, excluded from
+  `tsconfig.json`, kept as reproducible evidence.
+- `src/rebase/` -- brief 06 (gate F): spike 2's rebase (fork-at-snapshot,
+  deterministic client IDs, comment anchors, needs-review/resurrection),
+  ported from stack 13's own `src/rebase/` onto `@y/y`'s unified `Y.Node`.
+  `schema.ts`/`ids.ts`/`markdown.ts` unchanged; `diff.ts` (task 2) does NOT
+  reimplement spike 2's hand-rolled diff -- it calls `lib0/delta`'s own
+  public `diff()` on `@y/prosemirror`'s `docToDelta` snapshots instead (see
+  the file's header and "Gates" below for the full account); every other
+  file is a mechanical-plus port to `Y.Node`/`doc.get(name)`/
+  `setAttr`/`getAttr` in place of `Y.XmlElement`/`Y.XmlText`/`Y.Map`.
+  `gates/` holds spike 2's own headless gates (A-D2, idempotent -- its own
+  lettering, distinct from this package's A-G table), run via `npm run
+  rebase:baseline` (not part of `npm run gates`, same as stack 13).
+- `src/rebase/liveIntegration.ts`, `liveClient.ts` -- the live-editing half
+  of brief 06: the `beforeTransaction`/`afterTransaction` integration hook,
+  and a live client for spike 2's schema/fragment using this stack's own
+  `@y/prosemirror` binding (`syncPlugin`/`configureYProsemirror`) instead
+  of stack 13's `@tiptap/y-tiptap`.
+- `gates/gateF.ts`, `scripts/run-gate-f.ts` -- gate F itself (ported from
+  stack 13's own gate F); see "Gates" below.
+- `scripts/rebase-baseline.ts` -- runs spike 2's own headless gates
+  (`npm run rebase:baseline`).
 
 ## Relay decision detail (brief 04 task 1; brief 02 task 2's attempts)
 
@@ -214,8 +250,9 @@ messages even before any Yjs-version question arises.
 ```bash
 npm ci                # runs postinstall-dedupe.mjs automatically
 npm run fetch         # corpus/fetched/ (gitignored), if missing
-npm run gates:quick   # A (both relays), B, C (5-file sample), B3, D, E, G (short) -- ~15s
-npm run gates         # same, full corpus for C, full D/E/G scenarios -- ~90s
+npm run gates:quick   # A (both relays), B, C (5-file sample), B3, D, E, G (short), F -- ~20s
+npm run gates         # same, full corpus for C, full D/E/G scenarios, F -- ~95s
+npm run rebase:baseline  # spike 2's own headless gates (A-D2, idempotent), brief 06 task 3
 npx tsc --noEmit
 
 cd compat && npm install && npm run compat && npx tsc --noEmit
@@ -443,6 +480,138 @@ block, plus a process-level exit hook); checked directly with
   deterministically to one of the two concurrent writes (not corrupted or
   duplicated), and all three (editor1, editor2, relay) converge.
 
+- **F. Rebase port** (brief 06): spike 2's own rebase scenario
+  (`src/rebase/gates/scenario.ts`'s `MD_A` -> `MD_B`, alice online, bob
+  offline, three comments planted at commit A) run on the real stack --
+  a live Hocuspocus relay (`rebase:` documents, `POST /rebase/<docName>`)
+  and two live ProseMirror `EditorView`s (`src/rebase/liveClient.ts`) --
+  instead of spike 2's in-memory `Replica` harness. **PASS, every
+  sub-check, on the first attempt** (`npx tsx scripts/run-gate-f.ts`, ports
+  4257/4258): rebase applied while alice is online and bob is offline;
+  alice/bob/relay converge on ProseMirror JSON and on `review` state; the
+  untouched-paragraph comment resolves via CRDT; the rewritten-paragraph
+  comment ("plan for the rollout") resolves via CRDT (this stack's
+  `lib0`-diff keeps the CRDT anchor for any text unchanged between commits,
+  same effect as stack 13's word-granularity mode); the deleted-paragraph
+  comment orphans with its quote kept exact and the negative control (a
+  similar "harbor" paragraph) is not falsely captured; both P (bob,
+  offline) and Q (alice, online) are flagged `concurrent-edit` with no
+  unexpected flags elsewhere; P2 (deleted upstream, edited offline by bob)
+  is resurrected exactly once, flagged `deleted-upstream-edited-locally`;
+  every untouched block equals commit B verbatim on all three peers; a
+  retried identical POST is a true no-op (`{"applied":false,"reason":
+  "already at target"}`, byte-identical PM JSON and review state before and
+  after). The continuous-typing variant (alice fires 40 single-character
+  inserts with the rebase POST fired mid-burst) also passes: all 40 land as
+  one intact run, the rebase still applies, and all three still converge.
+
+  **Do fork-at-snapshot and deterministic client IDs exist on Yjs 14, and
+  what had to change** (the charter's own question for this gate):
+  **yes, unchanged.** `Y.createDocFromSnapshot`, `Y.snapshot`,
+  `Y.encodeSnapshot`/`decodeSnapshot`, and an assignable `Doc.clientID` all
+  exist on `@y/y` with the same signatures as Yjs 13 (`Y.Snapshot`'s shape
+  is the same `{sv, ds}`, `ds` now an `IdSet` instead of a `DeleteSet`) --
+  confirmed empirically (`scratch/probe-rebase-primitives.ts`) before
+  porting `rebase.ts`, not assumed from stack 13's port. What DID have to
+  change, beyond the mechanical `Y.Node`-for-`Y.XmlElement`/`Y.XmlText`/
+  `Y.Map` substitution every ported file needed:
+  1. **Task 2's diff emitter is not a retargeted port of spike 2's
+     hand-rolled LCS+Dice-similarity diff at all.** `@y/prosemirror`'s own
+     binding calls a private function, `pmDocDiff`, to do this exact job on
+     every keystroke -- not exported from the package's public API (its
+     `package.json` "exports" field blocks reaching into the internal
+     module, checked before relying on either). Per the brief's own named
+     fallback, `diff.ts` instead calls `lib0/delta`'s own public `diff()`
+     on the two documents' canonical `docToDelta()` snapshots. This is not
+     a downgrade: reading `lib0/delta/delta.js` confirms `diff()` already
+     recurses into matched children via `modify` and aligns text at
+     line/word(`patience.smartSplitRegex`)/char granularity -- the exact
+     same call `pmDocDiff` itself delegates to internally for any
+     non-trivial window. So the brief's "preferred" (word-level, per-block,
+     binding-shaped encoding) and "fallback" (`delta.diff` against
+     `pmnodeToDelta(pmB)`) approaches turn out to be the SAME mechanism
+     once `pmDocDiff`'s private wrapper is unavailable -- **task 2 needed
+     one attempt, not two.** `diff.ts` shrank from 428 lines (spike 2
+     original / stack 13's port, unchanged) to **58 lines**.
+  2. **`Y.isDeleted(ds, id)` has no Yjs14 equivalent.** `@y/y`'s own
+     (unexported) `isVisible(item, snapshot)` uses `snapshot.ds.hasId(item.id)`
+     (an `IdSet` method) instead -- confirmed by reading `ynode.js` directly.
+     `isVisibleAt` (`integrate.ts`) is a verified hand-port of that exact
+     logic under a different name.
+  3. **A textblock's own content IS its text**, not a nested child type.
+     Spike 2's schema has no inline atoms, so in Yjs 14's unified model a
+     paragraph/heading/code_block `Y.Node`'s own item chain holds
+     `ContentString` (text) and `ContentFormat` (mark boundary) items
+     directly -- there is no nested `Y.XmlText` to find. This actually
+     SIMPLIFIES `text.ts` and `comments.ts` (one less indirection) but means
+     `integrate.ts`'s block-signature/content functions at an arbitrary
+     point in time (`blockDeltaAt`) have to be hand-rolled: `Y.Node#toDelta()`
+     has no raw-`Snapshot` parameter (its `itemsToRender: IdSet` option is
+     for attribution/diff rendering, not point-in-time reconstruction), and
+     this file needs three different snapshots (base, target, pre-merge P)
+     on the same live tree. `blockDeltaAt` mirrors Yjs's own internal
+     `Text#toDelta(snapshot)` algorithm (walk the item chain, track a
+     running format map from visible `ContentFormat` markers, emit merged
+     runs for visible `ContentString` items) -- structurally verified by
+     reading `@y/y`'s own `isVisible`/`Item`/`ContentFormat` source, not
+     assumed.
+  4. **Resurrection uses `Y.Node`'s built-in content-copy pattern instead
+     of stack 13's hand-rolled op-by-op tree rebuild.** A brand new
+     detached `Y.Node`, given content via `applyDelta` while still detached
+     (deferred to Yjs's own `_prelim` mechanism until the node is inserted
+     somewhere -- verified empirically, including a first attempt that read
+     the still-detached node back too early and wrongly saw it as empty,
+     logged in the probe script), reads back correctly once inserted into
+     the live ancestor.
+  5. `RelativePosition`/`AbsolutePosition` (`createRelativePositionFromTypeIndex`,
+     `createAbsolutePositionFromRelativePosition`) work **unchanged** on a
+     `Y.Node` -- same signature, same `_start`/`.right` walk internally
+     (confirmed by reading `RelativePosition.js`).
+  6. `Y.Map` (stack 13's `PHRAISE_MAP`/`AUTHORS_MAP`/`REVIEW_MAP`/
+     `COMMENTS_MAP`) becomes a `Y.Node` used purely as an attr bag
+     (`setAttr`/`getAttr`/`getAttrs(snapshot)`/`forEachAttr`) -- the same
+     pattern `src/attribution.ts` (brief 04) already established.
+     `getAttrs(snapshot)` usefully takes a raw `Y.Snapshot` directly (unlike
+     `toDelta`), confirmed empirically.
+  7. Same design as stack 13: the per-replica "P = state just before this
+     batch" step is the Y.Doc's own `beforeTransaction`/`afterTransaction`
+     events (`liveIntegration.ts`), confirmed unchanged on `@y/y`'s `Doc`;
+     the relay is a replica too and needed the same relay-ack-immediately
+     fix stack 13 found by running its own gate F live (full trace in its
+     brief-05 log) -- ported here proactively into `relay-hocuspocus.ts`'s
+     `/rebase` route rather than rediscovered by reproducing the bug fresh,
+     then re-verified end-to-end by this gate passing outright (gate F's
+     own D check -- "no unexpected flags" -- is exactly what would have
+     caught a missing fix).
+  8. `gc:false` is required on both the relay (`yDocOptions`) and every
+     live client's `Y.Doc`, same as stack 13 -- checked first that no
+     existing gate (A/B/C/B3/D/E/G) depends on GC being on before applying
+     it relay-wide.
+  9. No `y-prosemirror` -> binding-library import retargeting was needed in
+     `seed.ts`/`diff.ts` (unlike stack 13's `@tiptap/y-tiptap` retarget):
+     this stack's own binding, `@y/prosemirror`, was used directly.
+
+  **Line counts, `src/rebase/` total** (spike 2 original -> stack 13's port
+  -> stack 14's port): schema/ids/markdown unchanged throughout (116+27+103).
+  `text.ts` 89 -> 89 -> 93. `diff.ts` 428 -> 428 -> **58**. `seed.ts` 80 ->
+  80 -> 76. `rebase.ts` 143 -> 143 -> 138. `integrate.ts` 280 -> 280 -> 306
+  (the hand-rolled `blockDeltaAt` point-in-time reconstruction). `comments.ts`
+  316 -> 316 -> 286 (simpler: no nested XmlText indirection). `replica.ts`
+  355 -> 355 -> 274. `liveIntegration.ts`/`liveClient.ts` (stack 13 only,
+  brief 05) 101+106 -> this stack's 79+99. **Total: stack 13's port 2144
+  lines -> stack 14's port 1655 lines** (~23% fewer, almost entirely
+  `diff.ts`'s simplification). `gates/gateF.ts`: stack 13's 424 lines ->
+  this stack's 394 (same scenario/checks, fewer lines from the simpler
+  `review`-state read and no `granularity` parameter threading).
+
+  Delivery-model note (same as stack 13, stated plainly): Hocuspocus's real
+  y-protocols sync is bidirectional and automatic on (re)connect -- there
+  is no "deliver one update at a time" hook, so gate F does not repeat
+  spike 2's own gate D permutation/shuffle sweep; that sweep already ran
+  headlessly against this exact port (`npm run rebase:baseline`, 6
+  permutations + 50 shuffles, all converged) before gate F ever started a
+  relay.
+
 ## Compatibility probe (brief task 6 / task 2's attempt (c))
 
 `compat/scripts/compat.ts` (`npm run compat` from `compat/`, a separate
@@ -507,9 +676,20 @@ high-level type wrapper (`Y.XmlFragment` vs `Y.Node`) is not.
 - `src/relay-custom.ts` / `client-custom.ts` (brief 02's attempt (b),
   renamed) remain fully working and are still exercised (gate A only, per
   the brief's "alternative behind a flag").
-- Row F ("later brief") and H ("Maturity") are reported as "not run" in
-  `results/gates.md` per the brief -- H's fuller maturity write-up (release
-  cadence, breaking changes, open issues) is the orchestrator's own
-  primary-source gate per the plan; this brief's (and brief 02's) compat
-  probe above covers the "documents written by 13 read by 14 and the
-  reverse" half of it specifically.
+- Row H ("Maturity") is reported as "not run" in `results/gates.md` -- it
+  is the orchestrator's own primary-source gate per the plan (release
+  cadence, breaking changes, open issues); this brief's (and brief 02's)
+  compat probe above covers the "documents written by 13 read by 14 and the
+  reverse" half of it specifically. Row F ("later brief") is no longer
+  "not run" -- brief 06 implemented it; see the "Gates" section's F entry.
+- Brief 06's gate B (spike 2's own headless gates, `npm run rebase:baseline`,
+  distinct lettering from this package's own A-G table) is adapted, not
+  ported verbatim, from stack 13's own gate B: stack 13 forced three diff
+  granularities (word/char/block) to show word/char preserve a comment's
+  CRDT anchor while block (a no-diffing whole-text replace) destroys it.
+  This stack's `diff.ts` has one algorithm (`lib0/delta`'s own diff) with
+  no granularity knob, so there is no way to force "destroy the anchor"
+  that way -- adapted to verify what's left to test (the anchor SURVIVES an
+  in-place rewrite); the "anchor breaks, falls back to fuzzy" case is still
+  covered, by that same headless suite's gate C (a whole paragraph deleted,
+  a strictly harder version of the same loss) and by gate F's live C check.
