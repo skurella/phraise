@@ -100,3 +100,7 @@ Awaiting the orchestrator's handback. Next lead actions: read handback and findi
 ## 03:08 — Sandbox disabled by owner
 
 The owner turned off the Bash sandbox. Network git and `gh` commands work normally again. The earlier finding about per-command sandbox bypass no longer applies. Spike 1 orchestrator informed. Also fixed earlier in this session: a blanket `git add` had committed the orchestrator's worktree as an embedded repo reference; removed from the index and `.claude/worktrees/` added to `.gitignore`. Lesson for all agents: stage paths explicitly.
+
+## 03:48 — Owner asked whether delegation is working
+
+Owner saw the Sonnet builder's pane showing only its prompt and a spinner. Checked disk: files under the spike directory changed continuously from 03:26 to 03:47 (schema, a 22 KB parser, a dozen diagnostic scripts) while the orchestrator's log and commits were silent, which is consistent with Opus blocked on the builder call. Conclusion: delegation works; the app does not render live activity for agents nested two levels deep. Builder had not updated its log since 03:26, so AGENTS.md now requires log entries at milestones and at least every 15 minutes.

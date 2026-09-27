@@ -37,6 +37,7 @@ Rules that apply to every file in `context/`:
 - One log file per agent session: `context/logs/<date>-<role>-<short-task>.md`, e.g. `2026-09-28-worker-markdown-core.md`.
 - Entries are timestamped lines or short sections: `## 14:32 — <event>`. Use the local time zone of the machine and state it once at the top.
 - Log: task received (link the brief), material findings, decisions you took and why, anything that contradicts a doc, blockers, tests run and their result, and the final handback summary.
+- Log as you go, not at the end: add an entry at every milestone and at least every 15 minutes of work. The app does not show the live activity of nested agents, so your log is the only way the owner and the lead can see progress.
 - A finding that changes a design belongs in the log first, then the lead promotes it into a doc. Workers do not edit `context/docs/` unless their brief says so.
 
 ## Working agreements
