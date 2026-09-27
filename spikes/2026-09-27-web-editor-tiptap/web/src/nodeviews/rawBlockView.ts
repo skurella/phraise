@@ -21,6 +21,7 @@ import katex from 'katex';
 import { labelForRawBlockKind } from '../../../src/editing/rawBlockLabels.js';
 import { sanitizeRawHtml } from '../../../src/editing/sanitizeHtml.js';
 import { parseFlatFrontMatter, stripFrontMatterFences } from '../../../src/editing/frontMatterPreview.js';
+import { parseFootnoteDefinition, parseLinkReferenceDefinition } from '../../../src/editing/definitionPreview.js';
 import { keepUnverifiedBlock } from '../editing/unverifiedCheck.js';
 
 class RawBlockView implements NodeView {
@@ -60,6 +61,18 @@ class RawBlockView implements NodeView {
 
     this.selectionHandler = () => this.updateEditingState();
     this.editor.on('selectionUpdate', this.selectionHandler);
+    // Brief 07 fix list: a raw block that happens to sit at the position
+    // ProseMirror's initial (unfocused) selection resolves to -- routinely
+    // front matter, since it is usually the document's very first block --
+    // must not open in "editing" (raw source) mode before the user has ever
+    // actually focused the editor. `editor.isFocused` gates this below, so
+    // `focus`/`blur` need their own listeners too: a plain `selectionUpdate`
+    // does not fire just because focus moved into or out of the editor with
+    // the ProseMirror selection itself unchanged (e.g. blurring to click a
+    // toolbar button, or the very first click landing exactly on the
+    // existing default selection).
+    this.editor.on('focus', this.selectionHandler);
+    this.editor.on('blur', this.selectionHandler);
     this.updateEditingState();
   }
 
@@ -136,7 +149,8 @@ class RawBlockView implements NodeView {
     }
 
     if (kind === 'yaml' || kind === 'toml') {
-      const entries = parseFlatFrontMatter(stripFrontMatterFences(text));
+      const fenceless = stripFrontMatterFences(text);
+      const entries = parseFlatFrontMatter(fenceless);
       if (entries && entries.length > 0) {
         const dl = document.createElement('dl');
         dl.className = 'phraise-frontmatter-preview';
@@ -148,6 +162,35 @@ class RawBlockView implements NodeView {
           dl.append(dt, dd);
         }
         this.previewEl.appendChild(dl);
+        return;
+      }
+      // Brief 07 fix list: never show the `---`/`+++` fence lines in normal
+      // view, even in this fallback (a nested/nonflat front matter this
+      // preview isn't confident summarizing) -- only the body, still raw.
+      this.previewEl.appendChild(this.rawTextPreview(fenceless));
+      return;
+    }
+
+    if (kind === 'footnoteDefinition') {
+      const parsed = parseFootnoteDefinition(text);
+      if (parsed) {
+        const p = document.createElement('p');
+        p.className = 'phraise-definition-preview';
+        p.textContent = `${parsed.id}. ${parsed.body}`;
+        this.previewEl.appendChild(p);
+        return;
+      }
+      this.previewEl.appendChild(this.rawTextPreview(text));
+      return;
+    }
+
+    if (kind === 'definition') {
+      const parsed = parseLinkReferenceDefinition(text);
+      if (parsed) {
+        const p = document.createElement('p');
+        p.className = 'phraise-definition-preview';
+        p.textContent = `reference link: ${parsed.url}`;
+        this.previewEl.appendChild(p);
         return;
       }
       this.previewEl.appendChild(this.rawTextPreview(text));
@@ -183,7 +226,7 @@ class RawBlockView implements NodeView {
   private updateEditingState(): void {
     if (this.isUnverified()) return; // always shown; see renderLabel's comment.
     const pos = this.getPos();
-    if (pos == null) {
+    if (pos == null || !this.editor.isFocused) {
       this.dom.classList.remove('phraise-editing');
       return;
     }
@@ -224,6 +267,8 @@ class RawBlockView implements NodeView {
 
   destroy(): void {
     this.editor.off('selectionUpdate', this.selectionHandler);
+    this.editor.off('focus', this.selectionHandler);
+    this.editor.off('blur', this.selectionHandler);
   }
 }
 

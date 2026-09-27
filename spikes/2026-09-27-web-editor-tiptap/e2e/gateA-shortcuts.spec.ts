@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
+import { dblClickWord } from './mouseSelect.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(HERE, 'fixtures', 'shortcuts.md');
@@ -27,37 +28,18 @@ function paragraphWithText(page: Page, text: string): Locator {
   return page.locator('#editor .ProseMirror p', { hasText: text }).first();
 }
 
-/** Select the word "word" inside "Select this word for formatting.".
- *
- * Clicks the paragraph first (to focus the editor -- a real user action),
- * then sets the selection via the editor's own `setTextSelection` command,
- * computed from the live doc's real text position. `gateA-typing.spec.ts`'s
- * builder-log comment covers why: real `Shift-ArrowRight` sequences raced
- * ahead of the browser's own caret movement in this headless Chromium and
- * produced the wrong range. What is actually under test here (a keyboard
- * shortcut applied to an existing selection) still uses real
- * `page.keyboard` events throughout. */
+/** Select the word "word" inside "Select this word for formatting." with a
+ * real double-click -- the natural mouse gesture for selecting one word
+ * (see `e2e/mouseSelect.ts`). Brief 07 fix list: this replaces the earlier
+ * `editor.commands.setTextSelection` version -- a real double-click turned
+ * out to be perfectly reliable here (no race, no retry needed), so the
+ * `setTextSelection` fallback this file's builder-log comment used to cite
+ * was a workaround for a DIFFERENT technique (`Shift-ArrowRight`), not
+ * evidence double-click itself was ever tried and found wanting. */
 async function selectWord(page: Page): Promise<void> {
   const paragraph = paragraphWithText(page, 'Select this word for formatting.');
   await expect(paragraph).toHaveText('Select this word for formatting.');
-  await paragraph.click();
-  await expect
-    .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parent.textContent))
-    .toBe('Select this word for formatting.');
-  await page.evaluate(() => {
-    const editor = (window as unknown as { phraise: { editor: import('@tiptap/core').Editor } }).phraise.editor;
-    let from = -1;
-    let to = -1;
-    editor.state.doc.descendants((node, pos) => {
-      if (!node.isText || node.text !== 'Select this word for formatting.') return true;
-      const idx = node.text.indexOf('word');
-      from = pos + idx;
-      to = from + 'word'.length;
-      return true;
-    });
-    editor.commands.setTextSelection({ from, to });
-  });
-  await expect.poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.empty)).toBe(false);
+  await dblClickWord(page, paragraph, 'word'); // verifies the selection itself; see e2e/mouseSelect.ts.
 }
 
 test('[A] Mod-B toggles bold on a selected word, and toggles it off again', async ({ page, phraiseServer }) => {

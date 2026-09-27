@@ -97,11 +97,13 @@ test('[C] source blocks render with plain-language labels and no visible Markdow
   const definitionBlock = page.locator('.phraise-source-block[data-raw-block-kind="definition"]');
   await expect(definitionBlock.locator('.phraise-source-label')).toContainText('Link reference');
 
-  // The footnote reference itself, inline in its paragraph, is an
-  // unobtrusive chip, not `[^1]` literal text.
+  // The footnote reference itself, inline in its paragraph, is a real
+  // superscript number (brief 07 fix list: was an unobtrusive
+  // "FOOTNOTE REF" chip), not `[^1]` literal text.
   const footnoteParagraph = paragraphWithText(page, 'Here is a claim with a footnote');
   await expect(footnoteParagraph).not.toContainText('[^1]');
-  await expect(footnoteParagraph.locator('.phraise-inline-chip')).toHaveCount(1);
+  await expect(footnoteParagraph.locator('.phraise-footnote-ref')).toHaveCount(1);
+  await expect(footnoteParagraph.locator('.phraise-footnote-ref sup')).toHaveText('1');
 
   const mermaidBlock = page.locator('.phraise-mermaid-block');
   await expect(mermaidBlock.locator('.phraise-source-label')).toContainText('Mermaid');

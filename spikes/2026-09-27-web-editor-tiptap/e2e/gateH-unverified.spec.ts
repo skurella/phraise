@@ -34,24 +34,35 @@ async function markdown(page: Page): Promise<string> {
   return page.evaluate(() => (window as unknown as { phraise: { markdown(): string } }).phraise.markdown());
 }
 
-/** Trigger gate H's demonstration edit: find the autolink's marked text run
- * and remove its `link` mark via a real, generic core command (not a
- * hand-built transaction) -- this IS the "local transaction" the debounced
- * check reacts to. */
+/** Trigger gate H's demonstration edit through the real UI (brief 07 fix
+ * list): a real click places the caret inside the autolink text (the
+ * fixture's paragraph consists of exactly the one autolink, so a plain
+ * `.click()` on it always lands inside), real Mod-K opens the link field
+ * (prefilled with the current address, confirmed below) with a real
+ * "Remove link" button, and a real click on that button is what actually
+ * removes the mark -- this IS the "local transaction" the debounced check
+ * reacts to, same as the earlier `unsetMark` version, but driven by the
+ * same UI a user would actually use. */
 async function unlinkAutolink(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const editor = (window as unknown as { phraise: { editor: import('@tiptap/core').Editor } }).phraise.editor;
-    let range: { from: number; to: number } | null = null;
-    editor.state.doc.descendants((node, pos) => {
-      if (range) return false;
-      if (node.isText && node.marks.some((m) => m.type.name === 'link')) {
-        range = { from: pos, to: pos + node.nodeSize };
-      }
-      return true;
-    });
-    if (!range) throw new Error('autolink text run not found');
-    editor.chain().setTextSelection(range).unsetMark('link').run();
-  });
+  const linkParagraph = page.locator('#editor .ProseMirror > p').nth(1); // structural: the fixture's 3 <p>s are "before", the autolink, "after".
+  await linkParagraph.click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const editor = (window as any).phraise.editor;
+        return editor.state.selection.$from.marks().some((m: { type: { name: string } }) => m.type.name === 'link');
+      }),
+    )
+    .toBe(true);
+
+  await page.keyboard.press('ControlOrMeta+k');
+  const popup = page.locator('#phraise-link-popup');
+  await expect(popup).toBeVisible();
+  const removeButton = popup.getByRole('button', { name: 'Remove link' });
+  await expect(removeButton).toBeVisible();
+  await expect(popup.locator('input')).toHaveValue('https://example.com?find=\\*');
+  await removeButton.click();
+  await expect(popup).toBeHidden();
 }
 
 function unverifiedBanner(page: Page) {

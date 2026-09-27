@@ -89,7 +89,21 @@ body {
   font-size: 16px;
 }
 
-#editor .ProseMirror > * + * {
+/* Brief 07 fix list: "consecutive paragraphs have no space between them in
+   several places, including after source-block cards". This was a real CSS
+   specificity bug, not a layout gap: the sibling-combinator selector this
+   rule used to be (`> * + *`) has LOWER specificity than the type-specific
+   rules below it (`.ProseMirror p { margin: 0 }`,
+   `.ProseMirror ul, ol { margin: 0 }`, `.ProseMirror blockquote { margin: 0
+   }`), which win regardless of source order and zero out the very
+   margin-top this rule was trying to set -- confirmed directly (computed
+   `margin-top` read back as `0px` on a `<p>` with a preceding sibling
+   `<p>`) rather than assumed. `:not(:first-child)` keeps the same "every
+   direct child except the first" selection as `+ *` did, but its
+   specificity (an extra pseudo-class) now beats every plain-type selector
+   below, so this is the one place spacing between top-level blocks is
+   decided. */
+#editor .ProseMirror > *:not(:first-child) {
   margin-top: 0.9em;
 }
 
@@ -344,6 +358,13 @@ body {
   padding: 4px 0;
 }
 
+/* Brief 07 fix list: footnote/link-reference definitions, rendered as a
+   plain sentence ("1. The footnote text.", "reference link: https://…")
+   instead of their raw Markdown source. */
+.phraise-definition-preview {
+  margin: 0;
+}
+
 .phraise-render-error {
   color: #cf222e;
 }
@@ -378,6 +399,17 @@ body {
 .phraise-inline-math.phraise-render-error {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
+}
+
+/* Brief 07 fix list: a footnote reference as a real superscript number
+   (was an uppercase "FOOTNOTE REF" chip). */
+.phraise-footnote-ref {
+  cursor: default;
+}
+
+.phraise-footnote-ref sup {
+  color: #0969da;
+  font-weight: 600;
 }
 
 /* Gate H (brief 03, task 5): the unverified-block banner. Its wrapper

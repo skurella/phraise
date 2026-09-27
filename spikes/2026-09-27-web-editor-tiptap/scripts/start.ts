@@ -23,14 +23,15 @@ function listMarkdownFiles(dir: string): string[] {
 }
 
 async function main(): Promise<void> {
-  const distDir = path.join(SPIKE_ROOT, 'dist');
-  if (!fs.existsSync(path.join(distDir, 'index.html'))) {
-    console.log('dist/ missing or incomplete, building...');
-    const build = spawnSync('npx', ['vite', 'build'], { cwd: SPIKE_ROOT, stdio: 'inherit' });
-    if (build.status !== 0) {
-      console.error('build failed');
-      process.exit(build.status ?? 1);
-    }
+  // Brief 07 fix list: always build first, so a stale dist/ (left over from
+  // an edit made since the last build) is never served -- vite build is
+  // quick enough that skipping it when dist/ already exists saved nothing
+  // worth the staleness risk.
+  console.log('building...');
+  const build = spawnSync('npx', ['vite', 'build'], { cwd: SPIKE_ROOT, stdio: 'inherit' });
+  if (build.status !== 0) {
+    console.error('build failed');
+    process.exit(build.status ?? 1);
   }
 
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'phraise-web-editor-start-'));

@@ -73,6 +73,36 @@ async function extendSelection(page: Page, count: number): Promise<void> {
   for (let i = 0; i < count; i++) await page.keyboard.press('Shift+ArrowRight');
 }
 
+async function selectionHead(page: Page): Promise<{ text: string; offset: number }> {
+  return page.evaluate(() => {
+    const editor = (window as unknown as { phraise: { editor: import('@tiptap/core').Editor } }).phraise.editor;
+    const { $head } = editor.state.selection;
+    return { text: $head.parent.textContent, offset: $head.parentOffset };
+  });
+}
+
+/** Extend the current selection to the right, one real Shift-ArrowRight at
+ * a time (including across a paragraph boundary), until its head reaches
+ * the given paragraph text and offset. Brief 07 fix list: replaces this
+ * file's earlier `setTextSelection`-based cross-paragraph selection --
+ * real cross-block Shift-ArrowRight DOES work in this headless Chromium
+ * (the orchestrator's own confirmed technique), provided each press's
+ * effect on `editor.state.selection` is polled to settle before checking
+ * it or sending the next one: the browser's own `selectionchange` is
+ * asynchronous relative to `page.keyboard.press()` resolving, so reading
+ * the selection immediately after a press can see the PREVIOUS value. */
+async function extendSelectionAcrossBlocksTo(page: Page, targetText: string, targetOffset: number, maxPresses = 100): Promise<void> {
+  for (let i = 0; i < maxPresses; i++) {
+    const before = await selectionHead(page);
+    if (before.text === targetText && before.offset === targetOffset) return;
+    await page.keyboard.press('Shift+ArrowRight');
+    await expect.poll(async () => JSON.stringify(await selectionHead(page))).not.toBe(JSON.stringify(before));
+  }
+  throw new Error(
+    `extendSelectionAcrossBlocksTo: selection head did not reach {text: ${JSON.stringify(targetText)}, offset: ${targetOffset}} within ${maxPresses} presses`,
+  );
+}
+
 test('[A] type a word mid-paragraph', async ({ page, phraiseServer }) => {
   const original = fs.readFileSync(FIXTURE, 'utf8');
   await openAndWait(page, phraiseServer);
@@ -141,27 +171,12 @@ test('[A] select across two paragraphs and type over the selection', async ({ pa
   const original = fs.readFileSync(FIXTURE, 'utf8');
   await openAndWait(page, phraiseServer);
 
-  // Establish a selection spanning the two paragraphs via the editor's own
-  // `setTextSelection` command (computed from the two paragraphs' real text
-  // positions, found by searching the live doc -- not hand-computed
-  // offsets). Real cross-block Shift-ArrowRight through a browser
-  // contentEditable was tried first and found unreliable in this headless
-  // Chromium (it extended the selection far past the intended range; see
-  // the builder log), so only the actual thing this scenario tests --
-  // typing over an existing selection -- uses a real keyboard event.
-  await placeCaret(page, paragraphWithText(page, 'First paragraph here.'), 'First paragraph here.', 0);
-  await page.evaluate(() => {
-    const editor = (window as unknown as { phraise: { editor: import('@tiptap/core').Editor } }).phraise.editor;
-    let from = -1;
-    let to = -1;
-    editor.state.doc.descendants((node, pos) => {
-      if (!node.isText) return true;
-      if (from < 0 && node.text === 'First paragraph here.') from = pos + 'First '.length;
-      if (node.text === 'Second paragraph here.') to = pos + 'Second '.length;
-      return true;
-    });
-    editor.commands.setTextSelection({ from, to });
-  });
+  // Establish a selection spanning the two paragraphs with real keyboard
+  // events throughout: place the caret with Home/ArrowRight, then extend it
+  // across the paragraph boundary with real Shift-ArrowRight presses (see
+  // `extendSelectionAcrossBlocksTo`'s own comment).
+  await placeCaret(page, paragraphWithText(page, 'First paragraph here.'), 'First paragraph here.', 'First '.length);
+  await extendSelectionAcrossBlocksTo(page, 'Second paragraph here.', 'Second '.length);
   await page.keyboard.type('X');
 
   const expected = original.replace('First paragraph here.\n\nSecond paragraph here.', 'First Xparagraph here.');

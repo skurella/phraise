@@ -39,6 +39,21 @@ class RawInlineView implements NodeView {
       return;
     }
 
+    if (kind === 'footnoteReference') {
+      // Brief 07 fix list: "a footnote reference renders as a chip saying
+      // 'FOOTNOTE REF' (render a superscript number)". `value` is the raw
+      // source (`[^1]`); show its id as a real superscript, the way a
+      // rendered footnote reference actually looks, with the raw source
+      // still in the tooltip for a curious user.
+      this.dom.className = 'phraise-footnote-ref';
+      this.dom.title = value;
+      const idMatch = /^\[\^([^\]]+)\]$/.exec(value.trim());
+      const sup = document.createElement('sup');
+      sup.textContent = idMatch ? idMatch[1]! : value;
+      this.dom.appendChild(sup);
+      return;
+    }
+
     this.dom.className = 'phraise-inline-chip';
     this.dom.title = value;
     this.dom.textContent = labelForRawInlineKind(kind);

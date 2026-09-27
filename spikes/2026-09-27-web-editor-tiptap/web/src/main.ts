@@ -45,6 +45,8 @@ import { UnverifiedCheck, debugStats as unverifiedCheckDebugStats } from './edit
 import { rawBlockNodeView } from './nodeviews/rawBlockView.js';
 import { rawInlineNodeView } from './nodeviews/rawInlineView.js';
 import { codeBlockNodeView } from './nodeviews/codeBlockView.js';
+import { tableCellNodeView } from './nodeviews/tableCellView.js';
+import { imageNodeView } from './nodeviews/imageView.js';
 import { renderPresenceBadges } from './presenceView.js';
 import { renderStatus } from './statusView.js';
 import { registerServiceWorker, primeOfflineCache } from './offlineShell.js';
@@ -269,6 +271,8 @@ async function main(): Promise<void> {
     if (ext.name === 'raw_block') return ext.extend({ addNodeView: rawBlockNodeView });
     if (ext.name === 'raw_inline') return ext.extend({ addNodeView: rawInlineNodeView });
     if (ext.name === 'code_block') return ext.extend({ addNodeView: codeBlockNodeView });
+    if (ext.name === 'table_cell') return ext.extend({ addNodeView: tableCellNodeView });
+    if (ext.name === 'image') return ext.extend({ addNodeView: imageNodeView });
     return ext;
   });
 
