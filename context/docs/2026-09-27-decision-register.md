@@ -4,6 +4,19 @@ Status: living document, append-only. Newest at the bottom of each table.
 Author: lead agent (Fable 5.1)
 Updated: 2026-09-27
 
+## Latest: decisions from spike 5, collaboration stack
+
+Source: [spike 5 findings](2026-09-27-spike-5-findings-collab-stack.md). Rows marked S5 were made by the spike 5 orchestrator; its full Decisions table, S5-1 to S5-10, is in the findings. This section sits at the top until the register is consolidated.
+
+| ID | Date | Decision | Impact | Difficulty | Made by | Where |
+|---|---|---|---|---|---|---|
+| D5d | 2026-09-27 | Build on Yjs 13, y-tiptap, Hocuspocus 4.7 and Tiptap 3, behind a five-point CRDT interface. Migrate to Yjs 14 when its binding is stable, its image-link bug is fixed, and Hocuspocus or Tiptap supports it (S5-1). Closes D5c. | high | **hard**: 13 needs workarounds with sharp edges and lacks native attribution and suggestions; 14 has those but loses data on image edits and is still renaming its core API | lead, on the orchestrator's recommendation | [architecture](2026-09-27-architecture-decisions.md) |
+| D5e | 2026-09-27 | Yjs 13 workarounds as two editor plugins, binding unpatched, enforced by a schema test (S5-2, S5-3) | medium | easy | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D5f | 2026-09-27 | Attribution mapping recorded by the relay per update and stored inside the document (S5-4). Forged client identities are flagged today and must be rejected before release. | medium | moderate: flag-only leaves a spoofing hole that is acceptable in a spike and not in a product | orchestrator, accepted with the condition | [architecture](2026-09-27-architecture-decisions.md) |
+| D5g | 2026-09-27 | Relay is Hocuspocus 4.7 with SQLite. The Yjs project's own server is not adopted: AGPL, and it needs Redis, Postgres and S3 (S5-7). | medium | easy | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| P15 | 2026-09-27 | Reporting the Yjs 14 binding bug upstream (S5-10) is held for the owner, because it would post publicly under the owner's account | low | easy | lead | lead log |
+
+
 Every decision made on the owner's behalf is listed here so it can be reviewed at a glance. **Impact** is how much would have to change if the decision were reversed later: high means a rewrite of a component or the data model, medium means a package or workflow, low means local. **Difficulty** is how contested the call was: hard means credible alternatives with real trade-offs, moderate means a judgement call, easy means the evidence pointed one way. Read the hard and high rows first.
 
 Detailed rationale lives in the linked docs; this register is the index.
