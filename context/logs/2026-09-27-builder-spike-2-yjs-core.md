@@ -73,3 +73,10 @@ the Y.XmlText.toString() plain-text bug) and non-scope. Verified git status
 shows only source files under spikes/2026-09-27-crdt-rebase-yjs-fork/ (no
 node_modules, no dist — confirmed via `git check-ignore`). Staging explicitly
 and committing on the current branch now, per brief. Handing back.
+
+## 04:34 — committed, handback
+
+Committed as 053bd53 on spike/2026-09-27-crdt-rebase (not pushed). 29 files,
+node_modules excluded (verified via git status --porcelain before staging;
+only real source/test/fixture files listed). Handing back to spike
+orchestrator now.
