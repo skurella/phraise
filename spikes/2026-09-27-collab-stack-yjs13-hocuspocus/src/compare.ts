@@ -27,7 +27,9 @@ function semanticAttrsEqual(a: Record<string, unknown>, b: Record<string, unknow
 }
 
 function markSemanticEq(a: Mark, b: Mark): boolean {
-  return a.type === b.type && semanticAttrsEqual(a.attrs, b.attrs);
+  // Compared by name, not by NodeType/MarkType reference (see semanticEq's
+  // comment below for why: brief 03/gate D found this the hard way).
+  return a.type.name === b.type.name && semanticAttrsEqual(a.attrs, b.attrs);
 }
 
 function marksEqual(a: readonly Mark[], b: readonly Mark[]): boolean {
@@ -56,7 +58,24 @@ function normalizeSoftBreaks(text: string): string {
 
 export function semanticEq(a: PMNode, b: PMNode, opts?: SemanticEqOpts): boolean {
   if (a === b) return true;
-  if (a.type !== b.type) return false;
+  // Compared by name, not by NodeType reference. Brief 03/gate D: a live
+  // Tiptap editor's doc uses Tiptap's OWN Schema instance (built by
+  // `getSchema()` from src/tiptapExtensions.ts's converted extensions),
+  // structurally equivalent to src/schema.ts's `schema` (checkSchemaEquivalence
+  // proves that) but a genuinely different JS object -- so its NodeTypes are
+  // never `===` to the canonical schema's, even for identically-named nodes.
+  // This bit serializeDoc's own round-trip verification (which re-parses a
+  // candidate serialization with the CANONICAL schema and semanticEq's it
+  // against the live, possibly-Tiptap-schema node): every single node
+  // compared unequal purely by object identity, regardless of real content,
+  // reported as "block 0 (heading) has no serialization that re-parses" even
+  // on an untouched heading. Confirmed by testing before this fix: it failed
+  // from the very first (pre-edit) check, not from anything the edit script
+  // did. Comparing by name is strictly more permissive in exactly the cases
+  // that used to be false positives (same node definition, different Schema
+  // object) and is exactly as strict as before whenever both sides already
+  // share one schema instance (every other gate's raw ProseMirror clients).
+  if (a.type.name !== b.type.name) return false;
   if (a.isText) {
     const ta = opts?.equateSoftBreaks ? normalizeSoftBreaks(a.text ?? '') : a.text;
     const tb = opts?.equateSoftBreaks ? normalizeSoftBreaks(b.text ?? '') : b.text;

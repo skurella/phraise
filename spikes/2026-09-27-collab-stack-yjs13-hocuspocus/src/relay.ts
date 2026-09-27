@@ -29,11 +29,26 @@ import { SQLite } from '@hocuspocus/extension-sqlite';
 import { prosemirrorToYXmlFragment } from '@tiptap/y-tiptap';
 import { parseMarkdown } from './parse.js';
 import { docToYDoc, FRAGMENT_NAME, META_MAP_NAME } from './yjs.js';
+import { recordAttribution, ATTRIBUTION_ORIGIN } from './attribution.js';
 
 interface Args {
   port: number;
   db: string;
   seeds: string;
+  /**
+   * Hocuspocus defaults (found by reading @hocuspocus/server's
+   * defaultConfiguration): debounce 2000ms, maxDebounce 10000ms -- the
+   * onStoreDocument hook (the SQLite extension's write) is debounced per
+   * document by this much after the last change, capped at maxDebounce so a
+   * continuously-edited document still gets stored periodically. Gate G
+   * overrides these to small values so its restart/kill scenarios don't
+   * need multi-second real waits; production would keep the defaults (or
+   * tune them for its own write-volume/durability trade-off).
+   */
+  debounce?: number;
+  maxDebounce?: number;
+  /** Gate E's size measurement only: skip every recordAttribution call, to isolate its byte cost by diffing against a normal run. */
+  noAttribution?: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -43,9 +58,12 @@ function parseArgs(argv: string[]): Args {
     if (a === '--port') out.port = Number(argv[++i]);
     else if (a === '--db') out.db = argv[++i];
     else if (a === '--seeds') out.seeds = argv[++i];
+    else if (a === '--debounce') out.debounce = Number(argv[++i]);
+    else if (a === '--maxDebounce') out.maxDebounce = Number(argv[++i]);
+    else if (a === '--no-attribution') out.noAttribution = true;
   }
   if (!out.port || !out.db || !out.seeds) {
-    throw new Error('usage: relay.ts --port <n> --db <path> --seeds <dir>');
+    throw new Error('usage: relay.ts --port <n> --db <path> --seeds <dir> [--debounce <ms>] [--maxDebounce <ms>]');
   }
   return out as Args;
 }
@@ -66,6 +84,8 @@ async function main() {
     port: args.port,
     address: '127.0.0.1',
     quiet: true,
+    ...(args.debounce !== undefined ? { debounce: args.debounce } : {}),
+    ...(args.maxDebounce !== undefined ? { maxDebounce: args.maxDebounce } : {}),
     extensions: [
       new SQLite({ database: dbPath }),
       {
@@ -103,6 +123,20 @@ async function main() {
               prosemirrorToYXmlFragment(doc, document.getXmlFragment(FRAGMENT_NAME));
             });
           }
+          if (args.noAttribution) return;
+          // Gate E: attribute the seed content to the 'seed' pseudo-user.
+          // Can't rely on the onChange hook below for this one write:
+          // @hocuspocus/server only calls `document.onUpdate(...)` (which
+          // is what makes onChange fire) *after* onLoadDocument returns
+          // (confirmed by reading loadDocument in its source: `document
+          // .isLoading = false; document.onUpdate(...)` comes after the
+          // `onLoadDocument` hooks call) -- so this transaction's own
+          // 'update' event fires the Y.Doc's raw listener that already
+          // exists (bound in Document's constructor) but never reaches
+          // Hocuspocus's own onChange plumbing. Since the document was
+          // empty before this hook ran, `encodeStateAsUpdate` at this point
+          // is exactly the update this seed just produced.
+          recordAttribution(document, Y.encodeStateAsUpdate(document), 'seed', Date.now());
         },
         async afterLoadDocument({ document, documentName }) {
           if (process.env.PHRAISE_DEBUG_SEED) {
@@ -110,8 +144,28 @@ async function main() {
           }
         },
         async onAuthenticate({ token, context }) {
-          // Brief 03 builds attribution on this; for now just record who connected.
+          // D5 / gate E: "record the Yjs client ID to user mapping at the
+          // server's authentication hook from day one". The token IS the
+          // user for this spike's harness (src/client.ts passes alice/bob/
+          // etc as the token); onChange below reads context.user back out
+          // per update.
           (context as Record<string, unknown>).user = token;
+        },
+        async onChange({ document, update, context, transactionOrigin }) {
+          // Skip our own attribution writes (see attribution.ts's
+          // ATTRIBUTION_ORIGIN doc comment for why this guard exists: every
+          // document.transact() -- including the one recordAttribution
+          // itself makes -- fires onChange again, since Hocuspocus's
+          // onChange is bound to the Y.Doc's own 'update' event with no
+          // filtering by source).
+          if (args.noAttribution || transactionOrigin === ATTRIBUTION_ORIGIN) return;
+          // `context.user` is set by onAuthenticate for every real client
+          // connection. A server-internal transact with no connection
+          // behind it (this relay's own seed write in onLoadDocument, which
+          // runs before any client has connected) has no context.user --
+          // gate E's listing surfaces that as the "seed" pseudo-user.
+          const user = (context as Record<string, unknown> | undefined)?.user as string | undefined;
+          recordAttribution(document, update, user ?? 'seed', Date.now());
         },
         async onRequest({ request, response }) {
           const url = request.url ?? '';
@@ -140,6 +194,21 @@ async function main() {
   await server.listen();
   // Ready line the test harness waits for on stdout.
   console.log(`relay-ready port=${args.port} db=${dbPath} seeds=${seedsDir}`);
+
+  // Gate G1 (graceful restart): SIGTERM flushes any debounced stores before
+  // exiting, so "restart" doesn't depend on having waited out the debounce
+  // window by luck. src/harness.ts's stop() sends SIGTERM first and only
+  // escalates to SIGKILL after 2s, so this handler has time to run.
+  // SIGKILL (gate G2) bypasses this entirely by design -- that's the point
+  // of that scenario.
+  process.on('SIGTERM', () => {
+    // `flushPendingStores` lives on the inner `Hocuspocus` instance, not the
+    // `Server` wrapper (see the onRequest hook above for the same
+    // `(server as any).hocuspocus` reach-through, needed because
+    // @hocuspocus/server's public `Server` type doesn't re-export it).
+    (server as any).hocuspocus.flushPendingStores();
+    setTimeout(() => process.exit(0), 100);
+  });
 }
 
 main().catch((err) => {

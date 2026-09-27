@@ -65,15 +65,24 @@ export interface StartRelayOptions {
   seeds: string;
   /** Milliseconds to wait for the ready line before giving up. Default 15000. */
   timeoutMs?: number;
+  /** Gate G: override Hocuspocus's onStoreDocument debounce (default 2000ms/10000ms) so restart/kill scenarios don't need multi-second real waits. */
+  debounce?: number;
+  maxDebounce?: number;
+  /** Gate E's size measurement only: run this relay with attribution recording disabled entirely. */
+  noAttribution?: boolean;
 }
 
 export function startRelay(opts: StartRelayOptions): Promise<RelayHandle> {
   installExitHook();
   const { port, db, seeds, timeoutMs = 15000 } = opts;
+  const args = ['--port', String(port), '--db', db, '--seeds', seeds];
+  if (opts.debounce !== undefined) args.push('--debounce', String(opts.debounce));
+  if (opts.maxDebounce !== undefined) args.push('--maxDebounce', String(opts.maxDebounce));
+  if (opts.noAttribution) args.push('--no-attribution');
   return new Promise((resolve, reject) => {
     const proc = spawn(
       process.execPath,
-      ['--import', 'tsx/esm', RELAY_ENTRY, '--port', String(port), '--db', db, '--seeds', seeds],
+      ['--import', 'tsx/esm', RELAY_ENTRY, ...args],
       { stdio: ['ignore', 'pipe', 'pipe'], cwd: path.join(__dirname, '..') },
     );
 

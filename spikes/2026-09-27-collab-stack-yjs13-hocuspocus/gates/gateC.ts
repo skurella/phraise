@@ -44,16 +44,24 @@ export interface GateCResult {
   pathBPassed: number;
   failures: GateCFileResult[];
   elapsedMs: number;
+  /**
+   * Brief 03, task 5: "Report the encoded Yjs state size summed over the
+   * corpus for path A" -- same measure stack 14 reports (18.70MB): sum of
+   * `relay.fetchState(docName).length` (== encodeStateAsUpdate bytes on the
+   * relay) across every corpus file's server-seeded document.
+   */
+  encodedStateBytesTotal: number;
 }
 
-async function runPathA(relay: RelayHandle, relpath: string, original: string): Promise<{ ok: boolean; error?: string }> {
+async function runPathA(relay: RelayHandle, relpath: string, original: string): Promise<{ ok: boolean; error?: string; bytes: number }> {
   let client: LiveClient | undefined;
   try {
     client = await createLiveClient({ url: relay.wsUrl, docName: `file:${relpath}`, token: 'gateC-a' });
     const out = serializeDoc(client.view.state.doc);
-    return out === original ? { ok: true } : { ok: false, error: 'byte mismatch (path A: server-seeded)' };
+    const bytes = (await relay.fetchState(`file:${relpath}`)).length;
+    return out === original ? { ok: true, bytes } : { ok: false, error: 'byte mismatch (path A: server-seeded)', bytes };
   } catch (e) {
-    return { ok: false, error: (e as Error).message };
+    return { ok: false, error: (e as Error).message, bytes: 0 };
   } finally {
     client?.destroy();
   }
@@ -100,6 +108,7 @@ export async function runGateC(opts: {
 
   let relay: RelayHandle | undefined;
   const results: GateCFileResult[] = [];
+  let encodedStateBytesTotal = 0;
   try {
     relay = await startRelay({ port: opts.port, db: opts.dbPath, seeds: opts.corpusDir });
     const loadDocName = 'load:sample';
@@ -114,6 +123,7 @@ export async function runGateC(opts: {
           runPathA(relay, file, original),
           runPathB(relay, loadDocName, clientB1, clientB2, original),
         ]);
+        encodedStateBytesTotal += a.bytes;
         results.push({ file, pathA: a.ok, pathB: b.ok, errorA: a.error, errorB: b.error });
       }
     } finally {
@@ -133,5 +143,6 @@ export async function runGateC(opts: {
     pathBPassed,
     failures: results.filter((r) => !r.pathA || !r.pathB),
     elapsedMs: Date.now() - start,
+    encodedStateBytesTotal,
   };
 }

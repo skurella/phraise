@@ -20,6 +20,13 @@ export interface LiveClientOptions {
   token?: string;
   /** Default true: attach both stack-13 workaround plugins. */
   withWorkarounds?: boolean;
+  /**
+   * Brief 03 / gate E: force this Y.Doc's clientID instead of Yjs's own
+   * random one. Only ever used to construct a deliberate client-ID
+   * collision between two different tokens/users, to test the relay's
+   * attribution conflict detection (src/attribution.ts).
+   */
+  clientId?: number;
 }
 
 export interface WorkaroundStats {
@@ -30,6 +37,14 @@ export interface WorkaroundStats {
 export interface LiveClient {
   ydoc: Y.Doc;
   provider: HocuspocusProvider;
+  /**
+   * The dedicated network transport for this client (gate G/E: disconnect()/
+   * connect() on this, not on `provider` -- HocuspocusProvider.connect()/
+   * disconnect() are no-ops whenever an explicit websocketProvider was
+   * supplied at construction, which createLiveClient always does, per the
+   * `manageSocket` note above `provider.attach()` below).
+   */
+  websocketProvider: HocuspocusProviderWebsocket;
   view: EditorView;
   stats: WorkaroundStats;
   waitForSynced(): Promise<void>;
@@ -60,6 +75,7 @@ function waitForProviderSynced(provider: HocuspocusProvider): Promise<void> {
  */
 export async function createLiveClient(opts: LiveClientOptions): Promise<LiveClient> {
   const ydoc = new Y.Doc();
+  if (opts.clientId !== undefined) ydoc.clientID = opts.clientId;
   // jsdom (used for the ProseMirror EditorView below) has no real
   // WebSocket, so the websocket transport is built explicitly with the
   // `ws` package as its polyfill, then handed to the provider.
@@ -117,6 +133,7 @@ export async function createLiveClient(opts: LiveClientOptions): Promise<LiveCli
   return {
     ydoc,
     provider,
+    websocketProvider,
     view,
     stats,
     waitForSynced: () => waitForProviderSynced(provider),

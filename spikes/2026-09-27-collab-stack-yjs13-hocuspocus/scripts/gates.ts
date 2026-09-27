@@ -1,16 +1,25 @@
 #!/usr/bin/env npx tsx
-// Gate runner for stack 13 (brief 01, task 8). `npm run gates` runs gates
-// A, B and C over the real corpus and prints a results table; `npm run
-// gates:quick` runs the same gates on a 5-file sample of gate C, for fast
-// iteration. Gates D-H belong to later briefs and are reported as "not run".
+// Gate runner for stack 13. `npm run gates` runs every gate over the real
+// corpus and prints a results table; `npm run gates:quick` runs a fast
+// subset (5-file sample for gate C; B3 in full; short versions of D, E, G)
+// for builders. Gates F and H belong to later briefs and are reported as
+// "not run".
 //
-// Ports (charter: stack 13 uses 4210-4239, this brief's gates get
-// 4210-4213; a later brief's gates D/E/G get the rest of the range).
+// Ports (charter: stack 13 uses 4210-4239):
+//   4210 A, 4211-4212 B/B2, 4213 C (brief 01)
+//   4214 B3 (brief 03)
+//   4215-4216 D (convergence, caret/undo)
+//   4217-4221 E (listing/collision, reconnect/reload, restart, size x2)
+//   4222-4226 G (G1, G2 x2, G3, G4)
 import fs from 'node:fs';
 import path from 'node:path';
 import { runGateA } from '../gates/gateA.js';
 import { runGateB } from '../gates/gateB.js';
+import { runGateB3 } from '../gates/gateB3.js';
 import { runGateC } from '../gates/gateC.js';
+import { runGateD } from '../gates/gateD.js';
+import { runGateE } from '../gates/gateE.js';
+import { runGateG } from '../gates/gateG.js';
 
 const QUICK = process.argv.includes('--quick');
 const RESULTS_DIR = path.resolve('results');
@@ -28,11 +37,15 @@ function fmtMs(ms: number): string {
   return ms < 1000 ? `${ms.toFixed(0)}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
+function fmtBytes(n: number): string {
+  return n < 1024 ? `${n}B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)}KB` : `${(n / 1024 / 1024).toFixed(2)}MB`;
+}
+
 async function main() {
   const rows: Row[] = [];
   let anyFailure = false;
 
-  console.log(`Running stack 13 gates${QUICK ? ' (quick: 5-file sample for gate C)' : ' (full)'}...\n`);
+  console.log(`Running stack 13 gates${QUICK ? ' (quick: 5-file sample for gate C; short D/E/G)' : ' (full)'}...\n`);
 
   // --- Gate A ---
   console.log('Gate A: relay (two live editors + relay exchange edits)...');
@@ -94,10 +107,10 @@ async function main() {
   rows.push({
     gate: 'C. Workaround cost (corpus round trip)',
     result: c.pass ? 'PASS' : 'FAIL',
-    numbers: `path A (server-seeded): ${c.pathAPassed}/${c.total}; path B (client-loaded): ${c.pathBPassed}/${c.total}; ${fmtMs(c.elapsedMs)} (spike 1's plain-y-prosemirror A3: 160/294)`,
+    numbers: `path A (server-seeded): ${c.pathAPassed}/${c.total}; path B (client-loaded): ${c.pathBPassed}/${c.total}; ${fmtMs(c.elapsedMs)}; encoded state (path A, summed): ${fmtBytes(c.encodedStateBytesTotal)} (spike 1's plain-y-prosemirror A3: 160/294; stack 14's same measure: 18.70MB)`,
   });
   if (!c.pass) anyFailure = true;
-  console.log(`  -> path A ${c.pathAPassed}/${c.total}, path B ${c.pathBPassed}/${c.total}, ${fmtMs(c.elapsedMs)}`);
+  console.log(`  -> path A ${c.pathAPassed}/${c.total}, path B ${c.pathBPassed}/${c.total}, ${fmtMs(c.elapsedMs)}, ${fmtBytes(c.encodedStateBytesTotal)} total encoded state`);
   if (c.failures.length) {
     console.log('  Failures:');
     for (const f of c.failures) {
@@ -106,7 +119,57 @@ async function main() {
   }
   console.log();
 
-  for (const gate of ['D', 'E', 'F', 'G', 'H']) {
+  // --- Gate B3 ---
+  console.log('Gate B3: inline atom link edits (5 cases, live binding + workarounds)...');
+  const dbB3 = path.join(DATA_DIR, 'gateB3.sqlite');
+  fs.rmSync(dbB3, { force: true });
+  const b3 = await runGateB3({ port: 4214, dbPath: dbB3 });
+  rows.push({
+    gate: 'B3. Inline atom link edits',
+    result: b3.pass ? 'PASS' : 'FAIL',
+    numbers: b3.detail,
+  });
+  if (!b3.pass) anyFailure = true;
+  console.log(`  -> ${b3.pass ? 'PASS' : 'FAIL'}: ${b3.detail}\n`);
+
+  // --- Gate D ---
+  console.log(`Gate D: Tiptap 3.31.3 (dedupe, schema equivalence, convergence${QUICK ? '' : ', caret, undo'})...`);
+  const d = await runGateD({ ports: { convergence: 4215, caret: 4216 }, dbDir: 'data', quick: QUICK });
+  rows.push({
+    gate: 'D. Tiptap',
+    result: d.pass ? 'PASS' : 'FAIL',
+    numbers: d.checks.map((c) => `${c.pass ? 'OK' : 'FAIL'}: ${c.name}`).join('; '),
+  });
+  if (!d.pass) anyFailure = true;
+  console.log(`  -> ${d.pass ? 'PASS' : 'FAIL'}: ${d.detail}\n`);
+
+  // --- Gate E ---
+  console.log(`Gate E: attribution (listing, collision${QUICK ? '' : ', reconnect, reload, restart, size'})...`);
+  const e = await runGateE({
+    ports: { listing: 4217, reconnect: 4218, restart: 4219, sizeWith: 4220, sizeWithout: 4221 },
+    dbDir: 'data',
+    quick: QUICK,
+  });
+  rows.push({
+    gate: 'E. Attribution',
+    result: e.pass ? 'PASS' : 'FAIL',
+    numbers: e.checks.map((c) => `${c.pass ? 'OK' : 'FAIL'}: ${c.name}`).join('; ') + (QUICK ? '' : `; overhead ${fmtBytes(e.sizeMeasurement.deltaBytes)} (${e.sizeMeasurement.deltaPct.toFixed(1)}%) of ${fmtBytes(e.sizeMeasurement.withoutAttributionBytes)}`),
+  });
+  if (!e.pass) anyFailure = true;
+  console.log(`  -> ${e.pass ? 'PASS' : 'FAIL'}: ${e.detail}\n`);
+
+  // --- Gate G ---
+  console.log(`Gate G: persistence and reconnect${QUICK ? ' (G1 only)' : ' (G1-G4)'}...`);
+  const g = await runGateG({ ports: { g1: 4222, g2a: 4223, g2b: 4224, g3: 4225, g4: 4226 }, dbDir: 'data', quick: QUICK });
+  rows.push({
+    gate: 'G. Persistence and reconnect',
+    result: g.pass ? 'PASS' : 'FAIL',
+    numbers: g.checks.map((c) => `${c.pass ? 'OK' : 'FAIL'}: ${c.name}`).join('; '),
+  });
+  if (!g.pass) anyFailure = true;
+  console.log(`  -> ${g.pass ? 'PASS' : 'FAIL'}: ${g.detail}\n`);
+
+  for (const gate of ['F', 'H']) {
     rows.push({ gate: `${gate}. (later brief)`, result: 'not run', numbers: '-' });
   }
 
@@ -140,7 +203,11 @@ async function main() {
     gateA: a,
     gateB_workarounds: b1,
     gateB_negativeControl: b2,
+    gateB3: b3,
     gateC: c,
+    gateD: d,
+    gateE: e,
+    gateG: g,
   };
   fs.writeFileSync(path.join(RESULTS_DIR, 'gates.json'), JSON.stringify(json, null, 2));
 
