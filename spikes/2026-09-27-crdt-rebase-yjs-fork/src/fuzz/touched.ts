@@ -8,7 +8,7 @@
 // separate identity mapping and works unchanged across replicas (seeding is
 // deterministic, so the same block has the same id everywhere).
 import type * as Y from "yjs";
-import { collectBlocks, blockContentAt } from "../integrate.js";
+import { collectBlocks, blockSignatureAt } from "../integrate.js";
 import { PM_FRAGMENT } from "../seed.js";
 
 export function snapshotBlockTexts(doc: Y.Doc): Map<string, string> {
@@ -16,7 +16,8 @@ export function snapshotBlockTexts(doc: Y.Doc): Map<string, string> {
   const blocks = collectBlocks(root);
   const out = new Map<string, string>();
   for (const b of blocks) {
-    const content = blockContentAt(b, undefined);
+    // Attrs and marks count (orchestrator revision after review).
+    const content = blockSignatureAt(b, undefined);
     if (content !== null) out.set(b.id, content);
   }
   return out;

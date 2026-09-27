@@ -80,12 +80,16 @@ Latest `npm run fuzz` (seed 20260927):
 
 | Granularity | trials | exception | diverged | local-text-lost | human-delete-vs-edit (trials) | F-violation | comment crdt / fuzzy / orphaned | mis-anchored | flag precision / recall |
 |---|---|---|---|---|---|---|---|---|---|
-| word | 500 | 0 | 0 | 0 | 38 | 0 | 76.2 / 7.2 / 16.5 % | 0.1 % | 99.5 / 100 % |
-| char | 200 | 0 | 0 | 0 | 15 | 0 | 76.1 / 8.1 / 15.8 % | 0.4 % | 98.7 / 100 % |
-| block | 200 | 0 | 0 | 0 | 15 | 0 | 67.5 / 16.4 / 16.1 % | 0.0 % | 98.7 / 100 % |
-| yprosemirror | 200 | 0 | 0 | 0 | 15 | 0 | 70.6 / 13.7 / 15.7 % | 0.1 % | 91.1 / 100 % |
+| word | 500 | 0 | 0 | 0 | 38 | 0 | 76.6 / 7.2 / 16.2 % | 0.1 % | 100 / 100 % |
+| char | 200 | 0 | 0 | 0 | 15 | 0 | 76.2 / 7.8 / 16.0 % | 0.6 % | 100 / 100 % |
+| block | 200 | 0 | 0 | 0 | 15 | 0 | 67.8 / 15.8 / 16.4 % | 0.1 % | 100 / 100 % |
+| yprosemirror | 200 | 0 | 0 | 0 | 15 | 0 | 71.0 / 13.4 / 15.6 % | 0.2 % | 93.7 / 100 % |
 
-Idempotence under fuzz: 108 dual-rebase trials, 0 byte mismatches.
+(Numbers after the review follow-ups below; flag ground truth now counts
+mark and attribute changes, like `integrate.ts`. Comment rates are over all
+comments in the trials.)
+
+Idempotence under fuzz: 103 dual-rebase trials, 0 byte mismatches.
 
 ### Review follow-ups (after brief 06)
 

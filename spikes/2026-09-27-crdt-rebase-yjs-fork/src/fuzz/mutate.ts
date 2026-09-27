@@ -345,7 +345,9 @@ export function applyUpstreamMutations(
     // mutations were responsible for most "missing-flag" reports before
     // this fix — not a bug in the rebase/integrate code, a mismatch in this
     // harness's own independent ground truth).
-    if (plainTextOf(mutated) !== plainTextOf(ref.node)) {
+    // Orchestrator revision after review: integrate.ts now compares attrs
+    // and marks too, so any change to the node counts as upstream-touched.
+    if (!mutated.eq(ref.node)) {
       touched.add(chosenIdx);
       mutatedTextByIdx.set(chosenIdx, plainTextOf(mutated));
     }
