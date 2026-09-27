@@ -1,0 +1,26 @@
+{
+  "name": "crdt-rebase-yjs-fork",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spike 2: Yjs fork-at-base rebase core (schema, markdown, seeding, two-way diff, rebase).",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "diff": "^7.0.0",
+    "markdown-it": "^14.1.0",
+    "prosemirror-markdown": "^1.13.1",
+    "prosemirror-model": "^1.24.1",
+    "y-prosemirror": "^1.2.15",
+    "yjs": "^13.6.20"
+  },
+  "devDependencies": {
+    "@types/diff": "^7.0.0",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
+  }
+}
