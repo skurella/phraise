@@ -1,59 +1,59 @@
 {
-  "generatedAt": "2026-09-27T09:34:28.391Z",
-  "quick": true,
+  "generatedAt": "2026-09-27T09:42:13.184Z",
+  "quick": false,
   "gateA_custom": {
     "pass": true,
-    "medianLatencyMs": 23.06854099999987,
+    "medianLatencyMs": 22.540750000000116,
     "latencies": [
-      22.270040999999992,
-      22.307874999999967,
-      22.53004199999998,
-      22.471667000000025,
-      22.838207999999895,
-      22.74324999999999,
-      23.071250000000077,
-      23.126750000000015,
-      22.641958000000045,
-      23.325333999999998,
-      22.770459000000074,
-      24.576791999999955,
-      23.665750000000003,
-      23.566957999999886,
-      24.284083999999893,
-      23.556917000000112,
-      23.509374999999864,
-      21.74087499999996,
-      23.06854099999987,
-      22.110541000000012
+      22.046375000000012,
+      22.91375000000005,
+      21.46833300000003,
+      22.42329200000006,
+      22.576916999999867,
+      22.532874999999876,
+      22.540750000000116,
+      20.851000000000113,
+      23.49050000000011,
+      22.435833000000002,
+      22.91670799999997,
+      22.58395799999994,
+      22.52929199999994,
+      21.15733399999999,
+      22.589459000000033,
+      22.701500000000124,
+      22.572790999999825,
+      22.512916000000132,
+      22.661041999999952,
+      22.50191700000005
     ],
-    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 23.1ms"
+    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 22.5ms"
   },
   "gateA_hocuspocus": {
     "pass": true,
-    "medianLatencyMs": 22.67079200000012,
+    "medianLatencyMs": 22.518999999999778,
     "latencies": [
-      22.3627919999999,
-      22.415917000000036,
-      21.65783300000021,
-      22.51712499999985,
-      22.641124999999874,
-      22.42495800000006,
-      22.926249999999982,
-      22.919832999999926,
-      21.964958000000024,
-      22.20770799999991,
-      23.200207999999975,
-      23.58750000000009,
-      22.21508300000005,
-      23.065250000000106,
-      23.29033299999992,
-      23.396999999999935,
-      23.529667000000018,
-      23.375375000000076,
-      22.67079200000012,
-      21.646833000000015
+      21.639499999999998,
+      21.885916999999836,
+      22.832042,
+      22.662458000000015,
+      22.95629199999985,
+      22.628375000000005,
+      22.686500000000024,
+      22.497749999999996,
+      22.432042000000138,
+      22.80945799999995,
+      22.92099999999982,
+      22.500666999999794,
+      22.429916999999932,
+      22.622208,
+      22.00191700000005,
+      22.460041000000274,
+      22.121165999999903,
+      22.518999999999778,
+      22.493832999999995,
+      22.73729100000037
     ],
-    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 22.7ms"
+    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 22.5ms"
   },
   "gateB": {
     "pass": true,
@@ -65,13 +65,206 @@
     }
   },
   "gateC": {
-    "pass": true,
-    "total": 5,
-    "pathAPassed": 5,
-    "pathBPassed": 5,
-    "failures": [],
-    "elapsedMs": 1220,
-    "encodedStateBytesTotal": 375876
+    "pass": false,
+    "total": 266,
+    "pathAPassed": 266,
+    "pathBPassed": 234,
+    "failures": [
+      {
+        "file": "npm-axios-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-base64-js-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-bcryptjs-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-canvas-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-cesium-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-commitlint-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-compression-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-cors-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-eventemitter3-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-express-validator-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-fastify-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-gatsby-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-graphql-request-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-hexo-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-karma-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-ky-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 2 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-minimist-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-mobx-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 3 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-mqtt-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 0 (heading) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-multer-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 0 (heading) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-nanoclone-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-nock-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-node-cron-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-nodemailer-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-nodemon-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-nunjucks-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-oclif-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-pino-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-recharts-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-sequelize-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-ts-node-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-url-parse-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      }
+    ],
+    "elapsedMs": 71985,
+    "encodedStateBytesTotal": 19637332
   },
   "gateB3": {
     "pass": false,
@@ -126,9 +319,24 @@
         "name": "Gate B's script run through two Tiptap editors: converge (editor1 = editor2 = relay)",
         "pass": true,
         "detail": "editor1, editor2 and the relay agree; every linked image kept its link mark"
+      },
+      {
+        "name": "Caret: awareness state present for both users",
+        "pass": true,
+        "detail": "alice awareness size=2 bob awareness size=2"
+      },
+      {
+        "name": "Caret: each editor renders the other's caret decoration in the DOM",
+        "pass": true,
+        "detail": "bob's DOM showed alice's caret=true; alice's DOM showed bob's caret=true"
+      },
+      {
+        "name": "Undo: alice's undo removes only her own change",
+        "pass": true,
+        "detail": "aliceEditGone=true bobEditUnaffectedOnBoth=true"
       }
     ],
-    "detail": "all 4 checks passed"
+    "detail": "all 7 checks passed"
   },
   "gateE": {
     "pass": true,
@@ -141,14 +349,29 @@
       {
         "name": "Collision: forged client ID flagged, not overwritten",
         "pass": true,
-        "detail": "flagged=true groundTruthKept=true log=[{\"client\":5281496301274484,\"existingUser\":\"alice\",\"attemptedUser\":\"mallory\",\"at\":1790501666562}]; note: alice's OWN clientID self-reassigned=true (Yjs's client-side defense reacting to receiving her own forged ID back)"
+        "detail": "flagged=true groundTruthKept=true log=[{\"client\":5013149601392580,\"existingUser\":\"alice\",\"attemptedUser\":\"mallory\",\"at\":1790502121902}]; note: alice's OWN clientID self-reassigned=true (Yjs's client-side defense reacting to receiving her own forged ID back)"
+      },
+      {
+        "name": "Reconnect: same Y.Doc + same clientID, ranges accumulate under it",
+        "pass": true,
+        "detail": "clientID unchanged=true; still mapped to alice=true; her post-reconnect edit is visible and attributed=true; 1 alice-attributed range(s) total"
+      },
+      {
+        "name": "Reload: new Y.Doc + new clientID mapped to the same user, no conflict",
+        "pass": true,
+        "detail": "newClientID!=old=true oldEntryUser=alice:true newEntryUser=alice:true"
+      },
+      {
+        "name": "Restart: attribution IdMap survives a relay restart (same persistence as the document)",
+        "pass": true,
+        "detail": "alice's mapping (client 8696848620280502) intact after restart"
       }
     ],
     "sizeMeasurement": {
-      "totalBytes": 0,
-      "withoutAttributionBytes": 0,
-      "deltaBytes": 0,
-      "deltaPct": 0
+      "totalBytes": 6853,
+      "withoutAttributionBytes": 5250,
+      "deltaBytes": 1603,
+      "deltaPct": 30.533333333333335
     },
     "suggestionMode": {
       "pass": true,
@@ -176,7 +399,7 @@
       ],
       "detail": "suggestion mode works for this scenario: attribution shows bob as author, accept/reject behave correctly, pending suggestions stay pending -- but attribution marks must be stripped before serialization (see the leak check)"
     },
-    "detail": "all 2 checks passed (quick: listing + collision only); suggestion mode: suggestion mode works for this scenario: attribution shows bob as author, accept/reject behave correctly, pending suggestions stay pending -- but attribution marks must be stripped before serialization (see the leak check)"
+    "detail": "all 5 checks passed; attribution overhead 1603B (30.5%) of 5250B; suggestion mode: suggestion mode works for this scenario: attribution shows bob as author, accept/reject behave correctly, pending suggestions stay pending -- but attribution marks must be stripped before serialization (see the leak check)"
   },
   "gateG": {
     "pass": true,
@@ -185,8 +408,28 @@
         "name": "G1. Restart (SIGTERM): both providers reconnect, content intact, new edit propagates",
         "pass": true,
         "detail": "contentIntact=true newEditPropagates=true"
+      },
+      {
+        "name": "G2. Hard kill (SIGKILL) before the store debounce",
+        "pass": true,
+        "detail": "sqlite bytes: 12288 -> 12288 (before/after kill); alice's own memory retained it=true; relay has it once alice's reconnect resynced it=true"
+      },
+      {
+        "name": "G2. Hard kill (SIGKILL) after the store debounce",
+        "pass": true,
+        "detail": "sqlite bytes: 16384 -> 16384 (before/after kill); alice's own memory retained it=true; relay has it once alice's reconnect resynced it=true"
+      },
+      {
+        "name": "G3. Edits made while the relay is down converge once it restarts",
+        "pass": true,
+        "detail": "editor1, editor2 and the relay converge (semantic + serializeDoc equality)"
+      },
+      {
+        "name": "G4. Offline editor reconnects and converges",
+        "pass": true,
+        "detail": "converge=true; both concurrent text insertions into the same paragraph survived (CRDT interleaves rather than drops): true; same-node link conflict (badge.svg, changed by both sides concurrently) resolved deterministically to one value, not corrupted or duplicated: https://from-bob.example (one of the two concurrent writes, as CRDT last-write-wins on a single attribute defines)"
       }
     ],
-    "detail": "all 1 scenario(s) passed (quick: G1 only)"
+    "detail": "all 5 scenario(s) passed"
   }
 }

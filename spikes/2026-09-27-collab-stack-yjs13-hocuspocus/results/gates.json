@@ -1,32 +1,32 @@
 {
-  "generatedAt": "2026-09-27T08:44:52.295Z",
+  "generatedAt": "2026-09-27T08:48:29.063Z",
   "quick": false,
   "gateA": {
     "pass": true,
-    "medianLatencyMs": 22.95829200000003,
+    "medianLatencyMs": 22.634667000000036,
     "latencies": [
-      21.568499999999972,
-      22.296790999999985,
-      22.368749999999977,
-      21.240125000000035,
-      22.574540999999954,
-      22.95829200000003,
-      22.674624999999992,
-      22.409541999999988,
-      23.463540999999964,
-      22.345416,
-      23.360542000000123,
-      22.89933300000007,
-      23.81470800000011,
-      23.481874999999945,
-      23.670166999999992,
-      22.002124999999978,
-      23.246208000000024,
-      23.249750000000176,
-      23.289250000000038,
-      23.158500000000004
+      22.597125000000005,
+      22.78479200000004,
+      22.651292000000012,
+      22.85841599999992,
+      22.21575000000007,
+      21.866249999999923,
+      22.889749999999935,
+      23.320625000000064,
+      22.634667000000036,
+      22.17270899999994,
+      22.19941599999993,
+      22.192542000000003,
+      23.313666000000012,
+      22.274749999999926,
+      22.334833000000003,
+      23.265999999999963,
+      22.947125000000028,
+      22.232375000000047,
+      20.663249999999834,
+      23.364125000000058
     ],
-    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 23.0ms"
+    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 22.6ms"
   },
   "gateB_workarounds": {
     "pass": true,
@@ -78,8 +78,8 @@
     "pathAPassed": 266,
     "pathBPassed": 266,
     "failures": [],
-    "elapsedMs": 59677,
-    "encodedStateBytesTotal": 18025506
+    "elapsedMs": 58858,
+    "encodedStateBytesTotal": 18025341
   },
   "gateD": {
     "pass": true,
@@ -102,7 +102,7 @@
       {
         "name": "Caret: awareness state present for both users",
         "pass": true,
-        "detail": "collaborationCaret.users=[{\"clientId\":150884365,\"name\":\"Alice\",\"color\":\"#ff0000\"},{\"clientId\":13666920,\"name\":\"Bob\",\"color\":\"#0000ff\"}]"
+        "detail": "collaborationCaret.users=[{\"clientId\":740936541,\"name\":\"Alice\",\"color\":\"#ff0000\"},{\"clientId\":624060065,\"name\":\"Bob\",\"color\":\"#0000ff\"}]"
       },
       {
         "name": "Caret: each editor renders the other's caret decoration in the DOM",
@@ -128,7 +128,7 @@
       {
         "name": "Collision: forged client ID flagged, not overwritten",
         "pass": true,
-        "detail": "flagged=true groundTruthKept=true log=[{\"client\":269866683,\"existingUser\":\"alice\",\"attemptedUser\":\"mallory\",\"at\":1790498681228}]; note: alice's OWN clientID self-reassigned=true (Yjs's client-side defense reacting to receiving her own forged ID back)"
+        "detail": "flagged=true groundTruthKept=true log=[{\"client\":1189437829,\"existingUser\":\"alice\",\"attemptedUser\":\"mallory\",\"at\":1790498898035}]; note: alice's OWN clientID self-reassigned=true (Yjs's client-side defense reacting to receiving her own forged ID back)"
       },
       {
         "name": "Reconnect: same Y.Doc + same clientID, ranges accumulate under it",
@@ -143,16 +143,16 @@
       {
         "name": "Restart: attribution Y.Map survives a relay restart (same persistence as the document)",
         "pass": true,
-        "detail": "alice's mapping (client 2168334694) intact after restart"
+        "detail": "alice's mapping (client 3718007391) intact after restart"
       }
     ],
     "sizeMeasurement": {
-      "totalBytes": 5420,
-      "withoutAttributionBytes": 4441,
-      "deltaBytes": 979,
-      "deltaPct": 22.0445845530286
+      "totalBytes": 5419,
+      "withoutAttributionBytes": 4288,
+      "deltaBytes": 1131,
+      "deltaPct": 26.375932835820898
     },
-    "detail": "all 5 checks passed; attribution overhead 979B (22.0%) of 4441B"
+    "detail": "all 5 checks passed; attribution overhead 1131B (26.4%) of 4288B"
   },
   "gateG": {
     "pass": true,
@@ -180,7 +180,7 @@
       {
         "name": "G4. Offline editor reconnects and converges",
         "pass": true,
-        "detail": "converge=true; both concurrent text insertions into the same paragraph survived (CRDT interleaves rather than drops): true; same-node link conflict (badge.svg, changed by both sides concurrently) resolved deterministically to one value, not corrupted or duplicated: https://from-alice.example (one of the two concurrent writes, as CRDT last-write-wins on a single attribute defines -- the losing side's href is what CRDT semantics discard here, not data loss)"
+        "detail": "converge=true; both concurrent text insertions into the same paragraph survived (CRDT interleaves rather than drops): true; same-node link conflict (badge.svg, changed by both sides concurrently) resolved deterministically to one value, not corrupted or duplicated: https://from-bob.example (one of the two concurrent writes, as CRDT last-write-wins on a single attribute defines -- the losing side's href is what CRDT semantics discard here, not data loss)"
       }
     ],
     "detail": "all 5 scenario(s) passed"

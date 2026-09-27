@@ -34,3 +34,8 @@ All pass per builder: B3 5/5, D 6/6, E 5/5 (mapping in a Y.Map in the doc), G 5/
 
 ## 10:51 — Verified brief 03 (full gates all pass, 0 listeners); brief 04 dispatched
 Research for brief 04: y-prosemirror CAVEATS.md states v1 documents load in the new binding but the old binding cannot read new documents, so no mixed clients (matches the compat probe). The official Yjs 14 backend @y/hub 0.9.0 is AGPL-3.0 OR PROPRIETARY and needs Redis, Postgres and S3. Suggestion mode is a second Y.Doc plus DiffRenderer (upstream yhub-tiptap-demo).
+
+## 11:40 — Brief 04 handback received
+Hocuspocus primary for 14 via postinstall dedupe; B3 FAIL (upstream, expected); D pass with ~35 lines of custom Tiptap extensions; E pass with native IdMap attribution and working suggestion mode (serializer must strip y-attributed marks); G pass. Commit 4d2c59b. Running full gates.
+
+## 11:43 — Verified brief 04 (full stack 14 gates: A, B, D, E, G pass; B3 and C path B fail on the upstream atom-mark bug; 0 listeners). Brief 05 dispatched (gate F, stack 13).
