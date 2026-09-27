@@ -121,6 +121,15 @@ export class DocSync {
     return this.ring.push({ text, hash: hashText(text), snapshot, origin: 'adopt', at: Date.now() });
   }
 
+  /**
+   * Put a persisted version back into the ring after a restart, as an anchor
+   * (origin `restore`): the file side certainly had it. Without this the ring
+   * is empty after a restart and the next save has no base candidates.
+   */
+  restore(v: Pick<Version, 'text' | 'snapshot'>): Version {
+    return this.ring.push({ text: v.text, hash: hashText(v.text), snapshot: v.snapshot, origin: 'restore', at: Date.now() });
+  }
+
   /** Record a `write` version: the file side certainly has this text, snapshot taken at render time. */
   recordWrite(text: string): Version {
     const snapshot = Y.snapshot(this.doc);

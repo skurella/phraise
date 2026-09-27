@@ -219,7 +219,7 @@ export class Daemon extends EventEmitter {
     if (!persisted?.base) {
       await this.runAdoption(disk);
     } else {
-      this.currentVersion = persisted.base;
+      this.currentVersion = this.docSync.restore(persisted.base);
       if (disk === undefined) {
         await this.runExport();
       } else if (disk === persisted.base.text) {
@@ -228,7 +228,7 @@ export class Daemon extends EventEmitter {
         try {
           // Validate the persisted snapshot can still be forked before trusting it as a base.
           Y.createDocFromSnapshot(this.docSync.doc, persisted.base.snapshot, new Y.Doc({ gc: false }));
-          const result = this.docSync.importText(disk, { author: this.localAuthor(), base: persisted.base });
+          const result = this.docSync.importText(disk, { author: this.localAuthor(), base: this.currentVersion });
           this.recordImportEvent(result, 0);
           this.currentVersion = result.kind === 'ok' ? result.version : result.base;
           this.lastKnown = disk;
