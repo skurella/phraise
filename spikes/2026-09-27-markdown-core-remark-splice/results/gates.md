@@ -1,6 +1,6 @@
 # Gates results
 
-Generated: 2026-09-27T02:58:57.060Z
+Generated: 2026-09-27T04:00:59.611Z
 
 | Gate | Threshold | Result | Pass |
 |---|---|---|---|
@@ -9,6 +9,7 @@ Generated: 2026-09-27T02:58:57.060Z
 | A3. Yjs round trip with plain y-prosemirror, all files (finding) | none, measured | 1473/1621 (90.9%), findings: 9 lost doc-level attrs (lead/eol), 140 lost marks on leaf inline nodes (e.g. linked images) | n/a |
 | A3b. Yjs round trip through src/yjs.ts codec and a binary update, all files | 100% | 1621/1621 (100.0%) | yes |
 | B. Single-word edit, corpus files (file pass rate) | 98% | 293/293 (100.0%) files, 1465/1465 (100.0%) edits | yes |
+| B2. Structural edit (bold toggle), corpus files (file pass rate; finding) | none, measured | 293/293 (100.0%) files, 1465/1465 (100.0%) edits | n/a |
 | C. Opaque/special constructs survive A and B | every file containing the construct passes A; B containment holds | frontmatter:2f, raw-html:156f, mdx:2f, math-block:1f, math-inline:5f, footnote-definition:2f, link-reference-definition:102f, mermaid:1f, fenced-code:219f, table:62f | yes |
 | D. Editor-model fidelity | 100% | schema=prosemirror-model:true, doc.check() 1621/1621 (100.0%), edited doc.check() 5565/5565 (100.0%) | yes |
 | E. Style detection, non-default files passing | >= 10 files | 149 files | yes |
@@ -40,12 +41,31 @@ Unstable (self-description-failed) top-level blocks across all files: 1.
 ### Path distribution (all sets, all edits)
 
 - splice: 5476
-- re-serialize: 79
+- textblock-splice: 79
 - unverified: 10
 
 ### Failure categories (all sets, with one example each)
 
 - **semantic-mismatch**: 10 -- e.g. commonmark/0039 seed 1, word "foo", path unverified: `foo&#10;&#10;bar`
+
+## Gate B2 detail (structural edit: bold toggle, per set, informational)
+
+| Set | Files (n/a) | File pass rate | Edit pass rate | Single-line rate |
+|---|---|---|---|---|
+| handwritten | 28 (0 n/a) | 28/28 (100.0%) | 140/140 (100.0%) | 140/140 (100.0%) |
+| real | 266 (1 n/a) | 265/265 (100.0%) | 1325/1325 (100.0%) | 1286/1325 (97.1%) |
+| commonmark | 655 (252 n/a) | 396/403 (98.3%) | 1989/2015 (98.7%) | 1905/2015 (94.5%) |
+| gfm | 672 (255 n/a) | 409/417 (98.1%) | 2060/2085 (98.8%) | 1982/2085 (95.1%) |
+
+### Path distribution (all sets, all edits)
+
+- textblock-splice: 4616
+- splice: 898
+- unverified: 51
+
+### Failure categories (all sets, with one example each)
+
+- **semantic-mismatch**: 51 -- e.g. commonmark/0039 seed 1, word "foo", path unverified: `foo&#10;&#10;bar`
 
 ## Gate C detail (opaque/special constructs, real + handwritten)
 
@@ -73,7 +93,7 @@ Unstable (self-description-failed) top-level blocks across all files: 1.
 
 ## Gate E detail (style detection, real + handwritten)
 
-Non-default files that pass the forced-reserialize convention check: 149
+Non-default files: 149 total, 149 passing the forced-reserialize convention check (threshold: >= 10 passing).
 
 | File | Non-default conventions | Pass |
 |---|---|---|
@@ -227,10 +247,10 @@ Non-default files that pass the forced-reserialize convention check: 149
 | real/rust-lang-rfcs-text3695cfgbooleanliteralsmd | emphasis | yes |
 | real/rust-lang-rfcs-text3892complexnumbersmd | emphasis | yes |
 
-Informational, per top-level block, forced re-serialization (hints on / hints off): byte-identical to `src` 94.2% / 93.8%; semantically-verified re-serialize (not `unverified`) 99.8% / 99.8% (n=31547 blocks).
+Informational, per top-level block, forced re-serialization (hints on / hints off): byte-identical to `src` 94.7% / 93.9%; semantically-verified re-serialize (not `unverified`) 99.9% / 99.9% (n=31547 blocks).
 
 ## Run info
 
 - Mode: full corpus
-- Elapsed: 169.8s
+- Elapsed: 393.0s
 

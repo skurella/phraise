@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-27T02:58:57.064Z",
+  "generatedAt": "2026-09-27T04:00:59.632Z",
   "quick": false,
-  "elapsedMs": 169776,
+  "elapsedMs": 392995,
   "rows": [
     {
       "gate": "A. No-edit round trip, corpus files",
@@ -32,6 +32,12 @@
       "threshold": "98%",
       "result": "293/293 (100.0%) files, 1465/1465 (100.0%) edits",
       "pass": true
+    },
+    {
+      "gate": "B2. Structural edit (bold toggle), corpus files (file pass rate; finding)",
+      "threshold": "none, measured",
+      "result": "293/293 (100.0%) files, 1465/1465 (100.0%) edits",
+      "pass": "n/a"
     },
     {
       "gate": "C. Opaque/special constructs survive A and B",
@@ -89,7 +95,7 @@
       "singleLine": 140,
       "pathCounts": {
         "splice": 138,
-        "re-serialize": 2
+        "textblock-splice": 2
       },
       "catCounts": {
         "ok": 140
@@ -105,7 +111,7 @@
       "singleLine": 1324,
       "pathCounts": {
         "splice": 1322,
-        "re-serialize": 3
+        "textblock-splice": 3
       },
       "catCounts": {
         "ok": 1325
@@ -121,7 +127,7 @@
       "singleLine": 2015,
       "pathCounts": {
         "splice": 1974,
-        "re-serialize": 36,
+        "textblock-splice": 36,
         "unverified": 5
       },
       "catCounts": {
@@ -139,12 +145,82 @@
       "singleLine": 2085,
       "pathCounts": {
         "splice": 2042,
-        "re-serialize": 38,
+        "textblock-splice": 38,
         "unverified": 5
       },
       "catCounts": {
         "ok": 2080,
         "semantic-mismatch": 5
+      }
+    }
+  },
+  "setB2Counts": {
+    "handwritten": {
+      "totalFiles": 28,
+      "na": 0,
+      "withWords": 28,
+      "filesPass": 28,
+      "editsTotal": 140,
+      "editsPass": 140,
+      "singleLine": 140,
+      "pathCounts": {
+        "textblock-splice": 138,
+        "splice": 2
+      },
+      "catCounts": {
+        "ok": 140
+      }
+    },
+    "real": {
+      "totalFiles": 266,
+      "na": 1,
+      "withWords": 265,
+      "filesPass": 265,
+      "editsTotal": 1325,
+      "editsPass": 1325,
+      "singleLine": 1286,
+      "pathCounts": {
+        "textblock-splice": 1234,
+        "splice": 91
+      },
+      "catCounts": {
+        "ok": 1325
+      }
+    },
+    "commonmark": {
+      "totalFiles": 655,
+      "na": 252,
+      "withWords": 403,
+      "filesPass": 396,
+      "editsTotal": 2015,
+      "editsPass": 1989,
+      "singleLine": 1905,
+      "pathCounts": {
+        "textblock-splice": 1603,
+        "splice": 386,
+        "unverified": 26
+      },
+      "catCounts": {
+        "ok": 1989,
+        "semantic-mismatch": 26
+      }
+    },
+    "gfm": {
+      "totalFiles": 672,
+      "na": 255,
+      "withWords": 417,
+      "filesPass": 409,
+      "editsTotal": 2085,
+      "editsPass": 2060,
+      "singleLine": 1982,
+      "pathCounts": {
+        "textblock-splice": 1641,
+        "splice": 419,
+        "unverified": 25
+      },
+      "catCounts": {
+        "ok": 2060,
+        "semantic-mismatch": 25
       }
     }
   },
@@ -265,11 +341,13 @@
     "a3LeafMarkLossCount": 140
   },
   "gateE": {
+    "nonDefaultTotal": 149,
     "nonDefaultPassCount": 149,
-    "hintsOnByteIdenticalRate": 0.9415475322534631,
-    "hintsOffByteIdenticalRate": 0.9378070814974483,
-    "hintsOnVerificationRate": 0.9979078834754493,
-    "hintsOffVerificationRate": 0.9979078834754493,
+    "nonDefaultFailingIds": [],
+    "hintsOnByteIdenticalRate": 0.9466510286239579,
+    "hintsOffByteIdenticalRate": 0.9386946460836213,
+    "hintsOnVerificationRate": 0.9987320505911814,
+    "hintsOffVerificationRate": 0.9987320505911814,
     "blocksMeasured": 31547,
     "nonDefaultFiles": [
       {

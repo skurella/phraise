@@ -181,7 +181,7 @@ function tryLinkSplice(block: PMNode, src: string, ctx: string, style: Style): s
   const top = phrasing[0];
   if (top.type === 'linkReference' && top.referenceType !== 'full') top.referenceType = 'full';
   const options = optionsFor(block, style, true);
-  const linkExtensions = [...toMarkdownExtensions, { handlers: { break: makeBreakHandler(true) } }];
+  const linkExtensions = [...toMarkdownExtensions, { handlers: { break: makeBreakHandler(true), literalAutolink: literalAutolinkHandler, rawInlineHtml: rawInlineHtmlHandler } }];
   let md = toMarkdown({ type: 'paragraph', children: phrasing.map(simplifyLiteralLinks) } as any, { extensions: linkExtensions, ...options } as any);
   md = md.replace(/\n+$/, '');
   if (md.includes('\n')) return null;
@@ -286,7 +286,7 @@ function tryTextblockSplice(block: PMNode, src: string, ctx: string, style: Styl
   const applySLB = semanticLineBreaks && newTextblock.type.name === 'paragraph';
   const tbExtensions = [
     ...toMarkdownExtensions,
-    { handlers: { break: makeBreakHandler(true), paragraph: makeParagraphHandler(applySLB) } },
+    { handlers: { break: makeBreakHandler(true), paragraph: makeParagraphHandler(applySLB), literalAutolink: literalAutolinkHandler, rawInlineHtml: rawInlineHtmlHandler } },
   ];
   let newInline = toMarkdown(
     { type: 'paragraph', children: phrasing.map(simplifyLiteralLinks) } as any,
@@ -410,7 +410,7 @@ function pmLeafToMdast(node: PMNode): any | null {
       }
       if (kind === 'inlineMath') return { type: 'inlineMath', value: node.attrs.value };
       // html and unknown kinds: emit verbatim as raw html.
-      return { type: 'html', value: node.attrs.value };
+      return { type: 'rawInlineHtml', value: node.attrs.value };
     }
     default:
       return null;
@@ -424,16 +424,21 @@ function pmInlineToMdast(nodes: PMNode[]): any[] {
 
   for (const child of nodes) {
     const marks = child.marks.filter((m) => m.type.name !== 'code');
+    // Keep open the longest prefix of the open-mark stack that this node still
+    // carries, whatever the schema order of its marks, and open only the rest.
+    // Following schema order alone closed and reopened marks, so
+    // `**bold _italic_**` came out as `**bold **_**italic**_`-like soup.
     let common = 0;
-    while (common < marks.length && common < markStack.length && marksGroupEq(marks[common], markStack[common])) common++;
+    while (common < markStack.length && marks.some((m) => marksGroupEq(m, markStack[common]))) common++;
     while (markStack.length > common) {
       markStack.pop();
       containerStack.pop();
     }
-    for (let i = common; i < marks.length; i++) {
-      const wrapper = mdastWrapperFor(marks[i]);
+    for (const m of marks) {
+      if (markStack.some((open) => marksGroupEq(open, m))) continue;
+      const wrapper = mdastWrapperFor(m);
       containerStack[containerStack.length - 1].push(wrapper);
-      markStack.push(marks[i]);
+      markStack.push(m);
       containerStack.push(wrapper.children);
     }
     const leaf = pmLeafToMdast(child);
@@ -627,6 +632,28 @@ function makeParagraphHandler(semanticLineBreaks: boolean) {
  * alone -- kept as `[text](url)` -- whenever the text was edited to differ
  * from the URL.
  */
+// Emits a bare GFM literal autolink verbatim. It is its own node type rather
+// than an inline `html` node because to-markdown peeks at the next node's
+// first character to decide what is safe before it: an html node peeks as
+// `<`, so a soft line break right before a bare URL was turned into a space
+// (a line starting with `<` could open an HTML block). This handler peeks as
+// the URL's own first character.
+function literalAutolinkHandler(node: any): string {
+  return node.value;
+}
+(literalAutolinkHandler as any).peek = (node: any) => String(node.value).charAt(0);
+
+// Inline HTML is emitted verbatim. to-markdown's own html handler peeks as
+// `<`, which makes it replace a soft line break before inline HTML with a
+// space (a line starting with `<` might open an HTML block). Only HTML block
+// start conditions 1 to 6 can interrupt a paragraph, so peek as `<` only for
+// those; verification catches anything this gets wrong.
+const HTML_BLOCK_INTERRUPT = /^<(?:script|pre|style|textarea|!--|\?|![A-Za-z]|!\[CDATA\[|\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[\s/>]|$))/i;
+function rawInlineHtmlHandler(node: any): string {
+  return node.value;
+}
+(rawInlineHtmlHandler as any).peek = (node: any) => (HTML_BLOCK_INTERRUPT.test(String(node.value)) ? '<' : 'x');
+
 function simplifyLiteralLinks(node: any): any {
   if (node && typeof node === 'object') {
     if (Array.isArray(node.children)) {
@@ -636,12 +663,12 @@ function simplifyLiteralLinks(node: any): any {
       const text = node.children[0].value as string;
       const href = (node.url as string) ?? '';
       const matches = text === href || 'http://' + text === href || 'https://' + text === href || 'mailto:' + text === href;
-      // Emitted as raw `html` (verbatim, unescaped), not `text`: the literal
+      // Emitted verbatim through literalAutolinkHandler, not as `text`: the literal
       // form is written as-is with no markdown escaping in the source (a URL
       // routinely contains `_`/`*`/etc.), and GFM's literal-autolink parser
       // recognizes it as a single token regardless of those characters, so
       // escaping them here would only add backslashes the original never had.
-      if (matches) return { type: 'html', value: text };
+      if (matches) return { type: 'literalAutolink', value: text };
     }
   }
   return node;
@@ -652,7 +679,7 @@ function reserializeBlock(block: PMNode, style: Style, useHints: boolean, eol: '
   const options = optionsFor(block, style, useHints);
   const reserializeExtensions = [
     ...toMarkdownExtensions,
-    { handlers: { break: makeBreakHandler(useHints), paragraph: makeParagraphHandler(semanticLineBreaks) } },
+    { handlers: { break: makeBreakHandler(useHints), paragraph: makeParagraphHandler(semanticLineBreaks), literalAutolink: literalAutolinkHandler, rawInlineHtml: rawInlineHtmlHandler } },
   ];
   let out = toMarkdown(mdastNode, { extensions: reserializeExtensions, ...options } as any);
   out = out.replace(/\n+$/, '');
