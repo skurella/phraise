@@ -1,0 +1,3 @@
+{"case":"create_if_absent","expected":"ok","exit":0,"ms":2707,"porcelain":"To github.com:skurella/phraise.git\n*\tfe3d6f2b9bea5afbc3d45187aa24d60493f2f032:refs/phraise-spike/drafts/git-push-test\t[new reference]\nDone"}
+{"case":"cas_overwrite_1MB_plus_1MB","expected":"ok","exit":0,"ms":3503,"porcelain":"To github.com:skurella/phraise.git\n+\tfd7ba1e18a280d1b0e18c1d10bef1e6bb4657278:refs/phraise-spike/drafts/git-push-test\tfe3d6f2...fd7ba1e (forced update)\nDone"}
+{"case":"stale_lease","expected":"rejected (stale info)","exit":0,"ms":2542,"porcelain":"To github.com:skurella/phraise.git\n+\ta5991d4400d3f1ad363a524ea7e1cd2fce883bf8:refs/phraise-spike/drafts/git-push-test\tfd7ba1e...a5991d4 (forced update)\nDone"}

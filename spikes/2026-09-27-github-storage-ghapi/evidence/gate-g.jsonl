@@ -1,0 +1,7 @@
+{"flush":1,"variant":"full","total_wall_ms":10118,"md_bytes":1048576,"bin_bytes":1048576}
+{"flush":2,"variant":"full","total_wall_ms":13220,"md_bytes":1048576,"bin_bytes":1048576}
+{"flush":3,"variant":"full","total_wall_ms":11453,"md_bytes":1048576,"bin_bytes":1048576}
+{"flush":4,"variant":"inline","total_wall_ms":7255,"tree_request_bytes":2459703}
+{"flush":5,"variant":"inline","total_wall_ms":6934,"tree_request_bytes":2459703}
+{"flush":6,"variant":"inline","total_wall_ms":7284,"tree_request_bytes":2459703}
+{"step":"read_1MB_md_blob","ms":1151,"response_bytes":1444993}
