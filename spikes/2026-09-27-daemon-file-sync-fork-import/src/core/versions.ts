@@ -14,7 +14,7 @@ export interface Version {
   at: number;
 }
 
-const RING_SIZE = 32;
+const RING_SIZE = 48;
 
 export function hashText(text: string): string {
   return crypto.createHash('sha256').update(text, 'utf8').digest('hex');
@@ -60,7 +60,24 @@ export function diffCost(a: string, b: string, limit = Number.POSITIVE_INFINITY)
   return cost;
 }
 
-/** Keeps the last 32 versions and computes the anchor / candidate set (plan 3.2). */
+/** Versions always kept at full density, newest first. */
+const RECENT_KEPT = 16;
+
+/**
+ * The anchor / candidate set (plan 3.2), bounded at RING_SIZE versions.
+ *
+ * Eviction (orchestrator fix after the review, finding 1): a plain FIFO
+ * evicted the anchor itself once 32 remote writes landed between two saves,
+ * and a stale save with no edits was then diffed against an older base,
+ * deleting every remote edit since (reviewer reproducer: 40 remote edits, 0
+ * survived). Now the anchor is never evicted, everything before the anchor
+ * goes first, the newest RECENT_KEPT versions are kept, and among the rest the
+ * version closest (by sequence number) to its predecessor is dropped, which
+ * thins old writes towards exponential spacing. An editor that loaded a
+ * thinned-out write then has a near neighbour as its candidate; the margin
+ * rule in `chooseBase` resolves that toward the older neighbour
+ * (duplication, not loss).
+ */
 export class VersionRing {
   private ring: Version[] = [];
   private nextSeq = 0;
@@ -68,8 +85,33 @@ export class VersionRing {
   push(v: Omit<Version, 'seq'>): Version {
     const version: Version = { ...v, seq: this.nextSeq++ };
     this.ring.push(version);
-    if (this.ring.length > RING_SIZE) this.ring.shift();
+    if (this.ring.length > RING_SIZE) this.evictOne();
     return version;
+  }
+
+  private evictOne(): void {
+    const anchor = this.anchor();
+    const anchorIdx = anchor ? this.ring.findIndex((x) => x.seq === anchor.seq) : -1;
+    if (anchorIdx > 0) {
+      this.ring.splice(0, 1); // older than the anchor: never a candidate
+      return;
+    }
+    const lo = anchorIdx + 1; // first evictable index after the anchor
+    const hi = this.ring.length - RECENT_KEPT; // exclusive
+    if (hi <= lo) {
+      this.ring.splice(anchorIdx === 0 ? 1 : 0, 1);
+      return;
+    }
+    let victim = lo;
+    let bestGap = Number.POSITIVE_INFINITY;
+    for (let i = lo; i < hi; i++) {
+      const gap = i === 0 ? Number.POSITIVE_INFINITY : this.ring[i].seq - this.ring[i - 1].seq;
+      if (gap < bestGap) {
+        bestGap = gap;
+        victim = i;
+      }
+    }
+    this.ring.splice(victim, 1);
   }
 
   all(): readonly Version[] {

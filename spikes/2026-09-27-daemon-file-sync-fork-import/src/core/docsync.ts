@@ -234,8 +234,11 @@ export class DocSync {
     return { text: out, degraded: [...degraded], boundaryRepairs, composed };
   }
 
-  /** `render()` per plan 3.5: `serializeDoc(yDocToDoc(live))`. */
+  /** `render()` per plan 3.5: the text the daemon writes (`renderDetailed`). */
   render(opts: RenderOptions = {}): string {
+    // What the daemon writes. The strict path (throws on a refused block or a
+    // whole-document mismatch) is kept for gate F's measurement only.
+    if (!opts.wholeDocCheck) return this.renderDetailed().text;
     const doc = yDocToDoc(this.doc);
     let out: string;
     try {

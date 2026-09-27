@@ -103,7 +103,8 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
   let lastReloadStep = -1;
   const savedTextByHash = new Map<string, string>();
   // (base, save) pairs of every import, to classify resurrections by design.
-  const importedPairs: Array<{ baseText: string; savedText: string }> = [];
+  const importedPairs: Array<{ baseText: string; savedText: string; savedStep: number }> = [];
+  const savedStepByHash = new Map<string, number>();
   // The text the editor's buffer was derived from (its last reload or its own
   // last save): the true base of its next save. Used to measure base choice.
   let editorBaseHash = hashText(base.text);
@@ -135,7 +136,9 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
     d.on('import', (e: any) => {
       const baseText = d.docSync.versions.find((v) => v.hash === e.base)?.text;
       const savedText = savedTextByHash.get(e.hash);
-      if (baseText !== undefined && savedText !== undefined) importedPairs.push({ baseText, savedText });
+      if (baseText !== undefined && savedText !== undefined) {
+        importedPairs.push({ baseText, savedText, savedStep: savedStepByHash.get(e.hash) ?? -1 });
+      }
       const lineage = lineageAtSave.get(e.hash);
       const expected = lineage ? [...lineage].reverse().find(wasSeen)?.hash : undefined;
       const baseRight = expected === undefined || expected === e.base;
@@ -215,6 +218,7 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
     const savedHash = hashText(editorBuffer);
     harnessWrittenHashes.add(savedHash);
     savedTextByHash.set(savedHash, editorBuffer);
+    if (!savedStepByHash.has(savedHash)) savedStepByHash.set(savedHash, step);
     if (!lineageAtSave.has(savedHash)) lineageAtSave.set(savedHash, [...editorLineage]);
     editorLineage.push({ hash: savedHash, t: performance.now(), reload: false });
     editorBaseHash = savedHash;
@@ -430,7 +434,15 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
           const ambiguousByDesign =
             rec.deletedBy === 'local' &&
             rec.insertedBy === 'remote' &&
-            importedPairs.some((p) => !p.baseText.includes(rec.token) && !p.savedText.includes(rec.token));
+            (() => {
+              // The import that carried the deletion: the first one of a save
+              // made at or after the deleting step that lacks the token
+              // (review finding 2: any import in the trial used to qualify).
+              const carrier = importedPairs.find(
+                (p) => p.savedStep >= (rec.deletedAtStep ?? Infinity) && !p.savedText.includes(rec.token),
+              );
+              return carrier !== undefined && !carrier.baseText.includes(rec.token);
+            })();
           // Visible copies only. (Counting copies in the Y document, deleted
           // ones included, was tried and removed: a block deleted and
           // re-inserted by a restructuring save leaves a deleted copy.)
