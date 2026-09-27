@@ -2,7 +2,7 @@
 
 Status: active. Decisions marked **locked** need an owner conversation to reverse. Decisions marked **default** are the lead's proposal and may be revised by spike results.
 Author: lead agent (Fable 5.1), reviewed with owner on 2026-09-27
-Updated: 2026-09-27
+Updated: 2026-09-27, amended after spike 4
 
 Supporting research: [landscape](2026-09-27-landscape.md), [GitHub constraints](2026-09-27-github-platform-constraints.md), [technology assessment](2026-09-27-technology-assessment.md).
 
@@ -21,6 +21,17 @@ Real-time collaboration needs a server even for WebRTC signaling, so "no server"
 Each flush writes two blobs: the rendered Markdown so anyone with plain git can read the draft, and the CRDT binary plus comments so a restart resumes with attribution intact. Real branches are never used for drafts: they pollute branch lists, trigger CI and PR tooling.
 
 Enterprise story: self-host a single binary; every durable byte is reconstructible from the repo. Hidden-ref retention is implied by reachability rather than documented, so the ref is a cache, not the source of truth. Budget: at most one GitHub write per second per token, under 500 content-creating requests per hour.
+
+### D2 amendments after spike 4 (2026-09-27)
+
+Measured against real GitHub, see [spike 4 findings](2026-09-27-spike-4-findings-github-storage.md). Hidden refs behave as assumed: absent from the branches API, default clones, events and Actions, yet fetchable by refspec. Four amendments:
+
+1. **Every draft write is a compare-and-swap.** The REST ref update does not check fast-forward on hidden refs: a stale writer silently overwrote a draft and got a 200. Use `git push --force-with-lease`, or GraphQL `updateRefs` with `beforeOid`. Never REST `PATCH` on a hidden ref. After any `updateRefs` error, re-read the ref, because a lost race and a server fault return the same message.
+2. **`git push` is the flush transport.** One request per flush for any number of documents, atomic, two to three times faster at 2 MB, and outside the REST write budget. The REST inline-tree flush is the fallback. To be confirmed over HTTPS with an App installation token.
+3. **One draft ref per branch, not per document:** `refs/phraise/drafts/<branch>`. The draft commit's tree mirrors the repo, with draft Markdown at its real path and Phraise's sidecar data under `.phraise/`. The draft commit is parented on the branch commit it is based on and is overwritten, not chained. This keeps ref advertisements small, records the base commit for rebase, and lets anyone inspect uncommitted work with plain `git diff <branch> refs/phraise/drafts/<branch>`. This is the lead's call and differs from the spike's parentless commits; the integration spike must validate it.
+4. **Drafts in a public repo are public.** Anyone can list and fetch hidden refs, and deleted drafts stay readable by SHA for some time. Therefore on public repositories draft flushing to git is **off by default** and drafts live only in relay storage; a repo admin can opt in. On private repositories it is on by default. This weakens "every durable byte is reconstructible from the repo" for public repos, deliberately.
+
+Open: whether Git Data writes count toward the 500 per hour content-creation limit. If they do, a REST-only flusher sustains about three active documents per user token, which is why amendment 2 matters. Retention is tracked by the probe ref `refs/phraise-spike/retention-probe`, to be checked at 1, 4 and 12 weeks.
 
 ## D3. Comments are our own data model — locked
 
@@ -55,6 +66,14 @@ Anthropic explicitly forbids third-party Claude.ai login and routing through sub
 ## D9. GitHub App with user-to-server tokens — locked
 
 Attributed commits and comments, fine-grained permissions, higher limits. Org installs need an owner, which is standard friction. GitHub Enterprise Server has rate limits off by default, so self-hosted enterprise is the easy case. Push webhooks plus ETag reconciliation detect external commits.
+
+### D9 amendments after spike 4 (2026-09-27)
+
+- **Commit through GraphQL `createCommitOnBranch`** with the user's token: one call, user authorship, parsed `Co-authored-by` trailers, a verified GitHub signature, and a clean `STALE_DATA` error when the head moved. REST Git Data only when a merge commit or an explicit author is needed.
+- **Flush drafts with the App installation token**, not the user's token. Drafts need no attribution and should not spend the user's budget.
+- **Poll the branch ref with ETag.** A 304 costs no rate limit and new heads were visible within a second, so polling can be frequent on active branches. Webhooks remain the primary signal once an App exists.
+- **Read rate-limit budgets from response headers**, per reset bucket. The `/rate_limit` endpoint reported zero use throughout the spike.
+- Still unverified: everything with App tokens. Needs the owner to create a GitHub App; steps are in the spike 4 findings. Re-run gates C to F with a user-to-server token and gates A and G with an installation token before locking.
 
 ## D10. Language and repo layout — default, pending spike results
 
