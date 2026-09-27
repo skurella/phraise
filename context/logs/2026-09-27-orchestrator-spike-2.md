@@ -54,3 +54,6 @@ Reviewer (dispatch 6) findings: gate H narrowed post hoc (now the human-vs-human
 Clean clone of pushed branch 69da12f: npm install, npm test and tsc pass in all three spike dirs (182, 10, 9 tests); `npm run gates` passes in Yjs and Loro dirs; `npm run fuzz` exit 0. Re-ran fuzz after the ground-truth change at 9252a2b: all gated categories 0.
 Findings doc: [spike 2 findings](../docs/2026-09-27-spike-2-findings-crdt-rebase.md). Dispatches used: 6 of ~10.
 
+
+## 07:45 — Handback to lead
+Branch pushed at d4cf2d4. Handback sent with gate table, D5/D6 recommendation, decisions to review first, omissions.
