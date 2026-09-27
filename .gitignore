@@ -1,0 +1,12 @@
+# Agent worktrees created by the harness
+.claude/worktrees/
+
+# Dependencies and build output
+node_modules/
+dist/
+target/
+
+# Fetched third-party corpora (manifest and fetch script are committed instead)
+spikes/**/corpus-cache/
+
+.DS_Store
