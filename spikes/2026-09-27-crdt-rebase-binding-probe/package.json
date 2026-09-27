@@ -1,0 +1,29 @@
+{
+  "name": "crdt-rebase-binding-probe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spike 2, brief 5: editor-binding fidelity probe (root doc attrs, marks on inline atoms) across y-prosemirror 1.3.7, loro-prosemirror 0.4.4 and the Yjs 14 RC binding, plus a Yjs 14 attribution probe.",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@y/prosemirror": "2.0.0-13",
+    "@y/y": "14.0.0-rc.26",
+    "loro-crdt": "1.16.3",
+    "loro-prosemirror": "0.4.4",
+    "prosemirror-model": "^1.24.1",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-view": "^1.37.0",
+    "y-prosemirror": "1.3.7",
+    "yjs": "13.6.33"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "jsdom": "^25.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
+  }
+}

@@ -2,7 +2,7 @@
 
 Status: active. Decisions marked **locked** need an owner conversation to reverse. Decisions marked **default** are the lead's proposal and may be revised by spike results.
 Author: lead agent (Fable 5.1), reviewed with owner on 2026-09-27
-Updated: 2026-09-27, amended after spike 4
+Updated: 2026-09-27
 
 Supporting research: [landscape](2026-09-27-landscape.md), [GitHub constraints](2026-09-27-github-platform-constraints.md), [technology assessment](2026-09-27-technology-assessment.md).
 
@@ -21,17 +21,6 @@ Real-time collaboration needs a server even for WebRTC signaling, so "no server"
 Each flush writes two blobs: the rendered Markdown so anyone with plain git can read the draft, and the CRDT binary plus comments so a restart resumes with attribution intact. Real branches are never used for drafts: they pollute branch lists, trigger CI and PR tooling.
 
 Enterprise story: self-host a single binary; every durable byte is reconstructible from the repo. Hidden-ref retention is implied by reachability rather than documented, so the ref is a cache, not the source of truth. Budget: at most one GitHub write per second per token, under 500 content-creating requests per hour.
-
-### D2 amendments after spike 4 (2026-09-27)
-
-Measured against real GitHub, see [spike 4 findings](2026-09-27-spike-4-findings-github-storage.md). Hidden refs behave as assumed: absent from the branches API, default clones, events and Actions, yet fetchable by refspec. Four amendments:
-
-1. **Every draft write is a compare-and-swap.** The REST ref update does not check fast-forward on hidden refs: a stale writer silently overwrote a draft and got a 200. Use `git push --force-with-lease`, or GraphQL `updateRefs` with `beforeOid`. Never REST `PATCH` on a hidden ref. After any `updateRefs` error, re-read the ref, because a lost race and a server fault return the same message.
-2. **`git push` is the flush transport.** One request per flush for any number of documents, atomic, two to three times faster at 2 MB, and outside the REST write budget. The REST inline-tree flush is the fallback. To be confirmed over HTTPS with an App installation token.
-3. **One draft ref per branch, not per document:** `refs/phraise/drafts/<branch>`. The draft commit's tree mirrors the repo, with draft Markdown at its real path and Phraise's sidecar data under `.phraise/`. The draft commit is parented on the branch commit it is based on and is overwritten, not chained. This keeps ref advertisements small, records the base commit for rebase, and lets anyone inspect uncommitted work with plain `git diff <branch> refs/phraise/drafts/<branch>`. This is the lead's call and differs from the spike's parentless commits; the integration spike must validate it.
-4. **Drafts in a public repo are public.** Anyone can list and fetch hidden refs, and deleted drafts stay readable by SHA for some time. Therefore on public repositories draft flushing to git is **off by default** and drafts live only in relay storage; a repo admin can opt in. On private repositories it is on by default. This weakens "every durable byte is reconstructible from the repo" for public repos, deliberately.
-
-Open: whether Git Data writes count toward the 500 per hour content-creation limit. If they do, a REST-only flusher sustains about three active documents per user token, which is why amendment 2 matters. Retention is tracked by the probe ref `refs/phraise-spike/retention-probe`, to be checked at 1, 4 and 12 weeks.
 
 ## D3. Comments are our own data model — locked
 
@@ -55,26 +44,6 @@ An external commit is another peer's edits. Compute a block-level diff from the 
 
 Commit is: rebase if the head moved, serialize, write blob, tree and commit via the user's GitHub token so GitHub attributes it to them, and add `Co-authored-by` trailers for everyone who edited since the last commit.
 
-### D5, D6 and D3 amendments after spike 2 (2026-09-27)
-
-Measured headless on Yjs and on Loro, see [spike 2 findings](2026-09-27-spike-2-findings-crdt-rebase.md). All gates pass and the lead re-ran tests, gates and fuzz independently.
-
-**D5: Yjs is confirmed over Loro.** The rebase is not simpler on Loro, correctness is the same, and Loro's ProseMirror binding is less mature: its live plugin loses root attributes and then deletes them from the document. Loro is better at attribution and history, which does not outweigh the binding and the missing relay. Which Yjs version to build on is the remaining question and belongs to spike 5: Yjs 13 with workarounds for the binding's two losses, or the Yjs 14 release candidate, whose binding keeps both.
-
-**D6: confirmed, with a simpler mechanism than planned.**
-
-1. **The rebase is fork, diff, merge.** Fork the CRDT at the base commit's version, apply a plain two-way diff from the base to the new commit on the fork, merge the fork back. There is no three-way merge code; the CRDT merge does that work. Diff is aligned by block, then by word inside paired blocks.
-2. **Rebases are idempotent.** The rebase's peer identity is a hash of document, base and target, so any two replicas that run the same rebase produce identical bytes. Any replica may retry.
-3. **Rebases are serialized per document on the relay.** Two rebases from the same base to different commits blend both targets. This is detected, and recovered by re-seeding from the branch head. Records are keyed by the hash of base and target, not by commit alone.
-4. **"Needs review" is an intersection:** a block that changed upstream and also changed locally, where a change includes marks and attributes. Every replica computes it when it integrates a rebase and stores it as a flag in shared state.
-5. **A block deleted upstream but edited locally is brought back** by the replica of the person who edited it, once, and flagged.
-6. **Transport requirement:** updates are forwarded whole and delivered in causal order, as the standard Yjs protocol over one ordered connection does. A relay must not re-encode or reorder them. Violating this lost text in 8 of 500 fuzz trials before it was fixed.
-7. **Accepted limitation:** when one person deletes a block while another is editing it, the edit is lost. This is ordinary behaviour for collaborative editors and is not caused by the rebase. The remedy is product-level, such as restoring deleted blocks from history, not a change to the CRDT.
-
-**D3: the comment anchor record is fixed.** A CRDT position pair, the exact quote, 32 characters of prefix and suffix, and character offsets. A fuzzy match is accepted only with supporting context or a long unique quote, and rejected when a second location scores nearly as well. Mis-anchoring is treated as worse than orphaning. After a re-seed with unchanged text, 50 of 50 comments re-anchor; with three edits aimed at each comment, 2.5 percent mis-anchor.
-
-Carried into integration: clearing review flags, comments spanning two blocks, tables, running the rebase on a real relay with live editors, and the cost of integration on large documents.
-
 ## D7. The local daemon is the integration surface — locked
 
 A CLI daemon materializes a live draft into the checked-out file in a working tree, watches it, and diffs changes back into attributed CRDT operations. This gives VS Code, Typora, Claude Code, Cursor and every other file-based tool full integration for free. The MCP server sits on the daemon and adds what files cannot express: list, reply to and resolve comments; presence; commit. The VS Code extension adds only presence cursors via decorations and comment threads via the Comments API. Irrecoverable divergence between disk and CRDT writes a conflict copy and never overwrites.
@@ -86,14 +55,6 @@ Anthropic explicitly forbids third-party Claude.ai login and routing through sub
 ## D9. GitHub App with user-to-server tokens — locked
 
 Attributed commits and comments, fine-grained permissions, higher limits. Org installs need an owner, which is standard friction. GitHub Enterprise Server has rate limits off by default, so self-hosted enterprise is the easy case. Push webhooks plus ETag reconciliation detect external commits.
-
-### D9 amendments after spike 4 (2026-09-27)
-
-- **Commit through GraphQL `createCommitOnBranch`** with the user's token: one call, user authorship, parsed `Co-authored-by` trailers, a verified GitHub signature, and a clean `STALE_DATA` error when the head moved. REST Git Data only when a merge commit or an explicit author is needed.
-- **Flush drafts with the App installation token**, not the user's token. Drafts need no attribution and should not spend the user's budget.
-- **Poll the branch ref with ETag.** A 304 costs no rate limit and new heads were visible within a second, so polling can be frequent on active branches. Webhooks remain the primary signal once an App exists.
-- **Read rate-limit budgets from response headers**, per reset bucket. The `/rate_limit` endpoint reported zero use throughout the spike.
-- Still unverified: everything with App tokens. Needs the owner to create a GitHub App; steps are in the spike 4 findings. Re-run gates C to F with a user-to-server token and gates A and G with an installation token before locking.
 
 ## D10. Language and repo layout — default, pending spike results
 
