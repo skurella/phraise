@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
+import { LINE_START } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(HERE, 'fixtures', 'source-blocks.md');
@@ -61,7 +62,7 @@ async function selectionInfo(
 async function placeCaret(page: Page, locator: Locator, expectedText: string, offset: number): Promise<void> {
   await locator.click();
   await expect.poll(async () => (await selectionInfo(page)).parentText).toBe(expectedText);
-  await page.keyboard.press('Home');
+  await page.keyboard.press(LINE_START);
   for (let i = 0; i < offset; i++) await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await selectionInfo(page)).parentOffset).toBe(offset);
 }

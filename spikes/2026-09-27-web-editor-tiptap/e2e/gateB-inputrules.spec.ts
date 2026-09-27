@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
+import { LINE_START, LINE_END } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(HERE, 'fixtures', 'input-rules.md');
@@ -39,7 +40,7 @@ async function focusTarget(page: Page): Promise<void> {
   await expect
     .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parent.textContent))
     .toBe('placeholder');
-  await page.keyboard.press('Home');
+  await page.keyboard.press(LINE_START);
   await expect.poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parentOffset)).toBe(0);
 }
 
@@ -47,7 +48,7 @@ async function focusTarget(page: Page): Promise<void> {
  * thematic-break scenarios, which match the whole paragraph text). */
 async function clearTarget(page: Page): Promise<void> {
   await focusTarget(page);
-  await page.keyboard.press('End');
+  await page.keyboard.press(LINE_END);
   await expect
     .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parentOffset))
     .toBe('placeholder'.length);
@@ -209,7 +210,7 @@ test.describe('thematic-break Backspace-undo (placeholder as the last block)', (
     await expect
       .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parent.textContent))
       .toBe('placeholder');
-    await page.keyboard.press('End');
+    await page.keyboard.press(LINE_END);
     for (let i = 0; i < 'placeholder'.length; i++) await page.keyboard.press('Backspace');
     await expect.poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parent.textContent)).toBe('');
 

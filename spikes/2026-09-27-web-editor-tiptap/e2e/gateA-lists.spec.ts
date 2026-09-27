@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
+import { LINE_START } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(HERE, 'fixtures', 'lists.md');
@@ -36,7 +37,7 @@ async function placeCaretInItem(page: Page, text: string, offset: number): Promi
   await expect
     .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parent.textContent))
     .toBe(text);
-  await page.keyboard.press('Home');
+  await page.keyboard.press(LINE_START);
   for (let i = 0; i < offset; i++) await page.keyboard.press('ArrowRight');
   await expect
     .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parentOffset))

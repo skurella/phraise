@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { CDPSession, Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
+import { LINE_START, LINE_END } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COLLAB_FIXTURE = path.join(HERE, 'fixtures', 'collab.md');
@@ -71,7 +72,7 @@ async function placeCaret(page: Page, locator: Locator, expectedText: string, of
   await page.bringToFront();
   await locator.click();
   await expect.poll(async () => (await selectionInfo(page)).text).toBe(expectedText);
-  await page.keyboard.press('Home');
+  await page.keyboard.press(LINE_START);
   for (let i = 0; i < offset; i++) await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await selectionInfo(page)).offset).toBe(offset);
 }
@@ -425,7 +426,7 @@ test.describe('input methods', () => {
       const cell = page.locator('#editor .ProseMirror td', { hasText: 'a1' }).first();
       await page.bringToFront();
       await cell.click();
-      await page.keyboard.press('End');
+      await page.keyboard.press(LINE_END);
 
       await composeSteps(cdp, ['に', 'にほ', 'にほんご']);
       await commitComposition(cdp, '日本語');

@@ -11,12 +11,17 @@ import { fileURLToPath } from 'node:url';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from './fixtures.js';
 import { clickThenShiftClick } from './mouseSelect.js';
+import { LINE_END } from './keys.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(HERE, 'fixtures', 'copy.md');
 const DOC = 'copy.md';
 
 test.use({ seedFiles: [{ relpath: DOC, srcPath: FIXTURE }] });
+
+// Playwright WebKit cannot grant clipboard-read or clipboard-write, so the
+// real Mod-C and clipboard-read path cannot be driven there (orchestrator).
+test.skip(({ browserName }) => browserName === 'webkit', 'Playwright WebKit has no clipboard permissions');
 
 async function openAndWait(page: Page, phraiseServer: { pageUrl(doc: string, user: string): string }): Promise<void> {
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -49,7 +54,7 @@ async function placeCaretAtEnd(page: Page, paragraphText: string): Promise<void>
   await expect
     .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parent.textContent))
     .toBe(paragraphText);
-  await page.keyboard.press('End');
+  await page.keyboard.press(LINE_END);
   await expect
     .poll(() => page.evaluate(() => (window as any).phraise.editor.state.selection.$from.parentOffset))
     .toBe(paragraphText.length);
