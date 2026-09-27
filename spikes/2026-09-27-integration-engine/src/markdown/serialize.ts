@@ -461,6 +461,25 @@ function isWordChar(ch: string | undefined): boolean {
 }
 
 /**
+ * Brief 09 defect 2 fix (gate H's "no numeric character reference from
+ * mark nesting order"). Index (exclusive) up to which every node's mark
+ * set, walking forward from `idx`, still carries a mark group-equal to
+ * `m` -- i.e. how far `m`'s own contiguous run extends forward from this
+ * position. Shared by `pmInlineToMdast`'s opening-order decision below and
+ * the intraword `forceStar` check (which needed exactly this same "where
+ * does m's run end" computation already).
+ */
+function runExtentFrom(nodes: PMNode[], idx: number, m: Mark): number {
+  let j = idx;
+  while (j < nodes.length) {
+    const mj = nodes[j].marks.filter((x) => x.type.name !== 'code').find((x) => marksGroupEq(x, m));
+    if (!mj) break;
+    j++;
+  }
+  return j;
+}
+
+/**
  * Numeric-character-reference fix, part 2 (brief 07 task 3): intraword
  * emphasis/strong (its run touches a word character just outside its own
  * span, on either side -- as `_bar_` does in `foo_bar_baz`) can only ever be
@@ -503,18 +522,30 @@ function pmInlineToMdast(rawNodes: PMNode[]): any[] {
       markStack.pop();
       containerStack.pop();
     }
-    for (const m of marks) {
-      if (markStack.some((open) => marksGroupEq(open, m))) continue;
+    // Brief 09 defect 2 fix: nest the mark whose run extends FURTHEST from
+    // this position as the outermost, not schema order. Schema order could
+    // put a narrower mark (e.g. em, spanning only "quux") outside a wider
+    // one (strong, spanning " quux qu") -- the wider mark then has to
+    // CLOSE when the narrower one's run ends and REOPEN for its own
+    // continuation (the `common`-prefix logic above only keeps a mark open
+    // across nodes that still carry EVERY currently-open mark in the same
+    // stack order; a wider-inside-narrower nesting can never satisfy that
+    // once the narrower one's run ends). That reopened continuation starts
+    // wherever the narrower mark's run happened to end, which is often mid
+    // run on a space -- and CommonMark can only express a delimiter run
+    // starting/ending on whitespace with a numeric character reference
+    // (gate H / test/serializer-fixes.test.ts). Opening the
+    // furthest-extending mark outermost means it stays open, unsplit,
+    // across the whole point where a narrower nested mark comes and goes.
+    const toOpen = marks.filter((m) => !markStack.some((open) => marksGroupEq(open, m)));
+    const openOrder = toOpen
+      .map((m, i) => ({ m, i, extent: runExtentFrom(nodes, idx, m) }))
+      .sort((a, b) => b.extent - a.extent || a.i - b.i);
+    for (const { m } of openOrder) {
       let forceStar = false;
       if (m.type.name === 'em' || m.type.name === 'strong') {
         const leftIsWord = isWordChar(lastChar);
-        let j = idx;
-        while (j < nodes.length) {
-          const mj = nodes[j].marks.filter((x) => x.type.name !== 'code').find((x) => marksGroupEq(x, m));
-          if (!mj) break;
-          j++;
-        }
-        const after = nodes[j];
+        const after = nodes[runExtentFrom(nodes, idx, m)];
         const rightChar = after?.isText ? after.text?.[0] : undefined;
         forceStar = leftIsWord || isWordChar(rightChar);
       }

@@ -35,6 +35,18 @@ export interface CommitRequest {
   message?: string;
 }
 
+/**
+ * Test-only hooks for injecting timing-sensitive behavior around a commit.
+ * Never set outside tests. Brief 09 defect 1's relay-level test uses
+ * `afterPrepareCommit` (awaited between `prepareCommit` and the git push)
+ * to make a second live editor's edit land on the same shared `doc` during
+ * exactly the window `recordCommit`'s fix (see `engine/commit.ts`'s header
+ * comment) needs to handle correctly.
+ */
+export interface CommitTestHooks {
+  afterPrepareCommit?: () => Promise<void> | void;
+}
+
 const MAX_ATTEMPTS = 3;
 
 export async function commitDocument(
@@ -43,6 +55,7 @@ export async function commitDocument(
   doc: CrdtDoc,
   req: CommitRequest,
   counters: RelayCounters,
+  testHooks?: CommitTestHooks,
 ): Promise<CommitOutcome> {
   const docId = getDocId(doc);
   if (!docId) throw new Error(`commitDocument: document for "${req.path}" has no docId (not seeded)`);
@@ -65,6 +78,8 @@ export async function commitDocument(
     const prepared = prepareCommit(doc);
     const coAuthorNames = editorsSinceCommit(doc).filter((u) => u !== req.user);
 
+    if (testHooks?.afterPrepareCommit) await testHooks.afterPrepareCommit();
+
     const result = await gitStore.commit({
       branch: branchState.branch,
       expectedHead: rebasedBase.commit,
@@ -75,7 +90,7 @@ export async function commitDocument(
     });
 
     if (result.ok) {
-      recordCommit(doc, { commit: result.commit, snapshot: prepared.snapshot });
+      recordCommit(doc, { commit: result.commit, snapshot: prepared.snapshot, preparedSeq: prepared.preparedSeq });
       const flush = await flushBranch(gitStore, branchState, counters);
       if (rebased) counters.commitRebaseRetries++;
       return { ok: true, commit: result.commit, coAuthors: coAuthorNames, flush, rebased };

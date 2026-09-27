@@ -72,24 +72,41 @@ direction); never imports `yjs`/`y-protocols`/`@tiptap/y-tiptap` itself
   save's own best-effort blocks are always flagged, not just reported in
   the return value.
 - **`commit.ts`** -- `markEditor(doc, user)` sets
-  `editorsSinceCommit:<user>`; `prepareCommit(doc) -> {text, degraded,
-  snapshot, coAuthors}` (render via `renderForSave`, snapshot taken in the
-  same synchronous step -- nothing else can mutate `doc` in between, in a
-  single-threaded runtime); `recordCommit(doc, {commit, snapshot})` sets
-  `base` to the new commit, sets `lastCommit`, clears
-  `editorsSinceCommit` -- no re-seed (D1 as amended) -- **then** takes and
-  stores `snapshot:<commit>` (brief 06 fix: it used to store the
-  `snapshot` this function is handed, i.e. `prepareCommit`'s, taken BEFORE
-  the meta writes above; a later rebase forks from that snapshot via
-  `Y.createDocFromSnapshot`, so its view of `base` was the PRE-commit
-  value, and its `onFork` override of `base` would then race this
-  function's own later, fork-unseen write for the same `Y.Map` key --
-  Yjs's own tie-break decided the winner non-deterministically, silently
-  reverting the rebase's base pointer roughly half the time. Reordering to
-  snapshot AFTER these writes -- `seed.ts`'s `seedFromCommit` already did
-  this correctly -- fixes it; content is unchanged either way, since
-  nothing between `prepareCommit` and `recordCommit` touches the
-  prosemirror fragment).
+  `editorsSinceCommit:<user>` = the current `phraise.commitSeq` (brief 09
+  defect 1; was a plain boolean), written only if absent or smaller, so a
+  user costs at most one map write per commit cycle plus one more if she
+  edits again during a commit's own push window. `prepareCommit(doc) ->
+  {text, degraded, snapshot, coAuthors, preparedSeq}` (render via
+  `renderForSave`, snapshot taken in the same synchronous step -- nothing
+  else can mutate `doc` in between, in a single-threaded runtime -- and
+  `commitSeq` bumped, `preparedSeq` = its pre-bump value).
+  `recordCommit(doc, {commit, snapshot, preparedSeq})` sets `base` to the
+  new commit, sets `lastCommit`, and clears only `editorsSinceCommit`
+  entries whose value is `<= preparedSeq` -- no re-seed (D1 as amended) --
+  all inside `crdt.transactExtendingSnapshot(doc, opts.snapshot, fn)`
+  (brief 09 defect 1's fix; see `crdt/README.md`'s note on it), then
+  stores the RESULT under `snapshot:<commit>`.
+
+  History: brief 06 fixed a real tie-break bug here by taking a wholly
+  FRESH `snapshot(doc)` after these meta writes, instead of storing the
+  `snapshot` this function is handed (`prepareCommit`'s, taken BEFORE the
+  meta writes) -- a rebase forking from the OLD snapshot would see `base`'s
+  PRE-commit value and its `onFork` override would race this function's
+  own later write for the same `Y.Map` key, and Yjs's tie-break decided
+  the winner non-deterministically, silently reverting the rebase's base
+  pointer roughly half the time. That fix assumed "content does not change
+  between `prepareCommit` and `recordCommit`" -- true when nothing else can
+  touch `doc` in between, false at the relay, where `relay/commit.ts`
+  `await`s a real git push between the two calls, during which a
+  concurrent editor's real edit can land on the SAME shared `doc`. A fully
+  fresh snapshot baked that not-yet-committed edit into what a later
+  rebase treats as "the committed base", so the rebase saw no local change
+  and silently dropped the edit, with no review flag (milestone-2 review
+  log's blocker). `transactExtendingSnapshot` fixes both bugs together:
+  the stored snapshot carries this function's OWN meta writes (fixing the
+  tie-break) while its CONTENT stays exactly `opts.snapshot`'s -- the
+  actual pre-push bytes, never anything that landed afterward (fixing the
+  concurrent-edit bug).
 - **`attribution.ts`** -- `listAttribution(doc)`: crdt's
   `listAttributedRanges` (keyed by connection user name) joined with
   `phraise-authors`' per-clientId `kind`, matched by name (logged
@@ -106,10 +123,13 @@ direction); never imports `yjs`/`y-protocols`/`@tiptap/y-tiptap` itself
 `phraise`: `docId`, `generation`, `base` = `{id, commit}`,
 `snapshot:<baseId>` (base64), `rebase:<id>` (keyed by
 `hash(baseId, target)`, the S2-11 fix), `ack:<rebaseId>:<clientId>`,
-`lastCommit`, `editorsSinceCommit:<user>` = true (one key per user, so
-concurrent editors never clobber each other's `Y.Map` LWW register the way
-a single shared array-valued key would -- the reason `crdt.listMetaEntries`
-exists). `phraise-authors`: clientId -> `{kind, name, email?, commit?}`.
+`lastCommit`, `commitSeq` (integer, brief 09 defect 1; bumped by
+`prepareCommit`), `editorsSinceCommit:<user>` = the `commitSeq` value at
+the time `user` was marked (was a plain boolean; one key per user either
+way, so concurrent editors never clobber each other's `Y.Map` LWW register
+the way a single shared array-valued key would -- the reason
+`crdt.listMetaEntries` exists). `phraise-authors`: clientId -> `{kind,
+name, email?, commit?}`.
 `review`: blockId -> `{rebaseId, reason}`, `cleared:<blockId>`. `comments`:
 commentId -> record (anchor pair, quote selectors, author, body, replies,
 resolved).

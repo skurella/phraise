@@ -53,12 +53,14 @@ Brief 04 adds:
   state, not ProseMirror nodes, so it calls `engine.createCommentOnQuote`
   directly rather than dispatching a transaction.
 - `relayHarness.ts`: `startRelayHarness({mode?, remote, port?, dataDir?,
-  timings?}) -> RelayHarnessHandle`, starting a relay in-process (default)
-  or as a child process (`mode: 'child-process'`, needed for memory
-  measurement and hard kills later); always stopped by the caller
+  timings?, testHooks?}) -> RelayHarnessHandle`, starting a relay in-process
+  (default) or as a child process (`mode: 'child-process'`, needed for
+  memory measurement and hard kills later); always stopped by the caller
   (`finally`), with a process-exit safety net (ported from spike 5's
   `src/harness.ts`) that kills any relay still running if the process ends
-  without calling `stop()`.
+  without calling `stop()`. `testHooks` (in-process mode only; brief 09
+  defect 1) threads `relay/commit.ts`'s `CommitTestHooks.afterPrepareCommit`
+  down to `startRelay` -- see `test/relay.commit-concurrent-during-push.test.ts`.
 
 ## Origin of copied code
 

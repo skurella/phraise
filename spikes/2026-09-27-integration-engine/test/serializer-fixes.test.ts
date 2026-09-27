@@ -103,7 +103,7 @@ test('an intraword em mark (a merge of concurrent toggles landing mid-word) seri
   expect(sawEm).toBe(true);
 });
 
-test('200 seeded concurrent bold/italic merges over overlapping word ranges never produce a numeric character reference', () => {
+test('500 seeded concurrent bold/italic merges over overlapping word ranges (boundaries on spaces included) never produce a numeric character reference', () => {
   const words = ['foo', 'bar', 'baz', 'qux', 'quux', 'corge', 'grault'];
   function mulberry32(seed: number): () => number {
     let a = seed >>> 0;
@@ -115,7 +115,7 @@ test('200 seeded concurrent bold/italic merges over overlapping word ranges neve
     };
   }
   let entityCount = 0;
-  const seeds = 200;
+  const seeds = 500;
   for (let seed = 0; seed < seeds; seed++) {
     const rng = mulberry32(seed + 1);
     const n = 4 + Math.floor(rng() * 4);
@@ -147,17 +147,13 @@ test('200 seeded concurrent bold/italic merges over overlapping word ranges neve
     const strongOuter = rng() < 0.5;
     const bStrong = strongOuter ? outer : clampedInner;
     const bEm = strongOuter ? clampedInner : outer;
-    // A range starting or ending exactly on a space (as opposed to inside
-    // or at the edge of a word) is its own separate, narrower edge case
-    // already covered directly by the whitespace-boundary tests above; a
-    // real selection boundary coinciding with the single space between two
-    // words, nested with another mark's boundary at the very same point,
-    // is rare enough (and already provably safe -- never silently wrong,
-    // always caught by this module's own verify step) that it is recorded
-    // as a known residual in the module README rather than chased here.
-    const boundaryChars = [bStrong[0], bStrong[1] - 1, bEm[0], bEm[1] - 1].map((i) => text[i]);
-    if (boundaryChars.some((c) => c === ' ')) continue;
-
+    // Brief 09 defect 2: a range starting or ending exactly on a space (as
+    // opposed to inside or at the edge of a word) used to be skipped here
+    // as a known, narrower residual (see the dedicated whitespace-boundary
+    // tests above, and the module README's now-removed residual note) --
+    // the mark-nesting fix (nest the furthest-extending mark outermost,
+    // src/markdown/serialize.ts's `pmInlineToMdast`) fixes this case too,
+    // so it is no longer excluded from this randomized check.
     const cuts = new Set([0, text.length, bStrong[0], bStrong[1], bEm[0], bEm[1]]);
     const points = [...cuts].filter((p) => p >= 0 && p <= text.length).sort((x, y) => x - y);
     const nodes = [];

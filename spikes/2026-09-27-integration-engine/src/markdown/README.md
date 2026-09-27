@@ -110,18 +110,27 @@ showing each failing before its fix and passing after):
      catches a narrower, different ambiguity (a NESTED mark's own inner
      close landing next to whitespace within an OUTER run that itself
      touches no whitespace at its true edges) that (1)/(2) do not reach.
-
-  **Known residual**, not fixed: an OUTER mark range starting or ending
-  exactly on the single space between two words, with an INNER mark's
-  boundary at that same point, can still carry one entity in the output.
-  Proven safe (the block still verifies correctly against the normalized
-  reference; never silently wrong) but not entity-free. Excluded by
-  construction from `test/serializer-fixes.test.ts`'s and gate H's own
-  200/50-seed randomized checks (their generators skip a range boundary
-  landing exactly on a space, with a comment explaining why); a real
-  concurrent-formatting merge's two selections coinciding at the identical
-  space is a narrow enough case that this residual was judged not worth
-  chasing further within this brief's scope.
+  4. **Mark nesting order** (brief 09 defect 2, gate H): when opening marks
+     at a position, `pmInlineToMdast` used to nest them in ProseMirror's
+     own mark order (schema rank), regardless of which mark's run actually
+     spanned further. When a narrower mark (e.g. `em`, spanning just
+     "quux") landed OUTSIDE a wider one (`strong`, spanning " quux qu"),
+     the wider mark had to close when the narrower one's run ended and
+     reopen for its own continuation -- and that reopened continuation
+     often started exactly on the whitespace between words, which
+     CommonMark can only express with a numeric character reference (the
+     concrete example that surfaced this: `quux baz quux qu` + `ux` with
+     strong over `" quux qu"` and em over `"quux"` produced `quux baz
+     _**quux**_**&#x20;qu**ux`). Fixed by nesting, among the marks newly
+     opened at a position, the one whose own run extends FURTHEST forward
+     as the outermost (`runExtentFrom`) -- ties keep the original schema
+     order. This fixes the residual this README used to document here (an
+     outer mark range starting/ending exactly on the space between two
+     words, with an inner mark's boundary at that same point):
+     `test/serializer-fixes.test.ts`'s 500-seed randomized check
+     (boundaries on spaces included, no longer skipped) and gate H's own
+     separately-counted space-boundary check both now require, and get,
+     zero numeric character references. No known residual remains.
 - **Best effort, never throws** (D9): `serializeDoc`'s final reserialize
   call is now wrapped so an unexpected exception from `reserializeBlock`
   (defensive only -- `pmBlockToMdast`'s switch is exhaustive for this

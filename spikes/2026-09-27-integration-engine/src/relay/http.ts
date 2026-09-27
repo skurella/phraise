@@ -15,7 +15,7 @@ import type { GitStore } from '../git/index.js';
 import { makeDocName } from './docName.js';
 import type { RelayState } from './state.js';
 import { flushBranch } from './flush.js';
-import { commitDocument, type CommitRequest } from './commit.js';
+import { commitDocument, type CommitRequest, type CommitTestHooks } from './commit.js';
 import type { HeadPoller } from './poller.js';
 
 // Milestone 1: no generations yet (charter/plan: "generation 0 for now").
@@ -48,6 +48,7 @@ export async function handleHttpRequest(
   poller: HeadPoller,
   request: IncomingMessage,
   response: ServerResponse,
+  commitTestHooks?: CommitTestHooks,
 ): Promise<void> {
   const url = new URL(request.url ?? '/', 'http://127.0.0.1');
 
@@ -98,7 +99,7 @@ export async function handleHttpRequest(
         return;
       }
       const outcome = await state.queue.run(body.branch, () =>
-        commitDocument(gitStore, branchState, openEntry.doc, { path: body.path, user: body.user, message: body.message }, state.counters),
+        commitDocument(gitStore, branchState, openEntry.doc, { path: body.path, user: body.user, message: body.message }, state.counters, commitTestHooks),
       );
       sendJSON(response, outcome.ok ? 200 : 409, outcome);
     } finally {

@@ -42,7 +42,15 @@ JS/ProseMirror values.
    undefined` (plan section 3's other point-3 item, left open by brief 01's
    note above): the relay's forged-identity check (`src/relay/forgery.ts`)
    reads a client id's currently-mapped user directly, rather than walking
-   `AttributionEntry.ranges` itself.
+   `AttributionEntry.ranges` itself. Brief 09 defect 3: `recordAttribution`
+   now takes an optional `coalesceBucketMs` (default 5000) and EXTENDS the
+   client's last stored range in place, instead of always appending, when
+   the new range is clock-contiguous with it and lands within that time
+   bucket of its `at` -- an unbounded typing session used to cost one
+   `[from, to, at]` tuple per incoming update forever (measured in
+   `test/crdt-attribution-coalesce.test.ts`: 2,000 single-character updates
+   from one user, 33.8MB encoded without coalescing vs 78KB with it, a
+   433x reduction).
 4. **Fork, diff, apply.** `snapshot(doc)`/`encodeSnapshot` (alias), and
    `forkDiffMerge(doc, base, target, {clientId, origin, forceFork?, onFork?})`:
    fork `doc` at `base` (or diff directly when `base` already equals the
@@ -97,6 +105,41 @@ two are brief 03's addition -- engine needs to enumerate/delete namespaced
 keys like `rebase:*`/`ack:*`/`editorsSinceCommit:*`, not just get/set one
 key), so engine can keep its own records without touching a `Y.Map`
 directly.
+
+Brief 09 defect 1 additions (`snapshotExtend.ts`, `onContentChange.ts`),
+both fixing the milestone-2 review log's blocker (`engine.recordCommit`
+silently baking a concurrent editor's edit into the committed base -- see
+`engine/README.md`'s `commit.ts` entry for the full story):
+
+- **`transactExtendingSnapshot(doc, baseSnapshot, fn, origin?) ->
+  CrdtSnapshot`**: runs `fn` in one `doc.transact`, then returns
+  `baseSnapshot` extended by exactly that transaction's own effect --
+  `doc.clientID`'s advanced clock range (`transaction.afterState`; a local
+  transaction's writes are always under the doc's own client id) merged
+  into the state vector, and `Y.mergeDeleteSets([base.ds,
+  transaction.deleteSet])` merged into the delete set (deletions CAN name
+  another client's item -- e.g. overwriting a rebase fork's own `base`
+  write -- so the full delete set is carried, not just the local client's
+  slice). Anything a DIFFERENT transaction wrote to `doc` in between (a
+  concurrent editor's real edit, applied via its own `Y.applyUpdate` call)
+  is simply never added, so it stays invisible to a fork taken from the
+  result, exactly like `baseSnapshot` itself. `fn` may freely call this
+  module's own `setMeta`/`deleteMeta` -- their own `doc.transact` calls
+  nest into the same outer transaction (Yjs's own semantics: a nested
+  `transact` call reuses the current transaction, and its `origin`
+  argument is ignored).
+- **`onContentChange(doc, fn(origin, changed))`** /
+  **`transactionChangedContent(doc, transaction)`**: replaces the relay's
+  former per-update whole-document `contentKey`
+  (`JSON.stringify(read(document).toJSON())`) comparison. Listens directly
+  on the Yjs `Doc`'s native `'update'` event (its 4th argument is the
+  `Y.Transaction`, unlike Hocuspocus's own `onChangePayload`, which carries
+  neither) and walks each of `transaction.changed`'s keys' own
+  `_item.parent` chain up to the root, checking whether it reaches the
+  `prosemirror` fragment -- no document read/serialization at all. See
+  `relay/README.md`'s note for how the relay correlates this with
+  Hocuspocus's own `onChange` hook (a `WeakMap` keyed by the exact
+  `transactionOrigin` object reference) and why that is race-free.
 
 ## The Y.Doc's own shape
 

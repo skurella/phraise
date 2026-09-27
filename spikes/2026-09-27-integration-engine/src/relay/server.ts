@@ -11,7 +11,7 @@ import * as path from 'node:path';
 import { Server } from '@hocuspocus/server';
 import { SQLite } from '@hocuspocus/extension-sqlite';
 import type { Document as HpDocument } from '@hocuspocus/server';
-import { read, recordAttribution, type CrdtDoc } from '../crdt/index.js';
+import { recordAttribution, onContentChange } from '../crdt/index.js';
 import { attachIntegration, markEditor } from '../engine/index.js';
 import { GitStore } from '../git/index.js';
 import { parseDocName, makeDocName, docId as makeDocId } from './docName.js';
@@ -20,7 +20,7 @@ import { checkForgery, ForgedIdentityError } from './forgery.js';
 import { RelayState, type BranchState } from './state.js';
 import { flushBranch } from './flush.js';
 import { TrailingDebounce } from './debounce.js';
-import { commitDocument } from './commit.js';
+import { commitDocument, type CommitTestHooks } from './commit.js';
 import { HeadPoller } from './poller.js';
 import { handleHttpRequest } from './http.js';
 
@@ -42,6 +42,8 @@ export interface RelayOptions {
   /** The remote git repository (URL or filesystem path) this relay serves documents from. */
   remote: string;
   timings?: RelayTimings;
+  /** Test-only hooks threaded down to `POST /commit` (see `commit.ts`'s `CommitTestHooks`). Never set outside tests. */
+  testHooks?: CommitTestHooks;
 }
 
 export interface RelayHandle {
@@ -55,10 +57,6 @@ export interface RelayHandle {
 
 function isConnectionOrigin(origin: unknown): boolean {
   return typeof origin === 'object' && origin !== null && (origin as { source?: unknown }).source === 'connection';
-}
-
-function contentKey(document: CrdtDoc): string {
-  return JSON.stringify(read(document).toJSON());
 }
 
 export async function startRelay(opts: RelayOptions): Promise<RelayHandle> {
@@ -88,7 +86,15 @@ export async function startRelay(opts: RelayOptions): Promise<RelayHandle> {
     return d;
   }
 
-  const contentCache = new WeakMap<object, string>();
+  // Brief 09 defect 1 (cheap content detection): keyed by the exact
+  // `transactionOrigin` object reference Hocuspocus's `onChange` hook
+  // receives for THIS SAME update (see onContentChange.ts's header comment
+  // for why this is race-free without any ordering assumption beyond "the
+  // write happens inside the same synchronous `doc.emit('update', ...)`
+  // call that starts the async onChange chain"). Replaces the former
+  // whole-document `contentKey`/`contentCache` JSON-diff, which cost
+  // O(document size) per keystroke.
+  const changedByOrigin = new WeakMap<object, boolean>();
 
   const server = new Server({
     port: opts.port,
@@ -121,11 +127,11 @@ export async function startRelay(opts: RelayOptions): Promise<RelayHandle> {
             state.markRecoveryWindow(documentName, recoveryWindowMs);
           }
           attachIntegration(document, { isRemoteOrigin: isConnectionOrigin });
+          onContentChange(document, (origin, changed) => {
+            if (origin && typeof origin === 'object') changedByOrigin.set(origin, changed);
+          });
           state.register(parsed.branch, parsed.path, parsed.generation, document);
           poller.ensureBranch(parsed.branch);
-        },
-        async afterLoadDocument({ document }) {
-          contentCache.set(document, contentKey(document));
         },
         async afterUnloadDocument({ documentName }) {
           const parsed = parseDocName(documentName);
@@ -154,17 +160,17 @@ export async function startRelay(opts: RelayOptions): Promise<RelayHandle> {
           const user = (context as Record<string, unknown> | undefined)?.user as string | undefined;
           if (!user) return;
           recordAttribution(document, update, user, Date.now());
-          const key = contentKey(document);
-          if (contentCache.get(document) !== key) {
-            markEditor(document, user);
-            contentCache.set(document, key);
+          let changed = false;
+          if (transactionOrigin && typeof transactionOrigin === 'object') {
+            changed = changedByOrigin.get(transactionOrigin) ?? false;
+            changedByOrigin.delete(transactionOrigin);
           }
-          contentCache.set(document, key);
+          if (changed) markEditor(document, user);
           const parsed = parseDocName(document.name);
           if (parsed) debouncerFor(parsed.branch).touch();
         },
         async onRequest({ request, response, instance }) {
-          await handleHttpRequest(instance, state, gitStore, poller, request, response);
+          await handleHttpRequest(instance, state, gitStore, poller, request, response, opts.testHooks);
         },
       },
     ],

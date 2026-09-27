@@ -34,7 +34,7 @@ test('recordCommit sets the new base, records lastCommit, and clears editorsSinc
   markEditor(doc, 'alice');
 
   const prepared = prepareCommit(doc);
-  recordCommit(doc, { commit: 'c1', snapshot: prepared.snapshot });
+  recordCommit(doc, { commit: 'c1', snapshot: prepared.snapshot, preparedSeq: prepared.preparedSeq });
 
   expect(getLastCommit(doc)).toBe('c1');
   expect(prepareCommit(doc).coAuthors).toEqual([]); // cleared

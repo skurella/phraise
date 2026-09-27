@@ -30,6 +30,9 @@ export interface ConflictEntry {
   at: number;
 }
 
+/** Default coalescing window (ms): see `recordAttribution`'s `coalesceBucketMs`. */
+const DEFAULT_COALESCE_BUCKET_MS = 5000;
+
 /**
  * Record one incoming update's attribution: for each Yjs client ID the
  * update touches (via `Y.parseUpdateMeta`, same primitive `inspectUpdate`
@@ -37,8 +40,24 @@ export interface ConflictEntry {
  * already mapped to a DIFFERENT user is a forged or colliding ID: flagged
  * into `ATTRIBUTION_CONFLICTS_MAP_NAME`, original mapping left untouched
  * (first writer wins).
+ *
+ * Brief 09 defect 3: a naive implementation appended one `[from, to, at]`
+ * tuple per call, so the map grows one entry per incoming update forever
+ * (measured: 2,000 single-character updates from one user cost 2,000
+ * entries and a correspondingly large encoded size -- see
+ * `test/crdt-attribution-coalesce.test.ts` for the before/after numbers).
+ * Instead, EXTEND the client's last range in place when the new range is
+ * contiguous with it (same client id -- guaranteed here, `ranges` is
+ * already keyed per client -- and `fromClock` equals the previous range's
+ * `to`) and recent enough (`at` within `coalesceBucketMs` of the previous
+ * range's own `at`, default 5s: a real typing burst's updates all land
+ * within a bucket like this; two edits far apart in time stay separate
+ * ranges, keeping `listAttributedRanges`' per-range `at` meaningful as
+ * "roughly when this text was written" rather than being smeared across
+ * an unbounded session). `at` on the extended range becomes the NEWEST
+ * timestamp, keeping it representative of the ongoing burst.
  */
-export function recordAttribution(doc: Y.Doc, update: Uint8Array, user: string, at: number): void {
+export function recordAttribution(doc: Y.Doc, update: Uint8Array, user: string, at: number, coalesceBucketMs = DEFAULT_COALESCE_BUCKET_MS): void {
   const meta = Y.parseUpdateMeta(update);
   if (meta.to.size === 0) return;
   doc.transact(() => {
@@ -55,7 +74,12 @@ export function recordAttribution(doc: Y.Doc, update: Uint8Array, user: string, 
         continue;
       }
       const entry: AttributionEntry = existing ? { user: existing.user, ranges: [...existing.ranges] } : { user, ranges: [] };
-      entry.ranges.push([fromClock, toClock, at]);
+      const last = entry.ranges[entry.ranges.length - 1];
+      if (last && last[1] === fromClock && at - last[2] <= coalesceBucketMs) {
+        entry.ranges[entry.ranges.length - 1] = [last[0], toClock, at];
+      } else {
+        entry.ranges.push([fromClock, toClock, at]);
+      }
       attrMap.set(key, entry);
     }
   }, ATTRIBUTION_ORIGIN);

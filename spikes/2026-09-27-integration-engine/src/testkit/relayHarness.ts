@@ -28,6 +28,8 @@ export interface RelayHarnessOptions {
   timings?: RelayOptions['timings'];
   /** child-process only: ms to wait for the ready line. Default 15000. */
   readyTimeoutMs?: number;
+  /** In-process mode only: test-only hooks (`RelayOptions['testHooks']`), e.g. brief 09 defect 1's `afterPrepareCommit`. Never set outside tests. */
+  testHooks?: RelayOptions['testHooks'];
 }
 
 export interface RelayHarnessHandle {
@@ -62,7 +64,7 @@ function installExitHook(): void {
 }
 
 async function startInProcess(opts: RelayHarnessOptions, port: number, dataDir: string): Promise<RelayHarnessHandle> {
-  const handle: RelayHandle = await startRelay({ port, dataDir, remote: opts.remote, timings: opts.timings });
+  const handle: RelayHandle = await startRelay({ port, dataDir, remote: opts.remote, timings: opts.timings, testHooks: opts.testHooks });
   const entry = { kill: () => void handle.stop() };
   liveHandles.add(entry);
   return {

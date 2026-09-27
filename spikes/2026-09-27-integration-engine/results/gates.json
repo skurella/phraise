@@ -6,7 +6,7 @@
       "summary": "all 4 checks passed",
       "numbers": {
         "checks": 4,
-        "relayBytes": 830
+        "relayBytes": 811
       }
     },
     {
@@ -52,7 +52,7 @@
       "summary": "all 18 checks passed",
       "numbers": {
         "checks": 18,
-        "rebaseLatencyMs": 652
+        "rebaseLatencyMs": 638
       }
     },
     {
@@ -79,7 +79,9 @@
         "gateBEditsOk": 150,
         "gateBEditsTotal": 150,
         "formattingChecked": 29,
-        "formattingEntities": 0
+        "formattingEntities": 0,
+        "formattingSpaceBoundaryChecked": 21,
+        "formattingSpaceBoundaryEntities": 0
       }
     }
   ],

@@ -108,3 +108,12 @@ export { onRemoteBatch, wouldPend, INTEGRATION_ORIGIN_MARKER, type OnRemoteBatch
 
 // --- meta accessors -----------------------------------------------------------
 export { getMeta, setMeta, transact, listMetaEntries, deleteMeta } from './meta.js';
+
+// Brief 09 defect 1: extend a base snapshot by exactly one transaction's own
+// effect (see snapshotExtend.ts's header comment for why `recordCommit`
+// needs this instead of a fresh whole-doc snapshot).
+export { transactExtendingSnapshot } from './snapshotExtend.js';
+
+// Brief 09 defect 1 (cheap content detection): replaces the relay's former
+// whole-document contentKey comparison.
+export { onContentChange, transactionChangedContent } from './onContentChange.js';

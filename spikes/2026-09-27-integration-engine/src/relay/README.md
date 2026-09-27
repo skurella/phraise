@@ -209,13 +209,38 @@ seed/git/import/generation peer, is a forgery **unless**:
    runs and would make the test meaningless either way).
 
 `editorsSinceCommit` ("whose updates changed document content, not
-comment-only or ack-only"): a `WeakMap<Document, string>` cache of
-`JSON.stringify(read(document).toJSON())`, compared on each genuine
-connection-origin `onChange` call. This also skips the relay's own internal
-writes (attribution recording, draft-merge, commit bookkeeping) for free,
-since none of those are connection-origin transactions. Simpler than a
-per-update Yjs struct inspection; acceptable at milestone-1 sizes, flagged
-as a cost to revisit at gate M's scale.
+comment-only or ack-only"): brief 09 defect 1 replaced the original
+`WeakMap<Document, string>` cache of `JSON.stringify(read(document).toJSON())`
+(compared on each genuine connection-origin `onChange` call -- an O(document
+size) full decode+serialize per keystroke, exactly the cost this README used
+to flag "as a cost to revisit at gate M's scale") with `crdt.onContentChange`
+(`src/crdt/onContentChange.ts`): a listener registered directly on the Yjs
+`Doc`'s native `'update'` event (which carries the `Y.Transaction`, unlike
+Hocuspocus's own `onChangePayload`), computing "did this transaction touch
+the `prosemirror` fragment or anything under it" by walking each changed
+type's `_item.parent` chain to the root -- no document read at all. The
+result is stashed in a `WeakMap<object, boolean>` keyed by the exact
+`transactionOrigin` object reference (a fresh object per inbound message,
+per `@hocuspocus/server`'s own `MessageReceiver.ts`), which `onChange` reads
+back for that same update; race-freedom (the write always happens before the
+read, regardless of what any OTHER extension's hook awaits in between) is
+argued from Hocuspocus's own hook dispatch (`hooks()` always defers even the
+FIRST extension's call to a microtask via `Promise.resolve().then(...)`) --
+see `onContentChange.ts`'s header comment for the full argument. This still
+skips the relay's own internal writes (attribution recording, draft-merge,
+commit bookkeeping) for free, since none of those are connection-origin
+transactions and `onChange` only acts on `isConnectionOrigin(transactionOrigin)`.
+
+`markEditor`/`editorsSinceCommit` also gained a sequence number
+(`phraise.commitSeq`, brief 09 defect 1) instead of a plain boolean: see
+`engine/README.md`'s note on `recordCommit` for why -- a concurrent edit
+landing during a commit's own git push (the async gap in
+`commitDocument` between `prepareCommit` and `gitStore.commit`) must not be
+silently folded into that commit's stored base snapshot, and must keep its
+author's co-author credit for the NEXT commit. `commit.ts`'s
+`commitDocument` also gained an optional `testHooks.afterPrepareCommit`
+(awaited in exactly that gap), test-only, for
+`test/relay.commit-concurrent-during-push.test.ts`.
 
 ## Origin of copied code
 
