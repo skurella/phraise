@@ -66,7 +66,7 @@ export function runGateBOne(pf: ParsedFile): FileWordResult {
       newDoc.check();
 
       const traces: TraceInfo[] = [];
-      const out = serializeDoc(newDoc, { trace: (info) => traces.push(info) });
+      const out = serializeDoc(newDoc, { onUnverified: 'emit', trace: (info) => traces.push(info) });
 
       let semanticOk = false;
       try {

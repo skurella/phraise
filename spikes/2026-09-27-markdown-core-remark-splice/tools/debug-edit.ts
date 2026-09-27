@@ -19,7 +19,7 @@ for (const arg of process.argv.slice(2)) {
   console.log('chosen', chosen.word, chosen.from, chosen.to);
   const tr = EditorState.create({ doc }).tr.insertText(replacementFor(chosen.word), chosen.from, chosen.to);
   const traces: any[] = [];
-  const out = serializeDoc(tr.doc, { trace: (t) => traces.push(t) });
+  const out = serializeDoc(tr.doc, { onUnverified: 'emit', trace: (t) => traces.push(t) });
   for (const t of traces) if (t.kind !== 'verbatim') console.log('trace', t.kind, t.type);
   const $pos = tr.doc.resolve(chosen.from);
   const top = tr.doc.child($pos.index(0));

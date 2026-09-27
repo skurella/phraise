@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-27T04:00:59.632Z",
+  "generatedAt": "2026-09-27T04:19:54.226Z",
   "quick": false,
-  "elapsedMs": 392995,
+  "elapsedMs": 389987,
   "rows": [
     {
       "gate": "A. No-edit round trip, corpus files",
@@ -18,7 +18,7 @@
     {
       "gate": "A3. Yjs round trip with plain y-prosemirror, all files (finding)",
       "threshold": "none, measured",
-      "result": "1473/1621 (90.9%), findings: 9 lost doc-level attrs (lead/eol), 140 lost marks on leaf inline nodes (e.g. linked images)",
+      "result": "1473/1621 (90.9%), findings: 8 lost doc-level attrs (lead/eol), 136 lost marks on leaf inline nodes (e.g. linked images)",
       "pass": "n/a"
     },
     {
@@ -54,7 +54,7 @@
     {
       "gate": "E. Style detection, non-default files passing",
       "threshold": ">= 10 files",
-      "result": "149 files",
+      "result": "145 files",
       "pass": true
     }
   ],
@@ -337,13 +337,17 @@
     "a3PassTotal": 1621,
     "a3PassOk": 1473,
     "a3CodecOk": 1621,
-    "a3DocAttrLossCount": 9,
-    "a3LeafMarkLossCount": 140
+    "a3DocAttrLossCount": 8,
+    "a3LeafMarkLossCount": 136
   },
   "gateE": {
-    "nonDefaultTotal": 149,
-    "nonDefaultPassCount": 149,
-    "nonDefaultFailingIds": [],
+    "nonDefaultTotal": 148,
+    "nonDefaultPassCount": 145,
+    "nonDefaultFailingIds": [
+      "handwritten/style-plus-bullets",
+      "real/npm-base64-js-readme",
+      "real/npm-semver-readme"
+    ],
     "hintsOnByteIdenticalRate": 0.9466510286239579,
     "hintsOffByteIdenticalRate": 0.9386946460836213,
     "hintsOnVerificationRate": 0.9987320505911814,
@@ -420,6 +424,7 @@
         "checkedConventions": [
           "bullet",
           "emphasis",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -454,10 +459,11 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
-        "pass": true,
+        "pass": false,
         "style": {
           "bullet": "+",
           "bulletOrdered": ".",
@@ -490,6 +496,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -520,6 +527,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -544,13 +552,13 @@
       {
         "id": "real/golang-proposal-design14386zippackagearchivesmd",
         "nonDefaultFields": [
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -612,6 +620,7 @@
         "isNonDefault": true,
         "checkedConventions": [
           "emphasis",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -674,6 +683,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -705,6 +715,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -737,6 +748,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -767,6 +779,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -800,6 +813,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -830,6 +844,7 @@
         "checkedConventions": [
           "emphasis",
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -861,6 +876,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -890,6 +906,7 @@
         "isNonDefault": true,
         "checkedConventions": [
           "emphasis",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -950,6 +967,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -972,37 +990,6 @@
         }
       },
       {
-        "id": "real/kubernetes-enhancements-kepssigapps4017podindexlabelreadmemd",
-        "nonDefaultFields": [
-          "listItemIndent"
-        ],
-        "isNonDefault": true,
-        "checkedConventions": [
-          "bullet",
-          "emphasis",
-          "fence",
-          "heading(setext/closeAtx)",
-          "eol"
-        ],
-        "pass": true,
-        "style": {
-          "bullet": "-",
-          "bulletOrdered": ".",
-          "emphasis": "*",
-          "strong": "*",
-          "fence": "`",
-          "fenceLen": 3,
-          "headingStyle1": "atx",
-          "headingStyle2": "atx",
-          "setext": false,
-          "closeAtx": false,
-          "rule": "-",
-          "ruleRepetition": 3,
-          "listItemIndent": "tab",
-          "eol": "\n"
-        }
-      },
-      {
         "id": "real/kubernetes-enhancements-kepssigarchitecture917gomodulesreadm",
         "nonDefaultFields": [
           "bullet",
@@ -1013,6 +1000,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1107,6 +1096,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1137,6 +1128,8 @@
         "checkedConventions": [
           "bullet",
           "emphasis",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1168,6 +1161,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1199,6 +1194,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1223,14 +1220,15 @@
       {
         "id": "real/kubernetes-enhancements-kepssignode5532restartallcontainerso",
         "nonDefaultFields": [
-          "bulletOrdered",
-          "listItemIndent"
+          "bulletOrdered"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1261,6 +1259,8 @@
         "checkedConventions": [
           "bullet",
           "emphasis",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1291,6 +1291,8 @@
         "checkedConventions": [
           "bullet",
           "emphasis",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1385,6 +1387,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1415,6 +1419,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1472,14 +1477,14 @@
         "id": "real/nodejs-node-docapihttp2md",
         "nonDefaultFields": [
           "bullet",
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1512,6 +1517,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1544,6 +1551,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1576,6 +1585,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1608,6 +1619,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1638,6 +1651,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1669,6 +1683,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1702,7 +1717,7 @@
           "heading(setext/closeAtx)",
           "eol"
         ],
-        "pass": true,
+        "pass": false,
         "style": {
           "bullet": "*",
           "bulletOrdered": ".",
@@ -1755,14 +1770,14 @@
         "id": "real/npm-body-parser-readme",
         "nonDefaultFields": [
           "bullet",
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1794,6 +1809,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -1826,6 +1842,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -1858,6 +1876,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1952,6 +1971,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -1976,14 +1996,14 @@
       {
         "id": "real/npm-commander-readme",
         "nonDefaultFields": [
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2008,14 +2028,14 @@
       {
         "id": "real/npm-compression-readme",
         "nonDefaultFields": [
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2047,6 +2067,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -2077,6 +2098,7 @@
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2140,6 +2162,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2170,6 +2193,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2200,6 +2224,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2232,6 +2257,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -2263,6 +2289,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2287,14 +2314,14 @@
       {
         "id": "real/npm-eslint-readme",
         "nonDefaultFields": [
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2326,6 +2353,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2357,6 +2385,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2387,6 +2416,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2417,6 +2447,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2448,6 +2479,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2480,6 +2512,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2511,6 +2544,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2543,6 +2577,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -2575,6 +2610,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2608,6 +2644,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2639,6 +2676,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -2702,6 +2740,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2735,6 +2775,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -2767,6 +2808,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2791,13 +2833,13 @@
       {
         "id": "real/npm-http-proxy-readme",
         "nonDefaultFields": [
-          "bullet",
-          "listItemIndent"
+          "bullet"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2859,6 +2901,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2890,6 +2933,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2922,6 +2966,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -2985,6 +3030,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3016,6 +3062,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3076,6 +3124,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -3102,14 +3152,14 @@
         "id": "real/npm-mailgun-js-readme",
         "nonDefaultFields": [
           "bullet",
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3170,6 +3220,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3201,6 +3253,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3262,6 +3315,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -3293,6 +3347,7 @@
         "checkedConventions": [
           "bullet",
           "emphasis",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3324,6 +3379,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -3356,6 +3412,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -3388,6 +3446,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3419,6 +3478,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -3451,6 +3512,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3506,14 +3568,14 @@
       {
         "id": "real/npm-passport-readme",
         "nonDefaultFields": [
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -3546,6 +3608,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3576,6 +3640,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3606,6 +3671,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -3638,6 +3704,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -3670,6 +3738,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -3701,6 +3770,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3735,6 +3805,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3765,6 +3837,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3795,6 +3868,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3825,6 +3899,7 @@
         "checkedConventions": [
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3856,6 +3931,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3887,6 +3963,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3918,6 +3995,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -3979,6 +4057,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4011,10 +4091,11 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
-        "pass": true,
+        "pass": false,
         "style": {
           "bullet": "*",
           "bulletOrdered": ".",
@@ -4042,6 +4123,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4066,8 +4148,7 @@
       {
         "id": "real/npm-tap-readme",
         "nonDefaultFields": [
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
@@ -4106,6 +4187,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4136,6 +4219,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4168,6 +4252,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4199,6 +4284,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4223,12 +4310,12 @@
       {
         "id": "real/npm-typeorm-cli-readme",
         "nonDefaultFields": [
-          "listItemIndent",
           "eol"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "fence",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4260,6 +4347,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4291,6 +4379,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4322,6 +4411,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -4355,6 +4446,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4386,6 +4478,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4418,6 +4511,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4445,8 +4539,7 @@
           "bullet",
           "headingStyle1",
           "headingStyle2",
-          "setext",
-          "listItemIndent"
+          "setext"
         ],
         "isNonDefault": true,
         "checkedConventions": [
@@ -4488,6 +4581,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4542,14 +4637,14 @@
       {
         "id": "real/npm-yup-readme",
         "nonDefaultFields": [
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4642,6 +4737,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4673,6 +4770,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4704,6 +4803,7 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4734,6 +4834,7 @@
         "checkedConventions": [
           "bullet",
           "fence",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4765,6 +4866,8 @@
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4789,14 +4892,15 @@
       {
         "id": "real/rust-lang-rfcs-text2091inlinesemanticmd",
         "nonDefaultFields": [
-          "ruleRepetition",
-          "listItemIndent"
+          "ruleRepetition"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
           "fence",
+          "strong",
+          "bulletOrdered",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -4853,13 +4957,13 @@
       {
         "id": "real/rust-lang-rfcs-text3119rustcrateownershipmd",
         "nonDefaultFields": [
-          "emphasis",
-          "listItemIndent"
+          "emphasis"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4884,13 +4988,13 @@
       {
         "id": "real/rust-lang-rfcs-text3254typesteammd",
         "nonDefaultFields": [
-          "bullet",
-          "listItemIndent"
+          "bullet"
         ],
         "isNonDefault": true,
         "checkedConventions": [
           "bullet",
           "emphasis",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -4921,6 +5025,7 @@
         "checkedConventions": [
           "bullet",
           "emphasis",
+          "strong",
           "heading(setext/closeAtx)",
           "rule",
           "eol"
@@ -4952,6 +5057,7 @@
         "checkedConventions": [
           "bullet",
           "emphasis",
+          "strong",
           "heading(setext/closeAtx)",
           "eol"
         ],
@@ -5007,7 +5113,6 @@
     ]
   },
   "a3DocAttrLossFiles": [
-    "real/npm-bull-readme",
     "real/npm-htm-readme",
     "real/npm-typeorm-cli-readme",
     "commonmark/0097",
@@ -5037,7 +5142,6 @@
     "real/npm-body-parser-readme",
     "real/npm-bootstrap-readme",
     "real/npm-buffer-readme",
-    "real/npm-bull-readme",
     "real/npm-bunyan-readme",
     "real/npm-canvas-readme",
     "real/npm-cesium-readme",
@@ -5111,8 +5215,6 @@
     "real/npm-passport-readme",
     "real/npm-pino-readme",
     "real/npm-pkg-readme",
-    "real/npm-playwright-readme",
-    "real/npm-qs-readme",
     "real/npm-ramda-readme",
     "real/npm-react-dom-readme",
     "real/npm-react-hook-form-readme",
@@ -5131,7 +5233,6 @@
     "real/npm-storybook-readme",
     "real/npm-stripe-readme",
     "real/npm-stylus-readme",
-    "real/npm-superjson-readme",
     "real/npm-swr-readme",
     "real/npm-three-readme",
     "real/npm-toml-readme",

@@ -1,18 +1,18 @@
 # Gates results
 
-Generated: 2026-09-27T04:00:59.611Z
+Generated: 2026-09-27T04:19:54.205Z
 
 | Gate | Threshold | Result | Pass |
 |---|---|---|---|
 | A. No-edit round trip, corpus files | 100% | 294/294 (100.0%) | yes |
 | A2. JSON round trip, all files | 100% | 1621/1621 (100.0%) | yes |
-| A3. Yjs round trip with plain y-prosemirror, all files (finding) | none, measured | 1473/1621 (90.9%), findings: 9 lost doc-level attrs (lead/eol), 140 lost marks on leaf inline nodes (e.g. linked images) | n/a |
+| A3. Yjs round trip with plain y-prosemirror, all files (finding) | none, measured | 1473/1621 (90.9%), findings: 8 lost doc-level attrs (lead/eol), 136 lost marks on leaf inline nodes (e.g. linked images) | n/a |
 | A3b. Yjs round trip through src/yjs.ts codec and a binary update, all files | 100% | 1621/1621 (100.0%) | yes |
 | B. Single-word edit, corpus files (file pass rate) | 98% | 293/293 (100.0%) files, 1465/1465 (100.0%) edits | yes |
 | B2. Structural edit (bold toggle), corpus files (file pass rate; finding) | none, measured | 293/293 (100.0%) files, 1465/1465 (100.0%) edits | n/a |
 | C. Opaque/special constructs survive A and B | every file containing the construct passes A; B containment holds | frontmatter:2f, raw-html:156f, mdx:2f, math-block:1f, math-inline:5f, footnote-definition:2f, link-reference-definition:102f, mermaid:1f, fenced-code:219f, table:62f | yes |
 | D. Editor-model fidelity | 100% | schema=prosemirror-model:true, doc.check() 1621/1621 (100.0%), edited doc.check() 5565/5565 (100.0%) | yes |
-| E. Style detection, non-default files passing | >= 10 files | 149 files | yes |
+| E. Style detection, non-default files passing | >= 10 files | 145 files | yes |
 
 ## Gate A detail (no-edit round trip, per set)
 
@@ -25,9 +25,9 @@ Generated: 2026-09-27T04:00:59.611Z
 
 Unstable (self-description-failed) top-level blocks across all files: 1.
 
-**Finding 1**: gate A3 (Yjs round trip via y-prosemirror's `prosemirrorToYXmlFragment`/`yXmlFragmentToProseMirrorRootNode`) loses the *doc* node's own top-level attrs (`lead`, `eol`) -- the XmlFragment has no slot for the root node's own attrs, so they always come back at schema defaults. This affects any file with a non-empty `lead` (leading blank lines before the first block) or CRLF line endings. Affected files (9): real/npm-bull-readme, real/npm-htm-readme, real/npm-typeorm-cli-readme, commonmark/0097, commonmark/0117, commonmark/0229, gfm/0067, gfm/0087, gfm/0197.
+**Finding 1**: gate A3 (Yjs round trip via y-prosemirror's `prosemirrorToYXmlFragment`/`yXmlFragmentToProseMirrorRootNode`) loses the *doc* node's own top-level attrs (`lead`, `eol`) -- the XmlFragment has no slot for the root node's own attrs, so they always come back at schema defaults. This affects any file with a non-empty `lead` (leading blank lines before the first block) or CRLF line endings. Affected files (8): real/npm-htm-readme, real/npm-typeorm-cli-readme, commonmark/0097, commonmark/0117, commonmark/0229, gfm/0067, gfm/0087, gfm/0197.
 
-**Finding 2** (more impactful): the same y-prosemirror round trip also silently drops marks on non-text inline leaf nodes -- most commonly the `link` mark wrapping an `image` node, i.e. `[![alt](img)](href)` becomes `![alt](img)` (the outer link vanishes). Affected files (140): real/kubernetes-enhancements-kepssigapimachinery4153declarativeva, real/kubernetes-enhancements-kepssigapimachinery6164internaltypee, real/kubernetes-enhancements-kepssiginstrumentation4827components, real/kubernetes-enhancements-kepssignode1898hardenedexecreadmemd, real/kubernetes-enhancements-kepssignode2837podlevelresourcespecr, real/kubernetes-enhancements-kepssignode753sidecarcontainersreadm, real/kubernetes-enhancements-kepssigsecurity3203autorefreshingoff, real/npm-amazon-cognito-identity-js-readme, real/npm-auth0-js-readme, real/npm-ava-readme, real/npm-aws-sdk-readme, real/npm-axios-readme, real/npm-base64-js-readme, real/npm-bcryptjs-readme, real/npm-bee-queue-readme, ....
+**Finding 2** (more impactful): the same y-prosemirror round trip also silently drops marks on non-text inline leaf nodes -- most commonly the `link` mark wrapping an `image` node, i.e. `[![alt](img)](href)` becomes `![alt](img)` (the outer link vanishes). Affected files (136): real/kubernetes-enhancements-kepssigapimachinery4153declarativeva, real/kubernetes-enhancements-kepssigapimachinery6164internaltypee, real/kubernetes-enhancements-kepssiginstrumentation4827components, real/kubernetes-enhancements-kepssignode1898hardenedexecreadmemd, real/kubernetes-enhancements-kepssignode2837podlevelresourcespecr, real/kubernetes-enhancements-kepssignode753sidecarcontainersreadm, real/kubernetes-enhancements-kepssigsecurity3203autorefreshingoff, real/npm-amazon-cognito-identity-js-readme, real/npm-auth0-js-readme, real/npm-ava-readme, real/npm-aws-sdk-readme, real/npm-axios-readme, real/npm-base64-js-readme, real/npm-bcryptjs-readme, real/npm-bee-queue-readme, ....
 
 ## Gate B detail (single-word edit, per set)
 
@@ -89,21 +89,23 @@ Unstable (self-description-failed) top-level blocks across all files: 1.
 - `doc.check()` on every gate-B-edited document: 5565/5565 (100.0%)
 - Edits made via ProseMirror `Transaction`s (`EditorState.tr.insertText`): by construction, all of gate B's 5565 edits.
 - A2 (JSON round trip) pass rate: 1621/1621 (100.0%)
-- A3 (Yjs round trip) pass rate: 1473/1621 (90.9%) (9 due to finding 1, 140 due to finding 2 above)
+- A3 (Yjs round trip) pass rate: 1473/1621 (90.9%) (8 due to finding 1, 136 due to finding 2 above)
 
 ## Gate E detail (style detection, real + handwritten)
 
-Non-default files: 149 total, 149 passing the forced-reserialize convention check (threshold: >= 10 passing).
+Non-default files: 148 total, 145 passing the forced-reserialize convention check (threshold: >= 10 passing).
+
+Failing non-default files (3): handwritten/style-plus-bullets, real/npm-base64-js-readme, real/npm-semver-readme
 
 | File | Non-default conventions | Pass |
 |---|---|---|
 | handwritten/crlf | eol | yes |
 | handwritten/setext-headings | headingStyle1, headingStyle2, setext | yes |
 | handwritten/style-dash-underscore | emphasis, rule | yes |
-| handwritten/style-plus-bullets | bullet, fenceLen, closeAtx | yes |
+| handwritten/style-plus-bullets | bullet, fenceLen, closeAtx | no |
 | handwritten/style-star-bullets | bullet, emphasis, strong, fence, headingStyle1, setext | yes |
 | real/golang-proposal-design11502securitypolicymd | bullet | yes |
-| real/golang-proposal-design14386zippackagearchivesmd | emphasis, listItemIndent | yes |
+| real/golang-proposal-design14386zippackagearchivesmd | emphasis | yes |
 | real/golang-proposal-design15292201312typeparamsmd | bullet, emphasis | yes |
 | real/golang-proposal-design17280profilelabelsmd | emphasis | yes |
 | real/golang-proposal-design2981gotestjsonmd | bullet, emphasis | yes |
@@ -117,7 +119,6 @@ Non-default files: 149 total, 149 passing the forced-reserialize convention chec
 | real/golang-proposal-designdraftiofsmd | emphasis | yes |
 | real/kubernetes-enhancements-kepssigapimachinery2334graduateserve | bullet | yes |
 | real/kubernetes-enhancements-kepssigapimachinery4153declarativeva | emphasis | yes |
-| real/kubernetes-enhancements-kepssigapps4017podindexlabelreadmemd | listItemIndent | yes |
 | real/kubernetes-enhancements-kepssigarchitecture917gomodulesreadm | bullet, emphasis | yes |
 | real/kubernetes-enhancements-kepssigauth4872hardenkubeletcertvali | rule, ruleRepetition | yes |
 | real/kubernetes-enhancements-kepssigcloudprovider1179buildingwith | emphasis | yes |
@@ -125,7 +126,7 @@ Non-default files: 149 total, 149 passing the forced-reserialize convention chec
 | real/kubernetes-enhancements-kepssigclusterlifecyclewgs783compone | emphasis | yes |
 | real/kubernetes-enhancements-kepssignode1898hardenedexecreadmemd | emphasis | yes |
 | real/kubernetes-enhancements-kepssignode2837podlevelresourcespecr | bullet | yes |
-| real/kubernetes-enhancements-kepssignode5532restartallcontainerso | bulletOrdered, listItemIndent | yes |
+| real/kubernetes-enhancements-kepssignode5532restartallcontainerso | bulletOrdered | yes |
 | real/kubernetes-enhancements-kepssigscheduling1923prefernominated | emphasis | yes |
 | real/kubernetes-enhancements-kepssigsecurity3203autorefreshingoff | strong | yes |
 | real/kubernetes-enhancements-kepssigstorage559volumesubpathexpans | bullet | yes |
@@ -133,24 +134,24 @@ Non-default files: 149 total, 149 passing the forced-reserialize convention chec
 | real/nodejs-node-docapiclimd | bullet, emphasis | yes |
 | real/nodejs-node-docapidiagnosticschannelmd | bullet | yes |
 | real/nodejs-node-docapierrorsmd | bullet, emphasis | yes |
-| real/nodejs-node-docapihttp2md | bullet, emphasis, listItemIndent | yes |
+| real/nodejs-node-docapihttp2md | bullet, emphasis | yes |
 | real/nodejs-node-docapinapimd | bullet, emphasis | yes |
 | real/nodejs-node-docapiprocessmd | bullet, emphasis | yes |
 | real/nodejs-node-docapisingleexecutableapplicationsmd | bullet, emphasis | yes |
 | real/nodejs-node-docapitlsmd | bullet, emphasis | yes |
 | real/nodejs-node-docapivfsmd | bullet | yes |
 | real/npm-axios-readme | emphasis | yes |
-| real/npm-base64-js-readme | bullet, headingStyle1 | yes |
+| real/npm-base64-js-readme | bullet, headingStyle1 | no |
 | real/npm-bee-queue-readme | emphasis | yes |
-| real/npm-body-parser-readme | bullet, emphasis, listItemIndent | yes |
+| real/npm-body-parser-readme | bullet, emphasis | yes |
 | real/npm-browserslist-readme | emphasis | yes |
 | real/npm-bull-readme | emphasis | yes |
 | real/npm-canvas-readme | bullet | yes |
 | real/npm-chai-readme | emphasis | yes |
 | real/npm-changesets-readme | bullet | yes |
 | real/npm-chrono-node-readme | bullet, emphasis | yes |
-| real/npm-commander-readme | emphasis, listItemIndent | yes |
-| real/npm-compression-readme | emphasis, listItemIndent | yes |
+| real/npm-commander-readme | emphasis | yes |
+| real/npm-compression-readme | emphasis | yes |
 | real/npm-cross-env-readme | emphasis | yes |
 | real/npm-d3-readme | bullet | yes |
 | real/npm-dayjs-readme | bullet | yes |
@@ -159,7 +160,7 @@ Non-default files: 149 total, 149 passing the forced-reserialize convention chec
 | real/npm-echarts-readme | bullet | yes |
 | real/npm-enquirer-readme | emphasis, rule | yes |
 | real/npm-env-var-readme | bullet | yes |
-| real/npm-eslint-readme | emphasis, listItemIndent | yes |
+| real/npm-eslint-readme | emphasis | yes |
 | real/npm-expo-readme | emphasis | yes |
 | real/npm-express-http-proxy-readme | bullet | yes |
 | real/npm-express-readme | bullet | yes |
@@ -175,7 +176,7 @@ Non-default files: 149 total, 149 passing the forced-reserialize convention chec
 | real/npm-graphql-request-readme | emphasis | yes |
 | real/npm-gray-matter-readme | bullet, emphasis, rule | yes |
 | real/npm-htm-readme | emphasis | yes |
-| real/npm-http-proxy-readme | bullet, listItemIndent | yes |
+| real/npm-http-proxy-readme | bullet | yes |
 | real/npm-immer-readme | emphasis | yes |
 | real/npm-jest-readme | emphasis | yes |
 | real/npm-jsdom-readme | emphasis | yes |
@@ -185,7 +186,7 @@ Non-default files: 149 total, 149 passing the forced-reserialize convention chec
 | real/npm-ky-readme | emphasis | yes |
 | real/npm-less-readme | bullet | yes |
 | real/npm-lint-staged-readme | emphasis | yes |
-| real/npm-mailgun-js-readme | bullet, emphasis, listItemIndent | yes |
+| real/npm-mailgun-js-readme | bullet, emphasis | yes |
 | real/npm-mdx-readme | bullet | yes |
 | real/npm-memcached-readme | bullet | yes |
 | real/npm-mime-types-readme | strong | yes |
@@ -198,7 +199,7 @@ Non-default files: 149 total, 149 passing the forced-reserialize convention chec
 | real/npm-node-fetch-readme | emphasis | yes |
 | real/npm-node-schedule-readme | bullet | yes |
 | real/npm-p-retry-readme | emphasis | yes |
-| real/npm-passport-readme | emphasis, listItemIndent | yes |
+| real/npm-passport-readme | emphasis | yes |
 | real/npm-pg-readme | emphasis | yes |
 | real/npm-pino-readme | bullet | yes |
 | real/npm-playwright-readme | bullet | yes |
@@ -214,24 +215,24 @@ Non-default files: 149 total, 149 passing the forced-reserialize convention chec
 | real/npm-rimraf-readme | emphasis | yes |
 | real/npm-rollup-readme | emphasis | yes |
 | real/npm-sass-readme | bullet | yes |
-| real/npm-semver-readme | bullet, headingStyle1 | yes |
+| real/npm-semver-readme | bullet, headingStyle1 | no |
 | real/npm-stripe-readme | emphasis | yes |
-| real/npm-tap-readme | emphasis, listItemIndent | yes |
+| real/npm-tap-readme | emphasis | yes |
 | real/npm-tar-readme | emphasis | yes |
 | real/npm-tiny-emitter-readme | bullet | yes |
 | real/npm-toml-readme | headingStyle1, headingStyle2, setext | yes |
 | real/npm-ts-node-readme | bullet | yes |
-| real/npm-typeorm-cli-readme | listItemIndent, eol | yes |
+| real/npm-typeorm-cli-readme | eol | yes |
 | real/npm-unified-readme | bullet | yes |
 | real/npm-unzipper-readme | bullet, strong | yes |
 | real/npm-uuid-readme | emphasis | yes |
 | real/npm-uvu-readme | bullet, emphasis | yes |
 | real/npm-webpack-readme | emphasis | yes |
 | real/npm-winston-readme | bullet, emphasis | yes |
-| real/npm-xml2js-readme | bullet, headingStyle1, headingStyle2, setext, listItemIndent | yes |
+| real/npm-xml2js-readme | bullet, headingStyle1, headingStyle2, setext | yes |
 | real/npm-xmldom-readme | bullet, emphasis, headingStyle1, headingStyle2, setext | yes |
 | real/npm-yargs-readme | bullet | yes |
-| real/npm-yup-readme | emphasis, listItemIndent | yes |
+| real/npm-yup-readme | emphasis | yes |
 | real/rust-lang-rfcs-text0001privatefieldsmd | bullet | yes |
 | real/rust-lang-rfcs-text0086pluginregistrarmd | fence | yes |
 | real/rust-lang-rfcs-text0494cstrandcvecstabilitymd | bullet | yes |
@@ -239,10 +240,10 @@ Non-default files: 149 total, 149 passing the forced-reserialize convention chec
 | real/rust-lang-rfcs-text1270deprecationmd | bullet | yes |
 | real/rust-lang-rfcs-text1560nameresolutionmd | bullet | yes |
 | real/rust-lang-rfcs-text1845sharedfromslicemd | bullet | yes |
-| real/rust-lang-rfcs-text2091inlinesemanticmd | ruleRepetition, listItemIndent | yes |
+| real/rust-lang-rfcs-text2091inlinesemanticmd | ruleRepetition | yes |
 | real/rust-lang-rfcs-text2957cargofeatures2md | bullet | yes |
-| real/rust-lang-rfcs-text3119rustcrateownershipmd | emphasis, listItemIndent | yes |
-| real/rust-lang-rfcs-text3254typesteammd | bullet, listItemIndent | yes |
+| real/rust-lang-rfcs-text3119rustcrateownershipmd | emphasis | yes |
+| real/rust-lang-rfcs-text3254typesteammd | bullet | yes |
 | real/rust-lang-rfcs-text3392leadershipcouncilleadershipcouncilrfc | ruleRepetition | yes |
 | real/rust-lang-rfcs-text3695cfgbooleanliteralsmd | emphasis | yes |
 | real/rust-lang-rfcs-text3892complexnumbersmd | emphasis | yes |
@@ -252,5 +253,5 @@ Informational, per top-level block, forced re-serialization (hints on / hints of
 ## Run info
 
 - Mode: full corpus
-- Elapsed: 393.0s
+- Elapsed: 390.0s
 

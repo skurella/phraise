@@ -40,7 +40,26 @@ export interface SerializeOpts {
    * paragraph.
    */
   semanticLineBreaks?: boolean;
+  /**
+   * What to do when no candidate for a changed block verifies (its output
+   * would not re-parse to the edited block). 'throw' (default) raises
+   * UnverifiedSerializationError so the caller never writes a file whose
+   * meaning differs from the document; 'emit' returns the best effort and
+   * reports it through `trace` (used by the gate harness to measure).
+   */
+  onUnverified?: 'throw' | 'emit';
   trace?: (info: TraceInfo) => void;
+}
+
+export class UnverifiedSerializationError extends Error {
+  constructor(
+    readonly blockIndex: number,
+    readonly blockType: string,
+    readonly candidate: string,
+  ) {
+    super(`serializeDoc: block ${blockIndex} (${blockType}) has no serialization that re-parses to the edited block`);
+    this.name = 'UnverifiedSerializationError';
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -704,6 +723,7 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
   const ctx = buildDefsContextFromDoc(doc);
   const style = detectDocStyle(doc);
 
+  let currentIndex = 0;
   function emit(block: PMNode): string {
     // Opaque source blocks are their own source: emit the text as is.
     if (block.type.name === 'raw_block' && !forceReserialize) {
@@ -765,12 +785,16 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
       verified = false;
     }
     trace?.({ kind: verified ? 're-serialize' : 'unverified', type: block.type.name, text: result });
+    if (!verified && !forceReserialize && (opts.onUnverified ?? 'throw') === 'throw') {
+      throw new UnverifiedSerializationError(currentIndex, block.type.name, result);
+    }
     return result;
   }
 
   let out = (doc.attrs.lead as string) ?? '';
   const n = doc.childCount;
   doc.forEach((block, _offset, index) => {
+    currentIndex = index;
     out += emit(block);
     const gap = block.attrs.gap as string | null;
     if (gap != null) out += gap;

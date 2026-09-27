@@ -47,7 +47,7 @@ export function runGateB2One(pf: ParsedFile, serializeOpts: SerializeOpts = {}):
       newDoc.check();
 
       const traces: TraceInfo[] = [];
-      const out = serializeDoc(newDoc, { ...serializeOpts, trace: (info) => traces.push(info) });
+      const out = serializeDoc(newDoc, { onUnverified: 'emit', ...serializeOpts, trace: (info) => traces.push(info) });
 
       let semanticOk = false;
       try {

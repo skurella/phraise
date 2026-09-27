@@ -23,9 +23,18 @@ const DEFAULT_STYLE: Style = {
   eol: '\n',
 };
 
+// Only conventions that conventionsMatch() actually re-checks may make a file
+// count as non-default; listItemIndent is detected but not re-checked, so it
+// does not count (review finding, 2026-09-27: a file whose only non-default
+// trait was unchecked counted towards the threshold vacuously).
+const CHECKED_FIELDS: (keyof Style)[] = [
+  'bullet', 'bulletOrdered', 'emphasis', 'strong', 'fence', 'fenceLen',
+  'headingStyle1', 'headingStyle2', 'setext', 'closeAtx', 'rule', 'ruleRepetition', 'eol',
+];
+
 function isNonDefault(style: Style): string[] {
   const diffs: string[] = [];
-  for (const k of Object.keys(DEFAULT_STYLE) as (keyof Style)[]) {
+  for (const k of CHECKED_FIELDS) {
     if (style[k] !== DEFAULT_STYLE[k]) diffs.push(k);
   }
   return diffs;
@@ -33,6 +42,8 @@ function isNonDefault(style: Style): string[] {
 
 interface Applicable {
   bulletList: boolean;
+  orderedList: boolean;
+  strong: boolean;
   emphasis: boolean;
   fence: boolean;
   heading1or2: boolean;
@@ -43,6 +54,8 @@ interface Applicable {
 function scanApplicable(mdast: any, text: string): Applicable {
   const a: Applicable = {
     bulletList: false,
+    orderedList: false,
+    strong: false,
     emphasis: false,
     fence: false,
     heading1or2: false,
@@ -51,6 +64,8 @@ function scanApplicable(mdast: any, text: string): Applicable {
   };
   const walk = (node: any) => {
     if (node.type === 'list' && !node.ordered) a.bulletList = true;
+    if (node.type === 'list' && node.ordered) a.orderedList = true;
+    if (node.type === 'strong') a.strong = true;
     if (node.type === 'emphasis') a.emphasis = true;
     if (node.type === 'code' && node.position) {
       const raw = text.slice(node.position.start.offset, node.position.end.offset);
@@ -78,11 +93,25 @@ function conventionsMatch(style: Style, forcedStyle: Style, applicable: Applicab
   }
   if (applicable.fence) {
     checked.push('fence');
-    if (style.fence !== forcedStyle.fence) pass = false;
+    if (style.fence !== forcedStyle.fence || style.fenceLen !== forcedStyle.fenceLen) pass = false;
+  }
+  if (applicable.strong) {
+    checked.push('strong');
+    if (style.strong !== forcedStyle.strong) pass = false;
+  }
+  if (applicable.orderedList) {
+    checked.push('bulletOrdered');
+    if (style.bulletOrdered !== forcedStyle.bulletOrdered) pass = false;
   }
   if (applicable.heading1or2) {
     checked.push('heading(setext/closeAtx)');
-    if (style.setext !== forcedStyle.setext || style.closeAtx !== forcedStyle.closeAtx) pass = false;
+    if (
+      style.setext !== forcedStyle.setext ||
+      style.closeAtx !== forcedStyle.closeAtx ||
+      style.headingStyle1 !== forcedStyle.headingStyle1 ||
+      style.headingStyle2 !== forcedStyle.headingStyle2
+    )
+      pass = false;
   }
   if (applicable.rule) {
     checked.push('rule');

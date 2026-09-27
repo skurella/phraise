@@ -5,3 +5,4 @@ export { serializeDoc, type SerializeOpts, type TraceInfo } from './serialize.js
 export { detectStyle, type Style } from './style.js';
 export { semanticEq, stripMeta, type SemanticEqOpts } from './compare.js';
 export { docToYDoc, yDocToDoc, encodeLeafMarks, decodeLeafMarks } from './yjs.js';
+export { UnverifiedSerializationError } from './serialize.js';
