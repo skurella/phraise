@@ -1,6 +1,6 @@
 # Brief 03: Yjs fuzz (gate H), granularity comparison, targeted re-seed measurement
 
-Status: active
+Status: done
 Author: spike orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Related: [plan](2026-09-27-spike-2-plan.md), [charter](2026-09-27-spike-2-charter-crdt-rebase.md), [brief 02](2026-09-27-spike-2-brief-02-yjs-integration-gates.md)

@@ -1,6 +1,6 @@
 # Brief 06: fresh-context review of spike 2
 
-Status: active
+Status: done
 Author: spike orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Related: [plan](2026-09-27-spike-2-plan.md), [charter](2026-09-27-spike-2-charter-crdt-rebase.md)

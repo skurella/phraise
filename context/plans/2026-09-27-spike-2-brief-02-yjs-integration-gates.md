@@ -1,6 +1,6 @@
 # Brief 02: Yjs replica integration, comments, attribution, gates A to G
 
-Status: active
+Status: done
 Author: spike orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Related: [plan and algorithm spec](2026-09-27-spike-2-plan.md), [charter](2026-09-27-spike-2-charter-crdt-rebase.md), [brief 01](2026-09-27-spike-2-brief-01-yjs-core.md)

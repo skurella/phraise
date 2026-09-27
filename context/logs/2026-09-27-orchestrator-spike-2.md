@@ -48,3 +48,9 @@ Ran Loro spike myself: 10 tests pass, tsc clean, gates A to F, idempotence, 200-
 
 ## 07:27 — Builder 5 (binding probe) verified; review dispatched
 Binding probe: 9 tests pass. Results: y-prosemirror 1.3.7 loses root doc attrs and atom-node marks on every path; loro-prosemirror 0.4.4 keeps root attrs headless but loses atom marks, and its live plugin loses root attrs and then deletes them from Loro on the next edit; Yjs 14 RC (@y/y rc.26 + @y/prosemirror 2.0.0-13) keeps both. Yjs 14 has no automatic authorship manager in the RC tarball; per-client insert ranges work as in 13 via item IDs or createInsertSetFromStructStore. Brief 06 (fresh-context review) written; dispatching (dispatch 6).
+
+## 07:45 — Review addressed, clean-checkout verification, findings written
+Reviewer (dispatch 6) findings: gate H narrowed post hoc (now the human-vs-human count is printed in the gate row and the findings state both readings plainly); needs-review blind to mark-only changes (fixed: compares attrs plus formatted delta; resurrection keeps marks; regression test); sibling rebases to different targets from one base blend silently (added `baseConflicts` detector plus test; rule: serialize rebases per doc); README relay description stale (noted). Fuzz flag ground truth aligned to marks and attrs: precision and recall 100% at word granularity.
+Clean clone of pushed branch 69da12f: npm install, npm test and tsc pass in all three spike dirs (182, 10, 9 tests); `npm run gates` passes in Yjs and Loro dirs; `npm run fuzz` exit 0. Re-ran fuzz after the ground-truth change at 9252a2b: all gated categories 0.
+Findings doc: [spike 2 findings](../docs/2026-09-27-spike-2-findings-crdt-rebase.md). Dispatches used: 6 of ~10.
+
