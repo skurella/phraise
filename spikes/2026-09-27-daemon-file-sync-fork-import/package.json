@@ -8,7 +8,9 @@
     "fetch": "node scripts/fetch-corpus.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "pregates": "node scripts/fetch-corpus.mjs",
     "gates": "tsx gates/index.ts",
+    "pregates:quick": "node scripts/fetch-corpus.mjs",
     "gates:quick": "tsx gates/index.ts --quick"
   },
   "dependencies": {
