@@ -191,6 +191,7 @@ Re-run with an App user token: C (author, committer, signature, "on behalf of" b
 - GitHub Enterprise Server: not tested.
 - Retention: run `check-retention-probe.sh` at 1, 4 and 12 weeks.
 - How long objects of a deleted draft stay readable by SHA.
+- Spike tooling gap, from the fresh-context review: `git push` writes share the write counter and spacing but have no automatic stop on a rate-limit or abuse response over git transport, since there is no HTTP status to inspect. No push failed in this spike except the intended stale-lease rejection. A production flusher over git needs its own back-off on push errors.
 
 ## Cleanup
 

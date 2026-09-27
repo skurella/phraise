@@ -1,6 +1,6 @@
 # Brief: fresh-context review of spike 4
 
-Status: active
+Status: done
 Author: spike 4 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Related: [charter](2026-09-27-spike-4-charter-github-storage.md), [plan](2026-09-27-spike-4-plan.md)

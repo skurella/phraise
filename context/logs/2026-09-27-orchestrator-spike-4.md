@@ -1,6 +1,6 @@
 # Log: spike 4 orchestrator, GitHub storage mechanics
 
-Status: active
+Status: done
 Author: spike orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Related: [charter](../plans/2026-09-27-spike-4-charter-github-storage.md), [plan](../plans/2026-09-27-spike-4-plan.md)
@@ -49,4 +49,7 @@ Decided to test `git push --force-with-lease` to a hidden ref because gate D sho
 
 ## 04:31 — findings doc written, review dispatched
 Findings: [spike 4 findings](../docs/2026-09-27-spike-4-findings-github-storage.md). Recommendation: D2 amend (CAS, git push transport, public-repo exposure, budget), D9 confirm with amendment (installation token for drafts). Dispatching one Sonnet reviewer per [review brief](../plans/2026-09-27-spike-4-brief-review.md). Worker dispatches so far: 1.
+
+## 04:36 — review back, final verification, handback
+Reviewer (Sonnet, [log](2026-09-27-reviewer-spike-4.md)): PASS, no blocker or major. Minor: `git push` writes cannot auto-stop on a git-transport rate-limit response (added to findings open items); gate G's write-count comment ignores the aborted run (documented in the log above). Reviewer made no writes. Final check: anonymous `git ls-remote` lists only `refs/phraise-spike/retention-probe`; no STOP file; no 403 or 429 in the whole spike. Final write total: 143 of 300. Worker dispatches: 1 of about 6.
 
