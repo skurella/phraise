@@ -45,3 +45,63 @@ six pass, matching spike 2's own results:
 
 Task 1 done. Moving to task 2 (relay: rebase: seeding, gc off, rebase route,
 relay-side integration).
+
+## 12:05 — task 2 done: relay rebase seeding, gc off, /rebase route, relay-side integration hook
+
+Added src/rebase/liveIntegration.ts: attachIntegrationHook(doc, {isRemoteOrigin})
+using the Y.Doc's own beforeTransaction/afterTransaction events (per the
+brief's own instruction) -- snapshots P before a qualifying transaction, runs
+integrate(doc, P, doc.clientID) after. Confirmed by reading source (not
+assumed) what "remote" looks like on each side:
+- live client: @hocuspocus/provider's applySyncMessage calls
+  readSyncMessage(..., provider.document, provider) -- transactionOrigin
+  is the HocuspocusProvider instance itself.
+- relay: @hocuspocus/server's readSyncMessage passes
+  {source:'connection', connection} for a client-sourced message,
+  {source:'local'} otherwise -- isConnectionOrigin checks
+  origin.source === 'connection'.
+Both sides skip origin === 'integrate' (integrate.ts's own transaction tag)
+to avoid recursion; this exclusion is automatic for the relay's own
+rebase-apply transaction too (tagged 'rebase', not connection-shaped).
+
+relay.ts changes (task 2):
+- yDocOptions: {gc:false, gcFilter:()=>false} on the Server config -- found
+  by reading @hocuspocus/server's defaultConfiguration/Document constructor
+  (yDocOptions spreads into `new Document(name, yDocOptions, ...)`, which
+  does `super(yDocOptions)` against Y.Doc). TS required gcFilter alongside
+  gc in the option type, satisfied with a filter that never protects
+  anything (irrelevant when gc itself is false).
+- rebase: prefix added to splitDocName; onLoadDocument seeds it from
+  <seeds>/rebase/<name>.md via spike 2's own seedDoc (commit "A",
+  REBASE_SEED_AUTHOR) -- checks emptiness of spike 2's own "pm" fragment,
+  not spike 1's "prosemirror" one, since the two schemas never share a doc.
+- attachIntegrationHook(document, {isRemoteOrigin: isConnectionOrigin})
+  called once per document (WeakSet-guarded) in onLoadDocument, for every
+  doc kind -- "the relay itself also integrates (it is a replica)".
+- POST /rebase/<docName> {targetMarkdown, targetCommit, authorName?,
+  authorEmail?, granularity?}: 404 if the document isn't loaded yet (no
+  client has connected -- computeRebaseUpdate needs the seeded base/
+  snapshot that only onLoadDocument writes); else reads the doc's own
+  PHRAISE_MAP 'base' pointer first and short-circuits with
+  {applied:false, reason:'already at target'} when it already equals
+  targetCommit (idempotence point -- see the file's own comment for why
+  this has to be checked at the route rather than relying on
+  computeRebaseUpdate to converge to a true no-op on a repeat call);
+  otherwise calls computeRebaseUpdate(document, ...) and
+  Y.applyUpdate(document, update, 'rebase'), which reaches Hocuspocus's
+  normal broadcast path (same as any client edit) with no extra plumbing.
+
+Smoke-tested directly (raw Y.Doc + HocuspocusProvider, no ProseMirror editor
+yet -- deleted after, per this package's convention): POST before any
+client connects -> 404 as expected; connecting seeds correctly (doc text
+and PHRAISE_MAP 'base' == {id:'A',commit:'A'} match the source .md); POST
+targetCommit B -> 200 {applied:true}, and the already-connected raw client
+receives the rebased content within one poll (base becomes {id:'B',
+commit:'B'}, text matches the rewritten paragraph); retrying the identical
+POST -> 200 {applied:false, reason:'already at target'} -- confirms
+idempotence end-to-end, not just by reading the code. lsof -nP
+-iTCP:4210-4239 -sTCP:LISTEN empty afterward.
+
+`npx tsc --noEmit`: clean.
+
+Task 2 done. Moving to task 3 (live clients for spike 2's schema).

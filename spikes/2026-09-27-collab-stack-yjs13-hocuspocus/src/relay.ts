@@ -16,11 +16,40 @@
 //                       prosemirrorToYXmlFragment and no codec: the
 //                       negative control that must show the same loss
 //                       spike 1's gate A3 measured (root attrs, atom marks).
+//   rebase:<name>   -- brief 05 (gate F): if nothing is persisted yet, seed
+//                       from <seeds>/rebase/<name>.md via spike 2's own
+//                       seedDoc/schema/markdown parser (src/rebase/), at
+//                       commit "A" under REBASE_SEED_AUTHOR (below) --
+//                       spike 2's own scenario, not spike 1's schema/codec,
+//                       per the brief ("do not port it to spike 1's
+//                       schema"). Rebases against these documents run
+//                       through the POST /rebase/<docName> route below.
 //
 // An HTTP GET /state/<docName> on the same port returns
 // Y.encodeStateAsUpdate(document) as a raw binary body, so a gate can
 // inspect exactly what the relay has stored for a document without going
 // through a WebSocket client.
+//
+// An HTTP POST /rebase/<docName> (brief 05, gate F) runs spike 2's rebase
+// directly on this relay's own in-memory document -- "the rebase runs on
+// the relay, serialized per document" (S2-3, restated in the brief): body
+// is JSON `{ targetMarkdown, targetCommit, authorName?, authorEmail?,
+// granularity? }`. computeRebaseUpdate() forks `document` at its own base
+// snapshot (unaffected by any other request; Node's single-threaded event
+// loop already serializes these synchronous calls, so no extra lock is
+// needed for one process) and returns an update *without* applying it (see
+// src/rebase/rebase.ts's own doc comment); this handler applies it with
+// Y.applyUpdate(document, update, REBASE_TX_ORIGIN) so Hocuspocus's normal
+// update broadcasting takes over from there (the same path that broadcasts
+// any client's own edit), reaching every currently-connected client (e.g.
+// alice, mid-session) exactly like any other update. Idempotence ("a retry
+// of the same rebase must be a no-op"): checked at this route, not inside
+// computeRebaseUpdate itself -- a *second* call forking from a base that
+// already equals targetCommit would still write new (self-referential,
+// same-id) rebase-record/snapshot map entries with a change in derived
+// peer id, which is a needless rewrite of already-correct state, not a true
+// no-op; so this route reads the document's current base pointer first and
+// skips entirely (no update at all) when it already matches targetCommit.
 import fs from 'node:fs';
 import path from 'node:path';
 import * as Y from 'yjs';
@@ -30,6 +59,30 @@ import { prosemirrorToYXmlFragment } from '@tiptap/y-tiptap';
 import { parseMarkdown } from './parse.js';
 import { docToYDoc, FRAGMENT_NAME, META_MAP_NAME } from './yjs.js';
 import { recordAttribution, ATTRIBUTION_ORIGIN } from './attribution.js';
+import { seedDoc, PHRAISE_MAP, PM_FRAGMENT as PHRAISE_PM_FRAGMENT, type Author } from './rebase/seed.js';
+import { computeRebaseUpdate, type Base } from './rebase/rebase.js';
+import type { Granularity } from './rebase/diff.js';
+import { attachIntegrationHook, isConnectionOrigin } from './rebase/liveIntegration.js';
+
+/** Origin tag for this route's own Y.applyUpdate call: not shaped like
+ * @hocuspocus/server's ConnectionTransactionOrigin ({source:'connection',...}),
+ * so src/rebase/liveIntegration.ts's isConnectionOrigin correctly does not
+ * treat this as an incoming replica batch needing its own integrate() pass
+ * (the relay computed this rebase itself; it is the new ground truth, not
+ * something to integrate against). */
+const REBASE_TX_ORIGIN = 'rebase';
+
+/** Fixed seed author for every `rebase:<name>` document's initial commit
+ * "A" (brief 05's scope: one scenario, one seed identity; gate F supplies
+ * its own MD_A/MD_B via the seed file and the /rebase route respectively). */
+const REBASE_SEED_AUTHOR: Author = { name: 'Repo Owner', email: 'owner@example.com' };
+const REBASE_SEED_COMMIT = 'A';
+
+/** Documents this relay process has already attached the integration hook
+ * to (brief 05 task 2: "the relay itself also integrates (it is a
+ * replica)"). onLoadDocument fires once per document's lifetime in this
+ * process, but guarded anyway since nothing here guarantees that. */
+const integratedDocs = new WeakSet<object>();
 
 interface Args {
   port: number;
@@ -68,9 +121,10 @@ function parseArgs(argv: string[]): Args {
   return out as Args;
 }
 
-function splitDocName(documentName: string): { kind: 'file' | 'plain'; relpath: string } | null {
+function splitDocName(documentName: string): { kind: 'file' | 'plain' | 'rebase'; relpath: string } | null {
   if (documentName.startsWith('file:')) return { kind: 'file', relpath: documentName.slice('file:'.length) };
   if (documentName.startsWith('plain:')) return { kind: 'plain', relpath: documentName.slice('plain:'.length) };
+  if (documentName.startsWith('rebase:')) return { kind: 'rebase', relpath: documentName.slice('rebase:'.length) };
   return null;
 }
 
@@ -84,6 +138,14 @@ async function main() {
     port: args.port,
     address: '127.0.0.1',
     quiet: true,
+    // Brief 05 design constraint: "documents are gc:false on the relay and
+    // on every client" -- integrate()'s resurrection (src/rebase/integrate.ts)
+    // needs deleted items' content to still be walkable, which Yjs's
+    // garbage collector would otherwise reclaim. Found by reading
+    // @hocuspocus/server's own defaultConfiguration (`yDocOptions: {gc:
+    // true, ...}`), spread into every `new Document(name, yDocOptions, ...)`
+    // it constructs (packages/server/src/Hocuspocus.ts/Document.ts).
+    yDocOptions: { gc: false, gcFilter: () => false },
     ...(args.debounce !== undefined ? { debounce: args.debounce } : {}),
     ...(args.maxDebounce !== undefined ? { maxDebounce: args.maxDebounce } : {}),
     extensions: [
@@ -96,9 +158,46 @@ async function main() {
         // which applies the fetched update onto this same document
         // instance before this hook runs).
         async onLoadDocument({ document, documentName }) {
-          if (process.env.PHRAISE_DEBUG_SEED) console.error('[relay debug] onLoadDocument', documentName, 'isEmpty=', document.isEmpty(FRAGMENT_NAME));
-          if (!document.isEmpty(FRAGMENT_NAME)) return;
           const parsed = splitDocName(documentName);
+          if (process.env.PHRAISE_DEBUG_SEED) {
+            console.error('[relay debug] onLoadDocument', documentName, 'isEmpty=', document.isEmpty(FRAGMENT_NAME));
+          }
+
+          // Brief 05, task 2: attach the relay-side integration hook once
+          // per document, regardless of kind -- "the relay itself also
+          // integrates (it is a replica)". Attached before any seeding
+          // below runs so a seed's own transaction can't be mistaken for a
+          // remote batch (seeding uses no connection-shaped origin, so
+          // isConnectionOrigin already excludes it; attaching first is just
+          // belt-and-suspenders ordering, not load-bearing).
+          if (!integratedDocs.has(document)) {
+            integratedDocs.add(document);
+            attachIntegrationHook(document, { isRemoteOrigin: isConnectionOrigin });
+          }
+
+          // rebase: docs use spike 2's own "pm" fragment (src/rebase/seed.ts's
+          // PM_FRAGMENT), not spike 1's FRAGMENT_NAME ("prosemirror") -- the
+          // two schemas/codecs never share a document, so checking the
+          // right fragment for emptiness matters for each kind.
+          if (parsed?.kind === 'rebase') {
+            if (!document.isEmpty(PHRAISE_PM_FRAGMENT)) return;
+            const seedPath = path.join(seedsDir, 'rebase', `${parsed.relpath}.md`);
+            if (!fs.existsSync(seedPath)) {
+              console.error(`[relay] rebase seed missing for ${documentName}: ${seedPath}`);
+              return;
+            }
+            const md = fs.readFileSync(seedPath, 'utf8');
+            // seedDoc builds its own fresh Y.Doc (deterministic seed peer,
+            // gc:false); merge its content into the Document instance we
+            // were actually handed, the same way docToYDoc below writes
+            // into an existing Y.Doc rather than replacing it (Hocuspocus
+            // owns this `document` object; nothing else can swap it out).
+            const seeded = seedDoc(parsed.relpath, md, REBASE_SEED_COMMIT, REBASE_SEED_AUTHOR);
+            Y.applyUpdate(document, Y.encodeStateAsUpdate(seeded), REBASE_TX_ORIGIN);
+            return;
+          }
+
+          if (!document.isEmpty(FRAGMENT_NAME)) return;
           if (!parsed) return;
           const seedPath = path.join(seedsDir, parsed.relpath);
           if (!fs.existsSync(seedPath)) {
@@ -168,7 +267,76 @@ async function main() {
           recordAttribution(document, update, user ?? 'seed', Date.now());
         },
         async onRequest({ request, response }) {
+          // The framework's requestHandler always writes its own 200
+          // "Welcome to Hocuspocus!" response after every onRequest hook
+          // resolves (see packages/server/src/Server.ts) unless the hook
+          // throws -- and throwing here would surface as an unhandled
+          // rejection (the http listener doesn't await requestHandler's
+          // promise). Neutering the two calls it's about to make, right
+          // after making them for real, is the one option that neither
+          // double-writes nor risks a crash; shared by every route below.
+          function sendJSON(status: number, body: unknown): void {
+            response.writeHead(status, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify(body));
+            response.writeHead = (() => response) as any;
+            response.end = (() => response) as any;
+          }
+
           const url = request.url ?? '';
+
+          // Brief 05, gate F: POST /rebase/<docName> {targetMarkdown,
+          // targetCommit, authorName?, authorEmail?, granularity?} runs
+          // spike 2's rebase on this relay's own in-memory document (see
+          // this file's top-of-file comment for the full design).
+          const rebasePrefix = '/rebase/';
+          if (request.method === 'POST' && url.startsWith(rebasePrefix)) {
+            const documentName = decodeURIComponent(url.slice(rebasePrefix.length));
+            const instance = (server as any).hocuspocus;
+            const document = instance.documents.get(documentName);
+            if (!document) {
+              sendJSON(404, { error: `document not loaded (no client has connected yet): ${documentName}` });
+              return;
+            }
+            let bodyText = '';
+            for await (const chunk of request) bodyText += chunk;
+            let req: {
+              targetMarkdown: string;
+              targetCommit: string;
+              authorName?: string;
+              authorEmail?: string;
+              granularity?: Granularity;
+            };
+            try {
+              req = JSON.parse(bodyText);
+            } catch {
+              sendJSON(400, { error: 'invalid JSON body' });
+              return;
+            }
+            const parsedName = splitDocName(documentName);
+            const docId = parsedName?.relpath ?? documentName;
+            const phraise = document.getMap(PHRAISE_MAP);
+            const currentBase = phraise.get('base') as Base | undefined;
+            if (currentBase && currentBase.commit === req.targetCommit) {
+              // Idempotence: already at the requested target, no-op.
+              sendJSON(200, { applied: false, reason: 'already at target', rebaseId: currentBase.id });
+              return;
+            }
+            try {
+              const { update, rebaseId } = computeRebaseUpdate(document, {
+                docId,
+                targetMarkdown: req.targetMarkdown,
+                targetCommit: req.targetCommit,
+                author: { name: req.authorName ?? 'Contributor Two', email: req.authorEmail ?? 'c2@example.com' },
+                granularity: req.granularity ?? 'word',
+              });
+              Y.applyUpdate(document, update, REBASE_TX_ORIGIN);
+              sendJSON(200, { applied: true, rebaseId });
+            } catch (err) {
+              sendJSON(500, { error: err instanceof Error ? err.message : String(err) });
+            }
+            return;
+          }
+
           const prefix = '/state/';
           if (!url.startsWith(prefix)) return;
           const documentName = decodeURIComponent(url.slice(prefix.length));
@@ -177,13 +345,6 @@ async function main() {
           const update = document ? Y.encodeStateAsUpdate(document) : new Uint8Array();
           response.writeHead(200, { 'Content-Type': 'application/octet-stream' });
           response.end(Buffer.from(update));
-          // The framework's requestHandler always writes its own 200
-          // "Welcome to Hocuspocus!" response after every onRequest hook
-          // resolves (see packages/server/src/Server.ts) unless the hook
-          // throws -- and throwing here would surface as an unhandled
-          // rejection (the http listener doesn't await requestHandler's
-          // promise). Neutering the two calls it's about to make is the
-          // one option that neither double-writes nor risks a crash.
           response.writeHead = (() => response) as any;
           response.end = (() => response) as any;
         },
