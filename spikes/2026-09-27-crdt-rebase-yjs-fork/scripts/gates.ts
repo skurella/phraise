@@ -1,7 +1,7 @@
 #!/usr/bin/env -S npx tsx
-// npm run gates: runs gates A-G plus the idempotence row and prints a
-// Markdown table (gate, pass/fail, key numbers); exits non-zero if any gate
-// fails.
+// npm run gates: runs gates A-H (including G2 and the idempotence row) and
+// prints a Markdown table (gate, pass/fail, key numbers); exits non-zero if
+// any gate fails. Gate H runs 500 fuzz trials and is the slowest row.
 import { runGateA, runGateC } from "../src/gates/gate-a-c.js";
 import { runGateB } from "../src/gates/gate-b.js";
 import { runGateD } from "../src/gates/gate-d.js";
@@ -9,6 +9,8 @@ import { runGateD2 } from "../src/gates/gate-d2.js";
 import { runGateE } from "../src/gates/gate-e.js";
 import { runGateF } from "../src/gates/gate-f.js";
 import { runGateG } from "../src/gates/gate-g.js";
+import { runGateG2 } from "../src/gates/gate-g2.js";
+import { runGateH } from "../src/gates/gate-h.js";
 import { runGateIdempotent } from "../src/gates/gate-idempotent.js";
 import type { GateResult } from "../src/gates/types.js";
 
@@ -37,7 +39,9 @@ function main(): void {
     run("E", runGateE),
     run("F", runGateF),
     run("G", runGateG),
+    run("G2", runGateG2),
     run("idempotent", runGateIdempotent),
+    run("H", runGateH),
   ];
 
   const rows = ["| Gate | Pass | Detail |", "|---|---|---|"];

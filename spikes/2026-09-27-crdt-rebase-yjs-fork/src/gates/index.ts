@@ -8,4 +8,6 @@ export * from "./gate-d2.js";
 export * from "./gate-e.js";
 export * from "./gate-f.js";
 export * from "./gate-g.js";
+export * from "./gate-g2.js";
+export * from "./gate-h.js";
 export * from "./gate-idempotent.js";

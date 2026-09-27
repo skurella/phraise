@@ -97,9 +97,11 @@ export class Replica {
     if (fromOther.length > 2) other.outbox.get(this.name)!.push(fromOther);
   }
 
-  /** Queue `update` for delivery to every linked peer. */
-  private emit(update: Uint8Array): void {
+  /** Queue `update` for delivery to every linked peer except `excludeName`
+   * (the peer we just received this content from, if any — see `receive`). */
+  private emit(update: Uint8Array, excludeName?: string): void {
     for (const peer of this.peers) {
+      if (peer.name === excludeName) continue;
       const q = this.outbox.get(peer.name);
       if (q) q.push(update);
     }
@@ -119,6 +121,15 @@ export class Replica {
     return taken;
   }
 
+  /** Remove and return the first `n` updates queued to `peerName`, leaving
+   * the rest queued (fuzz harness: partial pre-rebase delivery, brief 03). */
+  _takePrefixTo(peerName: string, n: number): Uint8Array[] {
+    const q = this.outbox.get(peerName);
+    if (!q) return [];
+    const k = Math.max(0, Math.min(n, q.length));
+    return q.splice(0, k);
+  }
+
   private runLocal(fn: () => void, origin: string): void {
     const before = Y.encodeStateVector(this.doc);
     this.doc.transact(fn, origin);
@@ -131,15 +142,50 @@ export class Replica {
    * myClientId) (plan section 5). Any resulting local changes (integrate's
    * flags/resurrections) — plus the incoming content itself — are re-queued
    * to this replica's peers, so a hub relays what it learns onward.
+   *
+   * `fromName`, when given, names the peer these `updates` came from. It is
+   * excluded from the re-broadcast, but *only* when this call produced no
+   * genuinely new content of this replica's own (see below) — found by the
+   * fuzz harness, brief 03: `Y.encodeStateAsUpdate(doc, before)` always
+   * restates the doc's *entire* delete set regardless of `before` — it is
+   * not filtered by the state vector the way new structs are — so once a
+   * doc has any deletions at all, this method's `delta` is essentially
+   * always non-trivially sized, even when every struct in it is already
+   * known to every peer. In a hub topology where every replica relays to
+   * *all* its peers, unconditionally echoing that "delta" straight back to
+   * the very peer that just sent it bounces server<->spoke forever and the
+   * hub's fan-out multiplies each bounce across every other spoke, so the
+   * queued-update count grows without bound (confirmed empirically:
+   * identical ~277-byte payloads recurring with growing multiplicity, see
+   * the builder log).
+   *
+   * The unconditional version of this fix regressed gates D/D2/F (also
+   * confirmed empirically): `integrate()` can write genuinely new content
+   * under *this* replica's own clientID as a side effect of processing the
+   * incoming batch — a resurrection, a review flag, an ack — and if the
+   * peer we're excluding is our *only* peer (e.g. an offline replica whose
+   * one link is the hub), that new content would never reach anyone.
+   * Restated-but-already-known content is safe to withhold from the
+   * sender specifically; this replica's own new writes are not. So the
+   * exclusion only applies when this replica's own clientID clock did not
+   * advance during this call (i.e. nothing new was produced locally) —
+   * content-neutral either way: it only ever drops a message that would
+   * have been a no-op for its specific recipient, never a change to any
+   * CRDT/rebase/integrate semantics.
    */
-  receive(updates: Uint8Array[]): void {
+  receive(updates: Uint8Array[], fromName?: string): void {
     if (updates.length === 0) return;
     const P = Y.snapshot(this.doc);
     const before = Y.encodeStateVector(this.doc);
+    const myClockBefore = Y.decodeStateVector(before).get(this.clientID) ?? 0;
     for (const u of updates) Y.applyUpdate(this.doc, u, "remote");
     integrate(this.doc, P, this.clientID);
     const delta = Y.encodeStateAsUpdate(this.doc, before);
-    if (delta.length > 2) this.emit(delta);
+    if (delta.length > 2) {
+      const myClockAfter = Y.decodeStateVector(Y.encodeStateVector(this.doc)).get(this.clientID) ?? 0;
+      const producedOwnContent = myClockAfter > myClockBefore;
+      this.emit(delta, producedOwnContent ? undefined : fromName);
+    }
   }
 
   // --- edit helpers (go straight to the block's Y.XmlText, as
@@ -193,6 +239,52 @@ export class Replica {
     }, "edit");
   }
 
+  // Fuzz harness addition (brief 03): split a top-level paragraph the way
+  // y-prosemirror does — delete the tail from the XmlText, insert a new
+  // paragraph element holding the tail (plain text; marks on the tail are
+  // not preserved, a documented simplification consistent with
+  // `insertBlock`'s plain-text-only inserts). Top-level-only, same
+  // simplification as `insertBlock`/`deleteBlock`.
+  splitParagraphAt(offset: number): void {
+    this.runLocal(() => {
+      const { segments } = docPlainText(this.doc);
+      const pos = offsetToPosition(segments, offset);
+      if (!pos) throw new Error(`splitParagraphAt: offset ${offset} out of range`);
+      const xmlText = pos.xmlText;
+      const fragment = this.doc.getXmlFragment(PM_FRAGMENT);
+      const top = fragment.toArray();
+      const blockIndex = top.findIndex(
+        (child) => child instanceof Y.XmlElement && child.toArray()[0] === xmlText
+      );
+      if (blockIndex < 0) {
+        throw new Error("splitParagraphAt: target is not a top-level block's text");
+      }
+      const full = (xmlText.toDelta() as any[]).map((d) => d.insert).join("");
+      const tail = full.slice(pos.index);
+      if (tail.length > 0) xmlText.delete(pos.index, tail.length);
+      const newPara = new Y.XmlElement("paragraph");
+      if (tail.length > 0) {
+        const newText = new Y.XmlText();
+        newText.insert(0, tail);
+        newPara.insert(0, [newText]);
+      }
+      fragment.insert(blockIndex + 1, [newPara]);
+    }, "edit");
+  }
+
+  // Fuzz harness addition (brief 03): change a top-level heading's level.
+  // Top-level-only, same simplification as `insertBlock`/`deleteBlock`.
+  setHeadingLevel(index: number, level: number): void {
+    this.runLocal(() => {
+      const fragment = this.doc.getXmlFragment(PM_FRAGMENT);
+      const el = fragment.toArray()[index];
+      if (!(el instanceof Y.XmlElement) || el.nodeName !== "heading") {
+        throw new Error(`setHeadingLevel: block ${index} is not a heading`);
+      }
+      el.setAttribute("level", level as any);
+    }, "edit");
+  }
+
   docToPM(): PMNode {
     return docToPM(this.doc);
   }
@@ -231,7 +323,7 @@ export function deliver(from: Replica, to: Replica, order?: number[]): void {
   const indices = order ?? queue.map((_, i) => i);
   const ordered = indices.map((i) => queue[i]);
   queue.length = 0;
-  to.receive(ordered);
+  to.receive(ordered, from.name);
 }
 
 export function runRebase(

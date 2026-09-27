@@ -50,7 +50,7 @@ export interface BlockRef {
   element: Y.XmlElement;
 }
 
-function getXmlText(el: Y.XmlElement): Y.XmlText | null {
+export function getXmlText(el: Y.XmlElement): Y.XmlText | null {
   const item = (el as any)._start;
   if (!item) return null;
   const content = item.content;

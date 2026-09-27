@@ -22,7 +22,7 @@ const AUTHOR: Author = { name: "Repo Owner", email: "owner@example.com" };
 const DOC_ID = "gate-g-doc";
 const COMMENT_COUNT = 50;
 
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   let s = seed;
   return function () {
     s |= 0;
@@ -33,7 +33,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function loadCorpus(): string {
+export function loadCorpus(): string {
   const files = fs
     .readdirSync(CORPUS_DIR)
     .filter((f) => f.endsWith(".md"))
@@ -98,7 +98,7 @@ function makeRandomEdits(markdown: string, count: number, rnd: () => number): st
   return md;
 }
 
-interface RangeOrNull {
+export interface RangeOrNull {
   start: number;
   end: number;
 }
@@ -106,7 +106,7 @@ interface RangeOrNull {
 /** Maps a range in `oldText` to its ground-truth range in `newText` via a
  * character diff, independent of how the edits were produced. Returns null
  * if the range is fully contained in deleted text. */
-function buildDiffMapper(oldText: string, newText: string) {
+export function buildDiffMapper(oldText: string, newText: string) {
   const parts = Diff.diffChars(oldText, newText);
   interface Seg {
     oldStart: number;
@@ -165,7 +165,7 @@ function buildDiffMapper(oldText: string, newText: string) {
   };
 }
 
-function iou(a: RangeOrNull, b: RangeOrNull): number {
+export function iou(a: RangeOrNull, b: RangeOrNull): number {
   const interStart = Math.max(a.start, b.start);
   const interEnd = Math.min(a.end, b.end);
   const inter = Math.max(0, interEnd - interStart);

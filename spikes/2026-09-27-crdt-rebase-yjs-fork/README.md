@@ -1,25 +1,34 @@
-# CRDT rebase, Yjs fork approach — core + integration + gates
+# CRDT rebase, Yjs fork approach — core + integration + gates + fuzz
 
-Status: in progress (briefs 1-2 of several; see the plan and briefs in `context/plans/`)
+Status: in progress (briefs 1-3 of several; see the plan and briefs in `context/plans/`)
 
 Goal: prove the "fork at base, two-way diff, merge" rebase algorithm from
 [the spike-2 plan](../../context/plans/2026-09-27-spike-2-plan.md) on Yjs.
 Brief 1 built the core (sections 1-4): Markdown <-> ProseMirror, deterministic
 seeding, the two-way tree diff at four granularities, and the fork-at-base
-rebase with its `phraise` map records. Brief 2 (this update) adds sections
-5-8: per-replica integration (needs-review, resurrection), comments anchored
-by CRDT position plus quote selectors, attribution, re-seed, a replica test
-harness, and gates A-G plus an idempotence row, all runnable via
-`npm run gates`.
+rebase with its `phraise` map records. Brief 2 added sections 5-8:
+per-replica integration (needs-review, resurrection), comments anchored by
+CRDT position plus quote selectors, attribution, re-seed, a replica test
+harness, and gates A-G plus an idempotence row. Brief 3 (this update) adds a
+seeded fuzz harness (`npm run fuzz`), gate H (500 fuzz trials) and gate G2
+(a targeted re-seed measurement replacing gate G's weaker one), all runnable
+via `npm run gates`.
 
 ## How to run
 
 ```sh
 npm install
-npm test          # vitest: brief 1's core suite, plus a 3-test integration
-                   # smoke check and all 9 gates (174 tests total)
-npm run gates      # prints a Markdown table for gates A-G + idempotence;
-                   # exits non-zero if any gate fails
+npm test          # vitest: all core/integration tests, gates A-H (+ G2 and
+                   # idempotence), and a fuzz-harness sanity suite (180
+                   # tests total)
+npm run gates      # prints a Markdown table for gates A-H (+ G2, idempotence);
+                   # exits non-zero if any gate fails (see "Known,
+                   # documented gate failures" below — two currently do)
+npm run fuzz       # granularity comparison: 500 `word` trials (gate H's own
+                   # set) + 200 each of char/block/yprosemirror on the same
+                   # seeds; prints a Markdown table + interpretation per
+                   # granularity; exits non-zero if gate H's own trials have
+                   # a gated failure
 npm run typecheck  # npx tsc --noEmit
 ```
 
@@ -77,12 +86,18 @@ npm run typecheck  # npx tsc --noEmit
 - `src/replica.ts` (plan section 8) — `Replica` wraps a `Y.Doc` (`gc: false`)
   with a name, an optional human user (registered in `authors`), edit helpers
   (`insertText`/`deleteText` at a global plain-text offset, `insertBlock`/
-  `deleteBlock` — top-level only, a documented simplification), `runRebase`,
-  and `receive(updates)` (snapshots `P`, applies, runs `integrate`). Links
-  between replicas are per-direction queues; nothing auto-delivers, `online`/
+  `deleteBlock`/`splitParagraphAt`/`setHeadingLevel` — top-level only, a
+  documented simplification), `runRebase`, and `receive(updates, fromName?)`
+  (snapshots `P`, applies, runs `integrate`, re-broadcasts). Links between
+  replicas are per-direction queues; nothing auto-delivers, `online`/
   `offline` are informational, and `deliver(from, to, order?)` is the only
   way updates move — giving tests full control over delivery order,
-  including shuffled per-update orders (gate D).
+  including shuffled per-update orders (gate D). `receive`'s optional
+  `fromName` (brief 3) excludes that peer from the re-broadcast, but only
+  when this call produced no genuinely new content of this replica's own —
+  see "Real bugs found" below for why (a real relay-storm bug the fuzz
+  harness found and a follow-up regression it caused and fixed in the same
+  sitting).
 - `src/comments.ts` (plan section 6) — `addComment`/`resolveComment`/
   `resolveAll`: a CRDT `RelativePosition` pair (assoc 0/-1) plus quote
   selectors (`exact`, 32-char `prefix`/`suffix`), resolved as a pure function
@@ -100,11 +115,130 @@ npm run typecheck  # npx tsc --noEmit
   exists elsewhere in this codebase); `from`/`to` are global doc-plain-text
   offsets, the same space comments use.
 - `src/gates/` — one module per gate (`gate-a-c.ts`, `gate-b.ts`, `gate-d.ts`,
-  `gate-d2.ts`, `gate-e.ts`, `gate-f.ts`, `gate-g.ts`, `gate-idempotent.ts`),
-  each a plain function returning `{name, pass, detail}`, plus
-  `scenario.ts` (the shared fixture) and `convergence.ts`. Both
-  `test/gates.spec.ts` (vitest) and `scripts/gates.ts` (`npm run gates`) call
-  the same functions, so there is exactly one implementation of each gate.
+  `gate-d2.ts`, `gate-e.ts`, `gate-f.ts`, `gate-g.ts`, `gate-g2.ts`,
+  `gate-h.ts`, `gate-idempotent.ts`), each a plain function returning
+  `{name, pass, detail}` (`gate-g.ts`/`gate-g2.ts`/`gate-h.ts` also export a
+  `*Detailed` variant with the full row/report data, for tests and the CLI
+  to share), plus `scenario.ts` (the shared fixture) and `convergence.ts`.
+  Both `test/gates.spec.ts` (vitest) and `scripts/gates.ts` (`npm run
+  gates`) call the same functions, so there is exactly one implementation of
+  each gate.
+
+## Layout (brief 3: fuzz)
+
+- `src/fuzz/prng.ts` — a small mulberry32-based `Rng` plus `trialRng(seed,
+  trialIndex)`: every trial's *entire* generation (document window,
+  participants, local edits, upstream mutations, comments) is deterministic
+  from `(seed, trialIndex)` alone and does not depend on granularity —
+  granularity is only applied at the rebase step (`trial.ts`) — so the
+  granularity comparison (section 2 of the brief) is a fair, paired
+  comparison on identical documents/edits.
+- `src/fuzz/corpus.ts` — `pickWindow(rng)`: a random file from
+  `fixtures/corpus/`, a random contiguous window of 8-25 top-level blocks
+  (clamped to the file's own count), serialized back to Markdown and
+  re-parsed so the returned document is canonical.
+- `src/fuzz/pmtree.ts` — generic ProseMirror-tree helpers shared by the
+  upstream mutation generator: `flattenTextblocks` (every paragraph/
+  heading/code_block in document order, recursing into any container —
+  the same DFS order `collectBlocks` in `integrate.ts` uses on the Y side,
+  which is how `trial.ts` correlates a Y block id with a position in the
+  original PM tree) and immutable `replaceAtPath`/`deleteAtPath`/
+  `insertAtPath`/`nodeWithRuns` for rebuilding a subtree.
+- `src/fuzz/mutate.ts` — `applyUpstreamMutations(pmA, rng, touchedFlatIndices,
+  count)`: 1-6 of replace/insert/delete words, rewrite a paragraph, insert/
+  delete a paragraph, delete/add a list item, toggle a mark, change a
+  heading level, change a code-block line (plan section 1, step 4), biasing
+  roughly half of the single-textblock ("targeted") mutations toward blocks
+  a human also touched this trial. Targeted mutations run first (their
+  paths stay valid since they don't change block count), then structural
+  ones. Returns the *actual* touched-and-text-changed flat indices — an
+  attrs-only (`heading-level`) or marks-only (`toggle-mark`) change doesn't
+  count, and neither does a block a later structural op goes on to delete,
+  since the real flagging system compares blocks by plain text only and a
+  deleted block can't carry a "concurrent-edit" flag (see "Real bugs found").
+- `src/fuzz/humanEdits.ts` — `applyLocalEdits(replica, rng, count,
+  tokenPrefix)`: insert a unique token at a random word boundary, delete a
+  run of 1-4 non-token words, insert a new paragraph with a token, delete a
+  whole block, split a paragraph, change a heading level (plan section 1,
+  step 3). Returns only the tokens still present in *that replica's own*
+  doc right after its own edit loop — a later op by the same human deleting
+  their own earlier token doesn't count as "lost" (the brief's own wording).
+- `src/fuzz/blockjson.ts` — `blockPMNodeAt(block, snapshot)`: reconstructs a
+  textblock's content as an actual PM node (with marks) from its Y content
+  at a given snapshot, for F-violation's "compared as PM node JSON so marks
+  count" (existing gate F only compares plain text).
+- `src/fuzz/touched.ts` — `snapshotBlockTexts`/`diffTouched`: which blocks a
+  human touched this trial, by content diff against a baseline snapshot
+  taken right after seeding — reuses the codebase's stable item-id identity,
+  no separate mapping needed.
+- `src/fuzz/trial.ts` — `runTrial({seed, trialIndex, granularity})`: the
+  whole per-trial pipeline (plan section 1) — document A, server/alice/bob/
+  (50% of trials) carol, 5 comments, 1-6 local edits per human (some
+  delivered to the server before the rebase), 1-6 upstream mutations,
+  rebase (60% normal on server, 20% dual-independent for an idempotence
+  check, 20% chained B-then-C), shuffled per-update delivery to quiescence
+  plus a final all-pairs full sync, then every check in the brief
+  (exception/diverged/local-text-lost/F-violation/upstream-change-lost/
+  missing-flag/spurious-flag/schema-drop/comment-method-rates/
+  mis-anchored). Every thrown error anywhere in the pipeline is caught and
+  categorized as `exception` (never mistaken for one of the *report-only*
+  ground-truth bookkeeping bugs found while building this — see below —
+  which are wrapped in their own inner `try/catch`).
+- `src/fuzz/run.ts`/`src/fuzz/report.ts` — `runTrials`/`aggregate`/
+  `formatReport`: run N trials, aggregate into per-category counts, comment
+  method rates, flag precision/recall, and format as a Markdown table.
+- `src/gates/gate-h.ts` — gate H: 500 `word` trials, fixed seed; pass when
+  `exception`/`diverged`/`local-text-lost`/`F-violation` are all zero (does
+  not currently pass — see below).
+- `src/gates/gate-g2.ts` — gate G2: 200 comments, each with 1 (or 3,
+  reported) small word edit inside its own quote or within 20 characters of
+  it — applied by editing the parsed PM tree at that comment's own block and
+  local offset, never the raw Markdown string, so there is no ambiguity
+  about *which* occurrence of a repeated word gets edited. Ground truth is
+  an independent per-block, per-comment local diff (`buildPerBlockGroundTruth`),
+  not gate G's single whole-document diff (see below for why). Does not
+  currently clear its own "mis-anchored <= 2%" bar — see below.
+- `scripts/fuzz.ts` (`npm run fuzz`) / `scripts/fuzz-repro.ts` — the
+  granularity comparison CLI, and a single-trial repro runner (every
+  reported failure prints its own `npx tsx scripts/fuzz-repro.ts --seed …
+  --trial … --granularity …` command).
+
+## Fuzz categories and latest numbers
+
+Checks per trial (plan/brief 03): `exception` (anything thrown outside the
+report-only ground-truth bookkeeping, which is wrapped separately so a bug
+in *it* can't masquerade as a system-under-test exception), `diverged` (PM
+JSON or `review` map differ across replicas after full sync), `local-text-lost`
+(a human's own token, not deleted by that same human, missing from the
+final text), `F-violation` (an untouched textblock differs from its
+base-snapshot content, compared as PM node JSON so marks count),
+`upstream-change-lost`/`missing-flag`/`spurious-flag` (report-only:
+independent ground truth for whether a block *should* have been flagged
+concurrent-edit, vs. what actually happened), `schema-drop` (a visible,
+non-empty textblock the Y-to-PM conversion silently drops). Gate H gates
+the first four at zero across 500 `word` trials, fixed seed 20260927.
+
+Latest `npm run fuzz` run (same seed, 500 `word` + 200 each of char/block/
+yprosemirror, ~16-23ms/trial):
+
+| Granularity | exception | diverged | local-text-lost | F-violation | schema-drop | comment crdt/fuzzy/orphaned | flag P/R |
+|---|---|---|---|---|---|---|---|
+| word | 0 | 0 | 46 trials (51) | 0 | 0 | 76.2% / 16.9% / 6.9% | 99.5% / 100% |
+| char | 0 | 0 | 17 trials (18) | 0 | 0 | 76.1% / 16.3% / 7.6% | 98.7% / 100% |
+| block | 0 | 0 | 17 trials (18) | 0 | 0 | 67.5% / 24.9% / 7.6% | 98.7% / 100% |
+| yprosemirror | 0 | 0 | 18 trials (19) | 0 | 0 | 70.6% / 22.1% / 7.3% | 91.1% / 100% |
+
+`local-text-lost` is the known, root-caused finding below (human-vs-human
+concurrent delete-vs-edit), present at a similar rate regardless of
+granularity, since granularity only affects the rebase's own text diff, not
+this human-vs-human interaction. `upstream-change-lost` was 0% on every
+granularity. Comment CRDT-survival and flag precision/recall are similar
+across word/char (both diff inside the existing `XmlText`) and lower for
+`block` (which always replaces the whole textblock, destroying any CRDT
+anchor by construction) and `yprosemirror` (comparison-only, typically
+preserves less of a mid-paragraph anchor than a real word diff). Full
+per-granularity tables and repro commands for every failing trial are
+printed by `npm run fuzz` itself.
 
 ## What each gate proves
 
@@ -155,6 +289,18 @@ P and P2, and **alice** (online) edits Q, concurrently with the rebase.
   the same rebase, one with an extra unsynced local edit, produce
   byte-identical updates; re-applying the same update never duplicates
   content), carried into this brief's gate table as its own row.
+- **G2** (brief 3) — 200 comments, each guaranteed a small word edit inside
+  its own quote or within 20 characters of it (not gate G's random,
+  usually-unrelated edit position); report correct/orphaned/mis-anchored
+  rates and pass when mis-anchored is at most 2% for 1 edit/comment. As
+  built, **does not pass** (observed ~19% for 1 edit/comment) — root-caused,
+  not a harness bug, see "Real bugs found" below and the long comment at the
+  top of `src/gates/gate-g2.ts`.
+- **H** (brief 3) — 500 `word`-granularity fuzz trials, fixed seed; pass
+  when `exception`/`diverged`/`local-text-lost`/`F-violation` are all zero.
+  As built, **does not pass**: `local-text-lost` fires on ~9% of trials, a
+  real, root-caused, pre-existing design gap — see "Real bugs found" below.
+  The other three gated categories are reliably zero.
 
 ## Design decisions not fully pinned down by the plan
 
@@ -177,6 +323,17 @@ P and P2, and **alice** (online) edits Q, concurrently with the rebase.
   informational only; nothing auto-flushes). This gives tests full control
   over delivery order, which gate D's exhaustive-permutation requirement
   needs regardless of what "online" would otherwise mean.
+- **Fuzz local/upstream edits are top-level-block-only where they touch
+  block structure** (`src/fuzz/humanEdits.ts`'s `insert-paragraph-token`/
+  `delete-block`, `src/fuzz/mutate.ts`'s `insert-paragraph`/
+  `delete-paragraph`), matching `Replica.insertBlock`/`deleteBlock`'s
+  existing simplification. `delete-list-item`/`add-list-item` do reach
+  inside a top-level list.
+- **Fuzz upstream word-level mutations drop marks on the mutated run**
+  (`rewriteParagraph`, `wordReplace`/`wordInsert`/`wordDelete` rebuild a
+  textblock's content as one plain-text run) — `toggleMark` is the
+  exception, preserving every other run's marks exactly, since toggling a
+  mark is the one mutation whose entire point is exercising mark handling.
 
 ## Real bugs found and fixed along the way
 
@@ -209,7 +366,61 @@ P and P2, and **alice** (online) edits Q, concurrently with the rebase.
   `RelativePosition` from), but `resolveRecord` called
   `Y.createRelativePositionFromJSON` on it unconditionally. Fixed with an
   explicit null check that short-circuits straight to the fuzzy fallback.
+- **Relay-storm bug in `Replica.receive()` (brief 3, found by the fuzz
+  harness, fixed)**: `Y.encodeStateAsUpdate(doc, before)` always serializes
+  the doc's *entire* delete set regardless of `before` — only new structs
+  are filtered by the state vector — so once a document has any deletions
+  at all, `receive()`'s "is there anything new to send" check
+  (`delta.length > 2`) is essentially always true, even when every struct
+  in the delta is already known to every peer. In the fuzz harness's star
+  topology, echoing that "delta" straight back to the very peer that just
+  sent it starts a bounce the hub then fans out to every other spoke;
+  confirmed empirically via `Y.parseUpdateMeta` (`from=[]/to=[]`, i.e. zero
+  new structs — pure delete-set restatement) recurring with the queued
+  count multiplying every round (19 -> 37 -> 57 -> 111 -> ... within a
+  handful of rounds) until memory ran out. Fixed by having `receive(updates,
+  fromName?)` skip re-emitting to `fromName` — but *only* when this call's
+  own clientID clock didn't advance during it (i.e. `integrate()` produced
+  no new local content this replica needs to tell anyone about, resurrection/
+  review-flag/ack writes included) — an unconditional version of this fix
+  first regressed gates D/D2/F (their convergence depends on exactly that
+  kind of own-clientID content still reaching a replica's only peer, the
+  one that had just delivered the batch that triggered it).
+- **A real, pre-existing design gap the fuzz harness found (not fixed, per
+  this brief's own instruction to record rather than redesign)**:
+  concurrent **human-vs-human** editing can lose an insert. Minimal,
+  hand-written repro with no rebase involved at all: two offline humans,
+  `bob.deleteBlock(2)` on paragraph P while `carol.insertText(offset,
+  "CAROL_TOKEN ")` inside that same paragraph P on her own independent
+  unsynced replica; deliver both to a server. Result: `CAROL_TOKEN` is gone.
+  Yjs (like any tree CRDT) deletes a container element's entire subtree
+  when it's deleted, regardless of what was concurrently inserted into it —
+  standard, expected behavior, not a Yjs bug. The plan's only counter-measure,
+  **resurrection** (plan section 5), is implemented in `integrate.ts` but is
+  only triggered per *rebase record* — "for each textblock element deleted
+  **by the rebase** ..." — with no trigger for an element deleted by a
+  plain concurrent human edit. So this loses data whether or not a rebase
+  is even involved. This is what gate H's `local-text-lost` category (~9%
+  of 500 `word` trials) is actually measuring; fixing it would mean
+  generalizing resurrection to trigger on *any* concurrent delete, not just
+  a rebase-caused one — a real algorithm extension, not a small fix, so it
+  is reported here rather than attempted. Repro seed:
+  `npx tsx scripts/fuzz-repro.ts --seed 20260927 --trial 9 --granularity word`.
+- **Gate G2's own ground truth was initially wrong twice, not the system
+  under test (brief 3, found and fixed while building the gate)**: (1) a
+  whole-document `Diff.diffChars` alignment degrades once ~200 edits are
+  scattered through it — traced via a throwaway debug script to
+  `resolveComment` consistently returning the sensible, correct-looking
+  text while the ground truth read as garbled fragments; fixed by diffing
+  each edited block in a small local window instead of the whole document.
+  (2) When two comments shared a dense block (a Markdown table collapses
+  into one plain-text block since our schema has no table node) their
+  independently-planned edits could land inside the same word and corrupt
+  each other; fixed by tracking claimed word offsets per block across
+  comments. After both fixes, the gate's own bar is still not cleared — see
+  the "H"/"G2" entries above and the long comment in `src/gates/gate-g2.ts`
+  for the (different, real, not-a-harness-bug) reason.
 
 ## Non-scope (later briefs)
 
-Fuzz testing (gate H), Loro, UI, networking.
+Loro, UI, networking.
