@@ -1,0 +1,42 @@
+{
+  "name": "daemon-file-sync-fork-import",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spike 3: local daemon materializing a live Yjs document as a file, importing file saves as attributed CRDT operations by fork-at-base.",
+  "scripts": {
+    "fetch": "node scripts/fetch-corpus.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "gates": "tsx gates/index.ts",
+    "gates:quick": "tsx gates/index.ts --quick"
+  },
+  "dependencies": {
+    "@hocuspocus/provider": "^4.7.0",
+    "@hocuspocus/server": "^4.7.0",
+    "diff": "^7.0.0",
+    "mdast-util-frontmatter": "^2.0.1",
+    "mdast-util-gfm": "^3.0.0",
+    "mdast-util-math": "^3.0.0",
+    "mdast-util-to-markdown": "^2.1.2",
+    "prosemirror-model": "^1.23.0",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-transform": "^1.10.2",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "ws": "^8.18.0",
+    "y-prosemirror": "^1.3.7",
+    "yjs": "^13.6.20"
+  },
+  "devDependencies": {
+    "@types/diff": "^6.0.0",
+    "@types/node": "^22.9.0",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^3.0.5"
+  }
+}
