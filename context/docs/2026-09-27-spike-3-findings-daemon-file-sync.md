@@ -19,7 +19,20 @@ The one thing a file cannot tell the daemon is which version the editor had load
 
 Full run from a clean clone of the pushed branch: `npm ci && npm run gates` in the spike directory, on the owner's laptop (macOS, Node 22.12). Numbers below are from that run.
 
-GATE_TABLE_PLACEHOLDER
+The run was made at commit `cb6720c`; later commits change only documentation and add an import counter to the fuzz output.
+
+| Gate | Result | Numbers |
+|---|---|---|
+| A. Remote to file | pass | 200 remote word edits; latency median 44 ms, p95 57 ms, max 63 ms; every untouched top-level block byte-identical after each. |
+| B. File to remote | pass | 100 saves per style; median and p95: in place 110 and 121 ms, rename over 110 and 124 ms, truncate then write 110 and 124 ms. Every changed Y type inside the edited top-level block; inserting client maps to the local user. |
+| C. No echo | pass | 200 rapid alternating rounds (0 to 20 ms gaps): 0 imports of bytes the test did not write, 0 imports of daemon-written bytes. |
+| D. Stale save | pass | 50 scripted cases, 10 of them with 60 extra remote writes before the stale save: every remote edit and the local edit present, file equals render. The base is inferred, see the design. |
+| E. Concurrency | pass | 50 cases, same block and different blocks: converged, all tokens present, file equals render. |
+| F. No fighting the editor | 3,348 of 3,350 | 294 corpus files with 5 rounds of random editor-like byte edits (1,470 of 1,470) and 47 half-typed states at 4 positions in 10 documents (1,878 of 1,880): import then render reproduces the saved bytes. The 2 failures are one spike 1 parser bug (a footnote definition's isolation re-parse swallows a following indented block). In the daemon, no write follows an imported save. |
+| G. Git underneath | pass | 8 scenarios: commit harmless; branch switch changing the file and not changing it both detach; fast-forward pull re-bases as the git author; `reset --hard`, `stash`, and `checkout -- f` (via `index.lock`) detach; switch back reattaches; a plain save equal to HEAD is imported normally. |
+| H. Restart | pass | Graceful restart with edits on both sides merges; restart with nothing changed then a save; state deleted and file edited gives a conflict copy, file untouched, detach; CLI killed with SIGKILL, edits on both sides, respawn merges. |
+| I. Fuzz | 298 of 300 | 0 exceptions, 0 divergence, 0 lost, 0 echo, 0 unexpected detach, 0 whole-document mismatches, file equals render in every trial. The 2 failing trials (seeds 439041158, 439041369) show 3 tokens the editor deleted still present: the base was judged too old at an exact cost tie, so a phrase was duplicated and the editor removed only one copy. Reported, not failures: delete versus edit 41 tokens, ambiguous delete by design 11, best-effort (degraded) blocks in 31 exports and 5 final files, entity escapes gained in 7 files. Base choice differed from the editor's true base in 22 imports; 913 imports were forked. |
+| J. Large file | measured | 240 KB file, before and after the cache: parse 1,308 to 169 ms, serialize 1,264 to 170 ms, fresh-save import 1,496 to 215 ms, stale (forked) import 1,465 to 251 ms, import plus export 3,203 to 540 ms, render 1,738 to 320 ms, end to end remote to file 1,750 to 383 ms and file to remote 1,922 to 625 ms. `ydoc.bin` 845 KB, choosing among 8 candidates 43 ms, peak RSS 731 MB. |
 
 ## The design as built
 
@@ -68,7 +81,7 @@ From the [researcher log](../logs/2026-09-27-researcher-spike-3-editors.md), wit
 |---|---|---|
 | File settle after the last watch event | 30 ms | Long enough to coalesce a truncate-then-write or an editor's two-step save; gate B shows 110 ms median end to end, mostly watch latency. |
 | Empty-file grace | 250 ms | A truncating editor passes through an empty file; importing it would delete the document. |
-| Remote edit to file, trailing | 30 ms | Keystroke bursts become one write. Gate A median 43 ms on a README. |
+| Remote edit to file, trailing | 30 ms | Keystroke bursts become one write. Gate A median 44 ms on a README. |
 | Remote edit to file, maximum wait | 200 ms | Continuous remote typing still reaches the file five times a second. |
 | File poll | 2 s | Safety net for missed FSEvents, which VS Code's own issue tracker shows happen. |
 | Git poll | 500 ms | Detects a branch switch that does not change the file. |
@@ -81,11 +94,11 @@ State lives in `.git/phraise/daemon/<doc>/` (sizes for the 240 KB file: `ydoc.bi
 
 ## Is Node adequate?
 
-Yes for this. After the cache, the 240 KB file costs about 190 ms per import and 310 ms per render, about 500 ms per save end to end, and a README costs milliseconds; the daemon is idle between events. What is not adequate yet is memory: the gate J process peaked at 650 to 730 MB (daemon, relay and client in one process, all with tombstones, plus forks). That is a data-structure question (tombstones, full-document forks, cached parses) that a compiled daemon would not remove by itself. A single-binary distribution is available via Node's single executable applications or Bun if install friction matters. No reason found for a compiled daemon now.
+Yes for this. After the cache, the 240 KB file costs about 215 ms per import and 320 ms per render, about 540 ms per save end to end, and a README costs milliseconds; the daemon is idle between events. What is not adequate yet is memory: the gate J process peaked at 731 MB (daemon, relay and client in one process, all with tombstones, plus forks). That is a data-structure question (tombstones, full-document forks, cached parses) that a compiled daemon would not remove by itself. A single-binary distribution is available via Node's single executable applications or Bun if install friction matters. No reason found for a compiled daemon now.
 
 ## What spikes 1 and 2 need to change
 
-- **Spike 1, serializer:** degrade instead of refusing (write the best effort and flag the block); verify composition across block boundaries, not only each block in isolation; stop emitting numeric character references (`&#x20;`, `&#x6D;`) when emphasis starts or ends inside a word, which concurrent formatting merges produce (seen in 1 to 2 percent of fuzz trials). Keep the parse cache across calls.
+- **Spike 1, serializer:** degrade instead of refusing (write the best effort and flag the block); verify composition across block boundaries, not only each block in isolation; stop emitting numeric character references (`&#x20;`, `&#x6D;`) when emphasis starts or ends inside a word, which concurrent formatting merges produce (the final file gained such escapes in 7 of 300 fuzz trials). Keep the parse cache across calls.
 - **Spike 1, parser:** the isolation re-parse can merge an unrelated indented block into a footnote definition's continuation; this is gate F's only failure (2 of 3,350).
 - **Spike 2, diff:** adopt patience anchors, the weighted gap alignment and containment pairing; support inline leaves in textblocks; set only the formatting that differs.
 - **Binding (y-prosemirror):** its prefix-and-suffix text diff places an insertion inside a neighbouring word that shares its first characters, so a concurrent deletion of that word takes those characters with it. Not a daemon issue; worth knowing for Yjs 14.
@@ -111,8 +124,8 @@ Made by the spike 3 orchestrator, for the lead to transfer to the register.
 
 ## Open risks
 
-1. **Base inference** (high). Without editor integration it is a heuristic. In the hostile fuzz (an editor that never reloads unless told, many stale saves) about 1 in 40 imports chose a base other than the editor's true one; the result is a duplicated phrase or a deletion of fresh collaborator text that does not take. The extension removes it for VS Code; other editors keep it.
-2. **Delete versus edit** (medium). A block deleted or restructured on one side (a list item joined, a paragraph turned into a table) while the other side edits it loses the edit, as in spike 2 (S2-10). The fuzz reports it separately (DVE_PLACEHOLDER tokens in 300 trials); spike 2's resurrection could be applied here.
+1. **Base inference** (high). Without editor integration it is a heuristic. In the hostile fuzz (an editor that never reloads unless told, so most saves are stale) 22 imports in 300 trials chose a base other than the editor's true one; the result is a duplicated phrase or a deletion of fresh collaborator text that does not take. The extension removes it for VS Code; other editors keep it.
+2. **Delete versus edit** (medium). A block deleted or restructured on one side (a list item joined, a paragraph turned into a table) while the other side edits it loses the edit, as in spike 2 (S2-10). The fuzz reports it separately (41 tokens in 300 trials); spike 2's resurrection could be applied here.
 3. **Stale-save UX** (medium). Editors show conflict dialogs on every save while a collaborator types; see the editor table.
 4. **Memory** (medium). Hundreds of MB for a 240 KB document with tombstones and forks.
 5. **Watcher reliability and platforms** (medium). Tested on macOS only. FSEvents can miss events (the 2 s poll covers it). Windows rename-over semantics and file locking are untested.

@@ -1,6 +1,6 @@
 # Brief 06: fresh-context review of the spike 3 daemon
 
-Status: dispatched
+Status: done
 Author: spike 3 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Charter: [spike 3 charter](2026-09-27-spike-3-charter-daemon-file-sync.md), its gate table and its section "Rules for every agent in this spike", which you obey

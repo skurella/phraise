@@ -1,6 +1,6 @@
 # Brief 02: daemon runtime, relay harness, integration tests
 
-Status: dispatched
+Status: done
 Author: spike 3 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Plan: [spike 3 plan](2026-09-27-spike-3-plan.md), sections 2, 4 and 5 are your specification; section 3 describes the core you build on

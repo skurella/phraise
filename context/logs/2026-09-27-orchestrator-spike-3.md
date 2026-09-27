@@ -1,6 +1,6 @@
 # Log: spike 3 orchestrator, daemon file sync
 
-Status: active
+Status: done
 Author: spike 3 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Charter: [spike 3 charter](../plans/2026-09-27-spike-3-charter-daemon-file-sync.md)
@@ -67,3 +67,8 @@ Reviewer (log committed) found: HIGH ring FIFO evicted the anchor after 32 write
 Fixed the two HIGHs (anchor pinned, thinning eviction, ring 48; classifier uses the carrying import), added core.ring tests and 60-extra-edit cases to gate D. While doing so found gates compared the file with render() while the daemon writes renderDetailed() (boundary repairs): render() now returns what the daemon writes. The MEDIUM and the raced-rename path are documented as limits, not fixed: from the file system a shell redirect is indistinguishable from typing.
 40-trial fuzz after fixes: 40/40.
 
+
+## 12:28 — final full run from a clean clone, findings written
+Fresh clone of the pushed branch at cb6720c under TMPDIR, npm ci, npm run gates (fetches the corpus first). A B C D E G H pass; F 3348/3350 (spike 1 footnote parse bug); I 298/300 (two trials with an exact base-cost tie: duplicated phrase, editor removed one copy); J measured (import plus export of 240 KB 3203 -> 540 ms). No listener on 4100-4199 and no daemon process afterwards; clone removed. Results copied into results/. Findings doc written with Decisions S3-1 to S3-12; recommendation: confirm D7 with amendments. MCP stretch not done (needs spike 2 comment store). Worker dispatches used: 6 of about 10.
+
+## 12:28 — handback

@@ -1,6 +1,6 @@
 # Brief 04: gate J, the large file, and a verification cache
 
-Status: dispatched
+Status: done
 Author: spike 3 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Plan: [spike 3 plan](2026-09-27-spike-3-plan.md), sections 3.5 and 6 (row J)

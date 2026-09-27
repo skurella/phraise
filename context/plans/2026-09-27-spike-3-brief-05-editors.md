@@ -1,6 +1,6 @@
 # Brief 05: how real editors behave when a file changes under them
 
-Status: dispatched
+Status: done
 Author: spike 3 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Charter: [spike 3 charter](2026-09-27-spike-3-charter-daemon-file-sync.md), section "What to address in the findings" (first bullet) and "Rules for every agent in this spike", which you obey

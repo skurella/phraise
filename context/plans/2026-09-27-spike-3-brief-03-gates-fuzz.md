@@ -1,6 +1,6 @@
 # Brief 03: gate runner and fuzz
 
-Status: dispatched
+Status: done
 Author: spike 3 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Plan: [spike 3 plan](2026-09-27-spike-3-plan.md), section 6 is your specification for what each gate measures

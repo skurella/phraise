@@ -1,6 +1,6 @@
 # Brief 01: core sync library (DocSync, two-way diff, fork import)
 
-Status: dispatched
+Status: done
 Author: spike 3 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Plan: [spike 3 plan](2026-09-27-spike-3-plan.md), sections 1, 3 and 5 (RemoteEditor only)
