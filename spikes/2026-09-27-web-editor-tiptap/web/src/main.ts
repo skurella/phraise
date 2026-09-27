@@ -51,6 +51,10 @@ import { renderPresenceBadges } from './presenceView.js';
 import { renderStatus } from './statusView.js';
 import { registerServiceWorker, primeOfflineCache } from './offlineShell.js';
 import { CommentHighlights } from './comments/highlightExtension.js';
+import { debugStats as commentHighlightDebugStats } from './comments/highlightPlugin.js';
+import { createThread } from '../../src/comments/model.js';
+import { buildAnchorRecord } from '../../src/comments/anchor.js';
+import { liveAnchoringContext } from './comments/liveContext.js';
 import { CommentTrigger } from './comments/commentTrigger.js';
 import { CommentsController } from './comments/controller.js';
 import 'katex/dist/katex.min.css';
@@ -62,6 +66,10 @@ interface PhraiseWindowHook {
   provider: HocuspocusProvider;
   /** Test-only (gate H): see `unverifiedCheck.ts`'s `debugStats` comment. */
   debugUnverifiedCheckRuns(): number;
+  /** Test-only (gate K, scale): the wall time (ms) of the most recent
+   * unverified-block check pass -- see `unverifiedCheck.ts`'s
+   * `debugStats.lastRunMs` comment for cold vs warm. */
+  debugUnverifiedCheckLastMs(): number;
   /** Test-only (gate I): which source (`'indexeddb'` or `'provider'`) the editor was actually built from. */
   builtFrom: GateSource;
   /** Test-only (gate I): forces the y-indexeddb write queue to a full snapshot and resolves once that write has completed, so a test can close/reload the page deterministically instead of guessing at IndexedDB write timing. */
@@ -75,6 +83,21 @@ interface PhraiseWindowHook {
    * landed) without scraping the DOM for everything -- the UI itself is
    * still driven by real keyboard/mouse input in every gate F test. */
   comments: CommentsController;
+  /** Test-only (gate K, scale): the byte size of `Y.encodeStateAsUpdate`
+   * on this client's own `ydoc` -- equivalent to the relay's own state
+   * once synced (same CRDT document), simpler than reading the relay's
+   * SQLite file directly. */
+  encodedStateSize(): number;
+  /** Test-only (gate K, scale): the wall time (ms) of the most recent
+   * comment re-anchoring pass -- see `highlightPlugin.ts`'s `debugStats`
+   * comment. */
+  debugCommentHighlightLastMs(): number;
+  /** Test-only (gate K, scale): creates a real anchored comment thread at
+   * the given document positions, bypassing the floating "Comment" button
+   * / composer UI -- lets a test seed N real threads quickly to measure
+   * the re-anchoring pass's cost, without needing N real selections and
+   * clicks (which gate F's own tests already cover). */
+  debugCreateComment(from: number, to: number, text: string): void;
 }
 
 declare global {
@@ -380,11 +403,20 @@ async function main(): Promise<void> {
     ydoc,
     provider,
     debugUnverifiedCheckRuns: () => unverifiedCheckDebugStats.checkRuns,
+    debugUnverifiedCheckLastMs: () => unverifiedCheckDebugStats.lastRunMs,
     builtFrom,
     flushIndexeddb: () => storeIndexeddbState(persistence, true).then(() => undefined),
     offlineReady: offlineReadyPromise,
     statusLabel: () => statusEl.textContent ?? '',
     comments: commentsController,
+    encodedStateSize: () => Y.encodeStateAsUpdate(ydoc).byteLength,
+    debugCommentHighlightLastMs: () => commentHighlightDebugStats.lastComputeMs,
+    debugCreateComment: (from, to, text) => {
+      const ctx = liveAnchoringContext(editor.state);
+      if (!ctx) return;
+      const anchor = buildAnchorRecord(ctx, from, to);
+      createThread(ydoc, anchor, userName, text, Date.now());
+    },
   };
 
   const refreshMarkdown = debounce(() => {

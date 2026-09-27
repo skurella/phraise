@@ -268,3 +268,112 @@ passing. `npx tsc --noEmit`: clean.
 
 Committing the fix-list work now (charter: commit incrementally, explicit
 paths), before starting gate K.
+
+## 23:15 -- gate K (scale) done, all numbers pass, results/scale.json written
+
+New instrumentation (test-only, same pattern as existing `debugStats`
+hooks): `unverifiedCheck.ts`'s `debugStats.lastRunMs` (wall time of the
+gate H per-block check pass); `highlightPlugin.ts`'s `debugStats
+.lastComputeMs` (wall time of the comment re-anchoring pass); `main.ts`
+exposes both plus `encodedStateSize()` (`Y.encodeStateAsUpdate(ydoc)
+.byteLength` -- equivalent to the relay's own state once synced, simpler
+than reading the relay's SQLite file) and `debugCreateComment(from, to,
+text)` (creates a real anchored thread bypassing the composer UI, for
+seeding N comments quickly -- gate F's own tests already cover the real
+composer path).
+
+`e2e/gateK-scale.spec.ts` (new), 5 tests, writes `results/scale.json`
+(merged incrementally across tests via `test.afterAll`, so a failure in
+one measurement doesn't lose ones already taken):
+1. **Load**: wall-clock (Node `Date.now()`) from just before `page.goto`/
+   `page.reload` to a `page.waitForFunction` confirming the editor's DOM
+   has as many top-level children as the parsed document has top-level
+   blocks (1619) -- i.e. the LAST block is painted, not just "some
+   content". First visit (relay-seeded): **1537-1803ms** across several
+   runs (isolated and under full-suite contention) -- well under the
+   gate's 5s pass criterion, asserted directly. Repeat visit
+   (IndexedDB, after an explicit `flushIndexeddb()` for determinism, the
+   same trick gate I's own tests use): **125-153ms**, confirmed via
+   `builtFrom === 'indexeddb'`. Relay state size: **845,093 bytes**
+   (`Y.encodeStateAsUpdate`, ~3.4x the 245,936-byte source file, the CRDT
+   overhead).
+2/3. **Key press to paint**, 200 real `page.keyboard.press()` characters
+   (a real phrase, 10ms pacing) into a paragraph at the document's middle,
+   while a second browser context (Bob) runs a continuous background
+   load: every 120ms, alternately inserts one character into a paragraph
+   ~50 top-level blocks away and into Alice's OWN paragraph (at its far
+   end) -- via `editor.commands.insertContentAt`, a real Yjs transaction
+   over the relay, not real OS keyboard (only one page can hold real
+   keyboard focus at a time in this headless setup; Bob is background
+   load here, not the thing being measured). Bob's edits use a distinctive
+   marker character (`‡`, DOUBLE DAGGER) and the test POLLS Alice's
+   own `markdown()` for it after Bob stops -- confirming the concurrent
+   edits genuinely synced (32-33 landed each run), not just that the loop
+   ran without throwing. Measured BOTH ways per the brief: the Event
+   Timing API (`PerformanceObserver({type:'event', durationThreshold:16})`
+   + `first-input`) and a `requestAnimationFrame` scheduled from every real
+   `keydown`. **Reporting RAF for p50/p95/max** (documented in the file's
+   own header comment): `durationThreshold: 16` means the Event Timing API
+   only ever reports entries ABOVE 16ms, so on a healthy page most
+   keystrokes are silently dropped from that sample entirely -- there is
+   no percentile to compute from a sample that drops its own fast end.
+   RAF captures all 200 unconditionally. `first-input` never fired in this
+   headless setup across every run (`null` every time) -- reported as-is,
+   a genuine observation, not hidden. Results, panel closed: **p50 6.1-
+   6.4ms, p95 12.9-14.2ms, max 14.8-16.4ms** (n=200) -- comfortably under
+   the gate's 50ms p95 criterion (asserted directly), including under full
+   `npm run gates` parallelism. Panel open (not gated, still measured):
+   **p50 7.5-7.8ms, p95 14.0-15.1ms, max 16.4-17.6ms** -- close to the
+   closed numbers; the debounced Markdown-panel refresh does not
+   meaningfully change key-to-paint latency at this scale. The Event
+   Timing entries (304-450 per run) cross-check as expected: several per
+   keystroke (keydown/keyup/input each reported separately once any one of
+   them exceeds 16ms), consistent with RAF's own values clustering right
+   around that threshold.
+4. **Small README comparison** (`corpus/fetched/npm-express-readme.md`,
+   9,949 bytes): deliberately SOLO (no Bob) -- a README this size has
+   nowhere near 50 top-level blocks to place a second concurrent editor,
+   so this is a baseline of the editor's own per-keystroke cost without
+   collaboration overhead, not a second collaboration scenario. **p50
+   7.6-8.1ms, p95 15.8-16.0ms, max 17.7-18.0ms** -- essentially the SAME
+   as the large document's own numbers (within noise), i.e. the
+   245,936-byte document's size does not measurably slow down typing
+   latency once painted; the editor's per-keystroke cost is dominated by
+   fixed overhead (ProseMirror's own transaction/render cycle), not
+   document size.
+5. **In-page costs**: `parseMarkdown`/`serializeDoc` measured in Node, not
+   the browser (documented why in the file's header: both are DOM-free
+   TypeScript, same V8 either way, avoids a debug-hook overhead skewing a
+   microbenchmark) -- **parseMarkdown ~1.2-1.3s, serializeDoc ~1.2-1.25s**
+   on the whole 245,936-byte file (consistent with brief 03's own earlier
+   note that `serializeDoc` pays the same `detectDocStyle` full-reparse
+   cost). Gate H's per-block check, in-page via `debugUnverifiedCheckLastMs`:
+   **cold ~958-973ms** (first check ever: builds the whole definitions
+   context and re-serializes every top-level block), **warm ~16-18ms**
+   (one edit later, only the changed block misses `BlockCheckCache`) --
+   about 55-60x faster, same order of magnitude as brief 03's own
+   "~200x" figure for a smaller edit. Comment re-anchoring pass with 20
+   comments (seeded via `debugCreateComment`, spread across the document;
+   the 20th thread's own creation IS the triggering docChanged-equivalent
+   event, so reading `debugCommentHighlightLastMs()` right after gives
+   exactly this number): **0.6-0.7ms** -- negligible even with 20 threads.
+
+A real bug found and fixed while writing this file (not guessed): every
+`waitForFullyPainted` call hung indefinitely (30s+ timeouts) because the
+test forgot to seed ANY content for its own doc names at all -- confirmed
+by a throwaway debug spec (`_debug-load.spec.ts`, deleted after) that
+reproduced the identical sequence WITH proper seeding and found it fast
+(~2s). Fixed with a `seedDoc` helper that copies a fixture directly into
+`phraiseServer.seedsDir` (the established workaround for this spike's own
+`seedFiles`-array Playwright fixture bug, per the README's "Notes for the
+next brief" -- five differently-named docs needed here, one fresh Yjs
+document per measurement so they don't interfere with each other).
+
+Verification: `npx tsc --noEmit` clean; `npx vitest run` 26 files, 187/187;
+`npm run gates` (full suite, default parallelism, gates A-K): **84/84
+passing**, gate K's own numbers stable under real contention from every
+other gate running concurrently (p95 key-to-paint 14.2ms vs isolated
+12.9-14.2ms -- no meaningful difference). `results/scale.json` written and
+committed.
+
+Next: gate J (feel, screenshots), then Firefox/WebKit, then final commands.

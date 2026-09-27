@@ -32,7 +32,22 @@ export interface CommentHighlightState {
   ranges: Map<string, { start: number; end: number }>;
 }
 
+/**
+ * Test-only visibility (gate K, scale): the wall time (ms) of the most
+ * recent full re-anchoring pass (`computeState`, below) -- one
+ * `resolveAnchor` call per unresolved thread, run on every document
+ * change. Not read by any production code path.
+ */
+export const debugStats = { lastComputeMs: 0 };
+
 function computeState(ydoc: Y.Doc, state: EditorState, activeThreadId: string | null): CommentHighlightState {
+  const t0 = performance.now();
+  const result = computeStateInner(ydoc, state, activeThreadId);
+  debugStats.lastComputeMs = performance.now() - t0;
+  return result;
+}
+
+function computeStateInner(ydoc: Y.Doc, state: EditorState, activeThreadId: string | null): CommentHighlightState {
   const ctx = liveAnchoringContext(state);
   const ranges = new Map<string, { start: number; end: number }>();
   if (!ctx) return { decorations: DecorationSet.empty, ranges };

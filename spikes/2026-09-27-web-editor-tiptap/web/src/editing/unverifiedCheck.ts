@@ -85,13 +85,23 @@ const checkCache = new BlockCheckCache();
  * than inferring this indirectly from the absence of a double-conversion,
  * which a race could hide. Not read by any production code path.
  */
-export const debugStats = { checkRuns: 0 };
+export const debugStats = { checkRuns: 0, lastRunMs: 0 };
 
 function runCheck(editor: Editor): void {
   debugStats.checkRuns++;
+  const t0 = performance.now();
   const liveDoc = editor.state.doc;
   const canonicalDoc = toCanonicalDoc(liveDoc);
   const unverified = checkCache.check(canonicalDoc, { onUnverified: 'emit' });
+  // Gate K (scale): the wall time of one full check pass -- the FIRST call
+  // is "cold" (no cache yet: `BlockCheckCache` builds its definitions
+  // context and re-serializes every top-level block); a later call after
+  // exactly one more edit is "warm" (only the changed block's identity
+  // misses the cache; see this file's own header comment and
+  // `src/editing/blockCheckCache.ts`). Recorded unconditionally (not only
+  // when something is actually flagged unverified) since the cost gate K
+  // cares about is the CHECK itself, not its rare positive result.
+  debugStats.lastRunMs = performance.now() - t0;
   if (unverified.length === 0) return;
 
   let tr = editor.state.tr;
