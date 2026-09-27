@@ -1,6 +1,6 @@
 # Spike 6: the integration engine
 
-Status: in progress (foundation: scaffold, `src/markdown/`, `src/crdt/`, `src/testkit/` basics)
+Status: in progress (`src/markdown/`, `src/crdt/`, `src/git/`, `src/engine/`, `src/testkit/` built; `src/relay/`/`src/daemon/` not yet)
 
 The headless engine that runs Phraise's whole loop in one codebase: open a
 file from a git remote, edit it together, comment, flush drafts, commit,
@@ -42,8 +42,9 @@ src/
               style, compare. Pure functions on ProseMirror nodes. No Yjs import.
   crdt/       THE ONLY MODULE THAT IMPORTS yjs, y-protocols or @tiptap/y-tiptap.
               The five-point CRDT interface (plan section 3).
-  engine/     (not yet built) Rebase, import, comments, review flags, attribution,
-              commit prep, generations. Uses crdt + markdown.
+  engine/     Rebase, import of a saved text, needs-review flags and resurrection,
+              comments (D3 anchor record), attribution listing, commit prep.
+              Uses crdt + markdown only; never imports yjs itself.
   git/        Git storage against a remote given by URL/path: head polling, read
               file at commit, draft flush/restore (lease), commit (lease).
               Shells out to the git CLI via plumbing in a bare cache repo
@@ -51,8 +52,9 @@ src/
   relay/      (not yet built) Hocuspocus server as a library plus a thin CLI.
   daemon/     (not yet built) File materialization on top of engine + crdt.
   testkit/    Temp dirs, PRNG, tokens, waitFor, corpus loader, port allocation
-              (4300-4399), temp bare git remotes and clones (`remote.ts`).
-              May import anything in src/; src/ never imports testkit.
+              (4300-4399), temp bare git remotes and clones (`remote.ts`), a
+              tiny in-test hub exchanging CrdtDoc updates in causal order
+              (`hub.ts`). May import anything in src/; src/ never imports testkit.
 gates/        gates/index.ts runs all registered gates and prints a results table
               (placeholder for now; gates/<letter>.ts land one per brief).
 test/         vitest unit tests, one or more per module.
@@ -77,6 +79,7 @@ copies of the four source spikes were extracted read-only under
 | Spike | Branch | Commit |
 |---|---|---|
 | 1. Markdown round trip | `spike/2026-09-27-markdown-round-trip` | `1e1f4a6` |
+| 2. CRDT rebase, comment anchors | `spike/2026-09-27-crdt-rebase` | `ab552ed` (read via spike 5's live copy of it, `eeb3fe2`) |
 | 3. Daemon file sync | `spike/2026-09-27-daemon-file-sync` | `9343b62` |
 | 5. Collaboration stack | `spike/2026-09-27-collab-stack` | `eeb3fe2` |
 
@@ -99,6 +102,15 @@ copies of the four source spikes were extracted read-only under
 | `src/testkit/waitFor.ts` | spike 3 `src/testkit/wait-for.ts` (`9343b62`) |
 | `src/testkit/corpus.ts` | adapted from spike 1 `gates/lib/corpus.ts` (`1e1f4a6`) |
 | `scripts/fetch-corpus.mjs`, `corpus/manifest.json`, `corpus/specs.json`, `corpus/handwritten/*`, `corpus/README.md` | spike 1 (`1e1f4a6`) |
+| `src/crdt/blocks.ts` | generalized from spike 2's `integrate.ts` (via spike 5's live copy, `eeb3fe2`, `src/rebase/integrate.ts`) to the full schema |
+| `src/crdt/anchors.ts` | generalized from spike 2's `text.ts` (same location) to multiple text runs/inline atoms per block |
+| `src/crdt/attribution.ts` | spike 5 `src/attribution.ts` (`eeb3fe2`), retargeted to this spike's naming |
+| `src/crdt/integrationHook.ts` | spike 5 `src/rebase/liveIntegration.ts`'s `attachIntegrationHook` mechanics (`eeb3fe2`), integration logic removed; `wouldPend` from spike 2's `replica.ts` (same location) |
+| `src/engine/ids.ts` | spike 2's `ids.ts` (same location), generalized to variadic parts |
+| `src/engine/seed.ts` | spike 2's `seed.ts` (same location), rebuilt on this spike's crdt interface |
+| `src/engine/rebase.ts` | spike 2's `rebase.ts` (same location), rebuilt on `forkDiffMerge`'s `onFork`/`forceFork` |
+| `src/engine/integrate.ts` | spike 2's `integrate.ts` (same location), rebuilt on the generalized crdt primitives; S5-5's `ackOwnRebase` behavior ported from spike 5's `src/relay.ts` rebase route |
+| `src/engine/comments.ts` | spike 2's `comments.ts` (same location), scoring/acceptance logic close to verbatim |
 
 Files not listed above (`src/markdown/index.ts`, `src/crdt/index.ts`,
 `src/crdt/inspectUpdate.ts`, `src/crdt/meta.ts`, `src/crdt/render.ts`,
@@ -107,6 +119,11 @@ Files not listed above (`src/markdown/index.ts`, `src/crdt/index.ts`,
 `src/git/*` (`gitProcess.ts`, `plumbing.ts`, `index.ts`) and
 `src/testkit/remote.ts`, also new -- see `src/git/README.md` for its API
 and two documented deviations from the plan's stated fetch behaviour.
+Brief 03 adds `src/engine/*` (`types.ts`, `import.ts`, `commit.ts`,
+`attribution.ts`, `index.ts` -- new, no spike-2/5 equivalent in this shape)
+and `src/testkit/hub.ts` (new; the *idea* is spike 2's `replica.ts`, but it
+is rebuilt from scratch on crdt's public API since it lives outside
+`src/crdt/` and may not import `yjs` itself), plus `test/engine.*.test.ts`.
 
 ## Changes to copied code (brief 01)
 
@@ -125,3 +142,34 @@ and two documented deviations from the plan's stated fetch behaviour.
 - `recordAttribution`/`authorOf` (plan section 3 point 3) and anchors (plan
   section 3 point 5) are deliberately **not** implemented in this brief;
   see `src/crdt/README.md`.
+
+## Changes to copied code (brief 03)
+
+- Spike 2's schema assumption (a textblock is `paragraph`/`heading`/
+  `code_block`, each with exactly one `XmlText`) does not hold on the full
+  schema. `src/crdt/blocks.ts` and `anchors.ts` generalize: a textblock is
+  any node type whose `isTextblock` is true (checked dynamically against
+  `src/markdown`'s schema), its children may be several text runs
+  interleaved with inline atoms (`image`, `hard_break`, `raw_inline`), and
+  a block's "signature" (change detection) and the document's plain-text
+  projection (anchors) both account for that -- see `src/crdt/README.md`.
+- `forkDiffMerge` gains `onFork(fork)` (writes records on the fork after
+  the diff is verified/repaired) and `forceFork` (see that file's own doc
+  comment for why the latter is required, not optional, for a caller like
+  engine's rebase).
+- `crdt.listMetaEntries`/`crdt.deleteMeta` are added to the "small typed
+  accessor" plan section 3 asked for: engine needs to enumerate and delete
+  namespaced keys (`rebase:*`, `ack:*`, `editorsSinceCommit:*`), not just
+  get/set one key at a time.
+- S2-11 (findings doc): a rebase record's id is `hash(baseId, targetCommit)`,
+  not `targetCommit` alone -- `engine/ids.ts`'s `rebaseRecordId`.
+- S5-5: the replica that computes a rebase acks its own record immediately
+  (`engine.ackOwnRebase`), rather than relying on the normal per-remote-batch
+  scan to discover it (which may never even run for a purely local
+  transaction, and would in any case use a meaningless "before" snapshot for
+  an operation this replica performed itself).
+- Comment anchors are now opaque, serializable values (base64 of an
+  encoded `Y.RelativePosition`, via `crdt.anchorAt`/`resolveAnchor`) instead
+  of spike 2's own ad hoc `Y.RelativePosition` JSON plumbing inlined in
+  `comments.ts` -- the fuzzy-match scoring/acceptance logic itself (S2-9)
+  is unchanged (plain string code, already schema-agnostic).

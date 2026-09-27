@@ -64,5 +64,44 @@ export { forkDiffMerge, ORIGIN_FORK_DIFF_MERGE, type ForkDiffMergeOpts, type For
 export { render, type RenderResult } from './render.js';
 export type { DiffCounters } from './diff.js';
 
+// Brief 03: review-flag support (blockStatesAt/resurrectBlock, plan section
+// 3 point 4) and the block-authorship primitive engine/integrate.ts's
+// resurrection rule needs (see blocks.ts's own header comment).
+export {
+  isTextblockName,
+  collectBlocks,
+  currentBlockText,
+  blockStatesAt,
+  blockSignatureAt,
+  blockPlainTextAt,
+  resurrectBlock,
+  blockHasOwnEditsSince,
+  idKey,
+  isVisibleAt,
+  type BlockRef,
+  type BlockState,
+  type ReviewReason,
+} from './blocks.js';
+
+// --- 5. Anchors --------------------------------------------------------------
+export { textProjection, anchorAt, resolveAnchor, ATOM_PLACEHOLDER } from './anchors.js';
+
+// --- 3 (continued). Attribution -----------------------------------------------
+export {
+  recordAttribution,
+  listAttributedRanges,
+  ATTRIBUTION_ORIGIN,
+  ATTRIBUTION_MAP_NAME,
+  ATTRIBUTION_CONFLICTS_MAP_NAME,
+  type AttributionEntry,
+  type AttributedRange,
+  type ConflictEntry,
+} from './attribution.js';
+
+// Brief 03: the generic remote-batch hook (spike 5's attachIntegrationHook
+// mechanics, minus the integration logic itself -- see integrate.ts's own
+// header comment for why that split).
+export { onRemoteBatch, wouldPend, INTEGRATION_ORIGIN_MARKER, type OnRemoteBatchHandle } from './integrationHook.js';
+
 // --- meta accessors -----------------------------------------------------------
-export { getMeta, setMeta, transact } from './meta.js';
+export { getMeta, setMeta, transact, listMetaEntries, deleteMeta } from './meta.js';

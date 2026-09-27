@@ -27,24 +27,67 @@ JS/ProseMirror values.
    matters: see `workarounds/leafMarks.ts`'s comment on why leafMarks must
    come before rootAttrs).
 3. **Relay per-update hook.** `inspectUpdate(update)` via `Y.parseUpdateMeta`.
-   Brief 01 scope note: `recordAttribution`/`authorOf` (plan section 3 point 3)
-   are **not** implemented here yet -- left to a later brief alongside
-   engine's attribution listing.
+   Brief 03 adds `recordAttribution(doc, update, user, at)` and
+   `listAttributedRanges(doc)` (`attribution.ts`, ported from spike 5's
+   `attribution.ts`) -- per-client clock ranges mapped to a user and
+   timestamp, and a walk of the doc's items grouping visible runs by who
+   wrote them. `authorOf` (plan section 3's other point-3 item) is left to
+   the relay brief: it needs the connection-level auth mapping, not
+   anything this module owns.
 4. **Fork, diff, apply.** `snapshot(doc)`/`encodeSnapshot` (alias), and
-   `forkDiffMerge(doc, base, target, {clientId, origin})`: fork `doc` at
-   `base` (or diff directly when `base` already equals the live state, the
-   fast path), diff-apply `target` onto the fork's content (`diff.ts`,
-   copied from spike 3's two-way block/word diff), verify the result equals
-   `target` exactly, repair with a whole-fragment `updateYFragment` on
-   mismatch (counted), and merge the fork's update back into `doc`.
-   `render(doc)` reads `doc` and calls `src/markdown`'s `renderDoc` (best
-   effort plus degraded-block plus boundary-repair report).
-   `blockStatesAt`/`resurrectBlock` are brief 03's addition, not here.
-5. **Anchors.** Not implemented in brief 01 (brief 03's addition).
+   `forkDiffMerge(doc, base, target, {clientId, origin, forceFork?, onFork?})`:
+   fork `doc` at `base` (or diff directly when `base` already equals the
+   live state, the fast path -- `forceFork: true` skips this and always
+   forks, needed by a caller like engine's rebase that requires the SAME
+   `clientId` attributed on every replica regardless of whether a given one
+   happens to have made no local edits since `base`), diff-apply `target`
+   onto the fork's content (`diff.ts`, copied from spike 3's two-way
+   block/word diff), verify the result equals `target` exactly, repair with
+   a whole-fragment `updateYFragment` on mismatch (counted), run `onFork`
+   (brief 03: called AFTER verify/repair, so any `snapshot(fork)` it takes
+   is guaranteed target-equal content -- a deliberate deviation from a
+   literal "immediately after the diff" reading, logged in
+   `forkDiffMerge.ts`'s own doc comment), and merge the fork's update back
+   into `doc`. `render(doc)` reads `doc` and calls `src/markdown`'s
+   `renderDoc` (best effort plus degraded-block plus boundary-repair
+   report). `blockStatesAt(doc, snapshot?)`/`resurrectBlock(doc, blockId,
+   atSnapshot)` (`blocks.ts`, brief 03): every textblock ever created (live
+   or deleted), generalized to the full schema -- a textblock is any
+   element whose node type `isTextblock` (checked dynamically against
+   `src/markdown`'s schema, not a hardcoded name set), and its signature at
+   a snapshot covers its own semantic attrs plus, in child order, each text
+   run's formatted delta and each inline atom's name/attrs (including
+   `leafMarks`, force-included despite being a meta attr everywhere else --
+   it is the only place an inline atom's marks live at this level).
+   `blockHasOwnEditsSince` (new, not spike 2's) backs engine's resurrection
+   rule ("only the author of the edits resurrects"), which the opaque
+   signature string alone cannot answer. `onRemoteBatch(doc, isRemoteOrigin,
+   handler(beforeSnapshot))` (`integrationHook.ts`): spike 5's
+   `attachIntegrationHook` mechanics (snapshot before a remote transaction,
+   callback after) with the integration logic itself removed -- that is
+   engine's `attachIntegration`'s job. `wouldPend(doc, update)`: whether
+   applying `update` would leave structs pending missing dependencies
+   (spike 2's causal-delivery finding); used by `src/testkit/hub.ts`, not by
+   engine.
+5. **Anchors.** `textProjection(doc) -> string` (`anchors.ts`, brief 03): the
+   plain-text projection defined ONCE here and used consistently by anchor
+   creation, engine's fuzzy quote matching, and resolution -- textblocks in
+   document order joined by `"\n"`, each inline atom contributing one
+   `U+FFFC` placeholder char. `anchorAt(doc, offset, assoc)`/
+   `resolveAnchor(doc, anchor) -> offset | null`: opaque, serializable
+   anchors (base64 of an encoded `Y.RelativePosition`), anchored via
+   `createRelativePositionFromTypeIndex` against either a text run's own
+   `Y.XmlText` (character index) or, for a position at/adjacent to an
+   inline atom or inside an empty block, the block's own `Y.XmlElement`
+   (Yjs's array-like child-index scheme) -- there is no `Y.XmlText` to
+   index against in that case.
 
 Plus typed accessors for JSON values in named `Y.Map`s: `getMeta`,
-`setMeta`, `transact` (`meta.ts`), so engine can keep its own records
-without touching a `Y.Map` directly.
+`setMeta`, `transact`, `listMetaEntries`, `deleteMeta` (`meta.ts`; the last
+two are brief 03's addition -- engine needs to enumerate/delete namespaced
+keys like `rebase:*`/`ack:*`/`editorsSinceCommit:*`, not just get/set one
+key), so engine can keep its own records without touching a `Y.Map`
+directly.
 
 ## The Y.Doc's own shape
 
@@ -76,5 +119,19 @@ ySyncPlugin path).
 version ring or base choice (daemon's job later).
 `editorPlugins.ts` -- the plugin construction/ordering from spike 5
 `src/client.ts` (`eeb3fe2`), factored out as a standalone function.
+`blocks.ts` -- generalized from spike 2's `integrate.ts` (via spike 5's live
+copy, `collab-stack-yjs13-hocuspocus` `src/rebase/integrate.ts`, `eeb3fe2`)
+to the full schema (dynamic `isTextblock` check, multi-run/atom
+signatures); `blockHasOwnEditsSince` is new. `anchors.ts` -- generalized
+from spike 2's `text.ts` (same location) to multiple text runs and inline
+atoms per block; the anchor encoding itself (base64 of
+`Y.encodeRelativePosition`, vs. spike 2's own ad hoc `Y.RelativePosition`
+JSON plumbing in `comments.ts`) is new. `attribution.ts` -- spike 5's
+`attribution.ts` (`eeb3fe2`), retargeted to this spike's fragment/map
+naming; the item walk itself needed no schema change (already
+schema-agnostic). `integrationHook.ts` -- spike 5's
+`liveIntegration.ts`'s `attachIntegrationHook` mechanics (`eeb3fe2`), with
+the integration logic removed; `wouldPend` is spike 2's `replica.ts`'s
+same-named helper, moved here since it needs a raw Yjs probe doc.
 `inspectUpdate.ts`, `meta.ts`, `render.ts`, `index.ts` -- new for this
 spike.

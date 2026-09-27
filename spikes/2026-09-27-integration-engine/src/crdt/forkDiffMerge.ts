@@ -33,6 +33,31 @@ export interface ForkDiffMergeOpts {
   clientId?: number;
   /** Yjs transaction origin tag for every mutation this call makes. */
   origin?: unknown;
+  /**
+   * Brief 03 addition. Always fork (create an isolated `Y.createDocFromSnapshot`
+   * copy and merge its update back), even when `base` already equals `doc`'s
+   * live snapshot. Without this, the fast path applies the diff directly
+   * under `doc`'s OWN current `clientID` -- fine for an ordinary local save,
+   * but wrong for a caller (engine's rebase) that needs the SAME `clientId`
+   * attributed to this operation on every replica regardless of whether
+   * that replica happens to have made no edits since `base` (in which case
+   * its live snapshot coincidentally equals `base` and the fast path would
+   * otherwise silently take over).
+   */
+  forceFork?: boolean;
+  /**
+   * Brief 03 addition (plan section 3 point 4: "forkDiffMerge gains an
+   * optional onFork(fork) callback run inside the fork's transaction after
+   * the diff"). Called with the fork (an opaque `CrdtDoc`, i.e. plain
+   * `Y.Doc` from this module's own point of view) after the diff has been
+   * applied AND verified/repaired to equal `target` exactly -- so any
+   * `snapshot(fork)` the callback takes is guaranteed to reflect
+   * target-equal content, even on the rare repair path. Runs before the
+   * fork's update is computed and merged into `doc`, so anything the
+   * callback writes (e.g. via `setMeta`) is included in that merge. On the
+   * fast (non-forked) path, `fork` is `doc` itself.
+   */
+  onFork?: (fork: Y.Doc) => void;
 }
 
 export interface ForkDiffMergeResult {
@@ -64,7 +89,7 @@ export function forkDiffMerge(doc: Y.Doc, base: Uint8Array, target: PMNode, opts
   const targetEncoded = encodeLeafMarks(target);
 
   const liveSnapshot = Y.snapshot(doc);
-  const forked = !Y.equalSnapshots(liveSnapshot, baseSnapshot);
+  const forked = opts.forceFork === true || !Y.equalSnapshots(liveSnapshot, baseSnapshot);
 
   let work: Y.Doc;
   let svBefore: Uint8Array;
@@ -103,6 +128,12 @@ export function forkDiffMerge(doc: Y.Doc, base: Uint8Array, target: PMNode, opts
       const fragment = work.getXmlFragment(FRAGMENT_NAME);
       updateYFragment(work, fragment, targetEncoded, { mapping: new Map(), isOMark: new Map() } as any);
     }, origin);
+  }
+
+  // onFork runs after verify/repair (see the option's own doc comment for
+  // why): the fork's content is now guaranteed to equal `target` exactly.
+  if (opts.onFork) {
+    work.transact(() => opts.onFork!(work), origin);
   }
 
   const update = Y.encodeStateAsUpdate(work, svBefore);
