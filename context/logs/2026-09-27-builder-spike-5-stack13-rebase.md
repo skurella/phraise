@@ -266,3 +266,53 @@ this gate exists to exercise.
 
 Task 4 done. Moving to task 5 (wire gate F into `npm run gates`/
 `gates:quick`, README section).
+
+## 14:20 — task 5 done: gate F wired into npm run gates/gates:quick, README updated
+
+scripts/gates.ts: imports `runGateF`/`runGateFContinuousTyping`, runs both
+after gate G on ports 4227/4228 (documented in the file's own port comment
+block), adds both to the printed table, `results/gates.md` and
+`results/gates.json` (`gateF`/`gateF_continuousTyping` keys), replacing the
+old "F. (later brief), not run" placeholder row; "H. (orchestrator, primary
+sources)" is the only remaining "not run" row. Gate F runs in full under
+both `gates:quick` and the full `gates` (it's cheap: ~4s for both the main
+scenario and the variant), unlike C/D/E/G which trim scope under `--quick`.
+
+README.md: Status/Goal updated (brief 05, gate F done); "Origin of copied
+code" gets a brief-05 paragraph (src/rebase/* origin, the two import
+retargets, schema.ts's toDOM/parseDOM, scenario.ts's labelBlocks export);
+"Layout" gets entries for src/rebase/, liveIntegration.ts, liveClient.ts,
+scripts/rebase-baseline.ts, scripts/run-gate-f.ts; "Running" gets the
+`npm run rebase:baseline` script (added to package.json) and updated
+timings; a new **F. Rebase port** bullet under "## Gates" describing the
+scenario and every sub-check, matching the "what had to change from spike
+2" narrative already in gates/gateF.ts's own top-of-file comment (task 4)
+and this log (task 3) rather than restating it a third time in different
+words.
+
+Verification (not assumed): `npx tsc --noEmit` clean; `npm run
+rebase:baseline` still 6/6; `npm run gates:quick` full pass (table
+captured above -- every gate OK including F, F variant); `npm run gates`
+(full): every gate passes **except** gate C, which showed a
+pre-existing-class flake (path B, editor 2, `npm-underscore-readme.md`,
+byte mismatch) -- a *different* file/path than brief 03's own documented
+occurrence (`npm-bull-readme.md`, path A, the `lead` root-attrs race), so
+recorded as its own addendum in "Known limitations" rather than folded into
+the old entry as if identical. Verified this is not something brief 05
+introduced: gate F's own relays run on separate ports (4227-4228) and never
+touch gate C's fixtures/schema/relays at all, and a standalone rerun of
+gate C alone, immediately after, passed 266/266 clean (matching the exact
+"isolated rerun passes" pattern the brief-03 entry already documented for
+its own occurrence). Not chased further, per the charter's "verify claims
+that have consequences by running the check yourself" (done) and "two
+genuinely different attempts" precedent already set for this class of
+issue in gate C's own history -- this is gate C's pre-existing, known,
+rare, cause-unconfirmed flake recurring with a different symptom, not a
+brief 05 regression, and is out of this brief's scope to chase further.
+
+No relay left running after any run in this task (`lsof -nP
+-iTCP:4210-4239 -sTCP:LISTEN` empty each time).
+
+Task 5 done. Definition of done met: `npm run gates:quick` passes
+including F; `npx tsc --noEmit` clean; no relay left running. Brief's
+stopping point ("task 5 done") reached. Preparing handback.

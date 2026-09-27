@@ -1,9 +1,9 @@
 #!/usr/bin/env npx tsx
 // Gate runner for stack 13. `npm run gates` runs every gate over the real
 // corpus and prints a results table; `npm run gates:quick` runs a fast
-// subset (5-file sample for gate C; B3 in full; short versions of D, E, G)
-// for builders. Gates F and H belong to later briefs and are reported as
-// "not run".
+// subset (5-file sample for gate C; B3 in full; short versions of D, E, G;
+// F in full -- it's cheap). Gate H belongs to the orchestrator (primary
+// sources) and is reported as "not run".
 //
 // Ports (charter: stack 13 uses 4210-4239):
 //   4210 A, 4211-4212 B/B2, 4213 C (brief 01)
@@ -11,6 +11,7 @@
 //   4215-4216 D (convergence, caret/undo)
 //   4217-4221 E (listing/collision, reconnect/reload, restart, size x2)
 //   4222-4226 G (G1, G2 x2, G3, G4)
+//   4227-4228 F (main scenario, continuous-typing variant) (brief 05)
 import fs from 'node:fs';
 import path from 'node:path';
 import { runGateA } from '../gates/gateA.js';
@@ -19,6 +20,7 @@ import { runGateB3 } from '../gates/gateB3.js';
 import { runGateC } from '../gates/gateC.js';
 import { runGateD } from '../gates/gateD.js';
 import { runGateE } from '../gates/gateE.js';
+import { runGateF, runGateFContinuousTyping } from '../gates/gateF.js';
 import { runGateG } from '../gates/gateG.js';
 
 const QUICK = process.argv.includes('--quick');
@@ -169,9 +171,32 @@ async function main() {
   if (!g.pass) anyFailure = true;
   console.log(`  -> ${g.pass ? 'PASS' : 'FAIL'}: ${g.detail}\n`);
 
-  for (const gate of ['F', 'H']) {
-    rows.push({ gate: `${gate}. (later brief)`, result: 'not run', numbers: '-' });
-  }
+  // --- Gate F ---
+  console.log('Gate F: spike 2\'s rebase scenario with live editors (relay-applied rebase, offline bob, comments A-D)...');
+  const dbF = path.join(DATA_DIR, 'gateF.sqlite');
+  fs.rmSync(dbF, { force: true });
+  const f = await runGateF({ port: 4227, dbPath: dbF });
+  rows.push({
+    gate: 'F. Rebase port (live editors)',
+    result: f.pass ? 'PASS' : 'FAIL',
+    numbers: f.checks.map((c) => `${c.pass ? 'OK' : 'FAIL'}: ${c.name}`).join('; '),
+  });
+  if (!f.pass) anyFailure = true;
+  console.log(`  -> ${f.pass ? 'PASS' : 'FAIL'}: ${f.detail}\n`);
+
+  console.log('Gate F variant: alice types continuously while the rebase is applied...');
+  const dbFVariant = path.join(DATA_DIR, 'gateF-continuous.sqlite');
+  fs.rmSync(dbFVariant, { force: true });
+  const fVariant = await runGateFContinuousTyping({ port: 4228, dbPath: dbFVariant });
+  rows.push({
+    gate: 'F (variant). Continuous typing during rebase',
+    result: fVariant.pass ? 'PASS' : 'FAIL',
+    numbers: fVariant.detail,
+  });
+  if (!fVariant.pass) anyFailure = true;
+  console.log(`  -> ${fVariant.pass ? 'PASS' : 'FAIL'}: ${fVariant.detail}\n`);
+
+  rows.push({ gate: 'H. (orchestrator, primary sources)', result: 'not run', numbers: '-' });
 
   // --- Print table ---
   const header = '| Gate | Result | Numbers |\n|---|---|---|';
@@ -207,6 +232,8 @@ async function main() {
     gateC: c,
     gateD: d,
     gateE: e,
+    gateF: f,
+    gateF_continuousTyping: fVariant,
     gateG: g,
   };
   fs.writeFileSync(path.join(RESULTS_DIR, 'gates.json'), JSON.stringify(json, null, 2));

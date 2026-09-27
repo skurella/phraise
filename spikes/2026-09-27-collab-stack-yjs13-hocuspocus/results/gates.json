@@ -1,32 +1,32 @@
 {
-  "generatedAt": "2026-09-27T08:48:29.063Z",
-  "quick": false,
+  "generatedAt": "2026-09-27T10:36:18.700Z",
+  "quick": true,
   "gateA": {
     "pass": true,
-    "medianLatencyMs": 22.634667000000036,
+    "medianLatencyMs": 22.344458999999915,
     "latencies": [
-      22.597125000000005,
-      22.78479200000004,
-      22.651292000000012,
-      22.85841599999992,
-      22.21575000000007,
-      21.866249999999923,
-      22.889749999999935,
-      23.320625000000064,
-      22.634667000000036,
-      22.17270899999994,
-      22.19941599999993,
-      22.192542000000003,
-      23.313666000000012,
-      22.274749999999926,
-      22.334833000000003,
-      23.265999999999963,
-      22.947125000000028,
-      22.232375000000047,
-      20.663249999999834,
-      23.364125000000058
+      22.917583000000036,
+      21.756208000000015,
+      22.935791999999992,
+      22.47579200000007,
+      22.12900000000002,
+      22.290500000000065,
+      20.51295800000014,
+      22.344458999999915,
+      22.21445800000015,
+      22.307000000000016,
+      22.100791000000072,
+      22.2376670000001,
+      23.09720900000002,
+      22.949249999999893,
+      22.929000000000087,
+      23.048874999999953,
+      22.336042000000134,
+      22.68404099999998,
+      22.57400000000007,
+      21.476208000000042
     ],
-    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 22.6ms"
+    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 22.3ms"
   },
   "gateB_workarounds": {
     "pass": true,
@@ -74,12 +74,12 @@
   },
   "gateC": {
     "pass": true,
-    "total": 266,
-    "pathAPassed": 266,
-    "pathBPassed": 266,
+    "total": 5,
+    "pathAPassed": 5,
+    "pathBPassed": 5,
     "failures": [],
-    "elapsedMs": 58858,
-    "encodedStateBytesTotal": 18025341
+    "elapsedMs": 1175,
+    "encodedStateBytesTotal": 350292
   },
   "gateD": {
     "pass": true,
@@ -98,24 +98,9 @@
         "name": "Gate B's script run through two Tiptap editors: converge (editor1 = editor2 = relay)",
         "pass": true,
         "detail": "editor1, editor2 and the relay agree; every linked image kept its link mark"
-      },
-      {
-        "name": "Caret: awareness state present for both users",
-        "pass": true,
-        "detail": "collaborationCaret.users=[{\"clientId\":740936541,\"name\":\"Alice\",\"color\":\"#ff0000\"},{\"clientId\":624060065,\"name\":\"Bob\",\"color\":\"#0000ff\"}]"
-      },
-      {
-        "name": "Caret: each editor renders the other's caret decoration in the DOM",
-        "pass": true,
-        "detail": "bob's DOM showed alice's caret=true; alice's DOM showed bob's caret=true"
-      },
-      {
-        "name": "Undo: alice's undo removes only her own change",
-        "pass": true,
-        "detail": "aliceEditGone=true bobEditUnaffectedOnBoth=true"
       }
     ],
-    "detail": "all 6 checks passed"
+    "detail": "all 3 checks passed"
   },
   "gateE": {
     "pass": true,
@@ -128,31 +113,77 @@
       {
         "name": "Collision: forged client ID flagged, not overwritten",
         "pass": true,
-        "detail": "flagged=true groundTruthKept=true log=[{\"client\":1189437829,\"existingUser\":\"alice\",\"attemptedUser\":\"mallory\",\"at\":1790498898035}]; note: alice's OWN clientID self-reassigned=true (Yjs's client-side defense reacting to receiving her own forged ID back)"
-      },
-      {
-        "name": "Reconnect: same Y.Doc + same clientID, ranges accumulate under it",
-        "pass": true,
-        "detail": "clientID unchanged=true; ranges for that client=14"
-      },
-      {
-        "name": "Reload: new Y.Doc + new clientID mapped to the same user, no conflict",
-        "pass": true,
-        "detail": "newClientID!=old=true oldEntryUser=alice:true newEntryUser=alice:true (3 distinct client IDs mapped total)"
-      },
-      {
-        "name": "Restart: attribution Y.Map survives a relay restart (same persistence as the document)",
-        "pass": true,
-        "detail": "alice's mapping (client 3718007391) intact after restart"
+        "detail": "flagged=true groundTruthKept=true log=[{\"client\":1343443363,\"existingUser\":\"alice\",\"attemptedUser\":\"mallory\",\"at\":1790505375327}]; note: alice's OWN clientID self-reassigned=true (Yjs's client-side defense reacting to receiving her own forged ID back)"
       }
     ],
     "sizeMeasurement": {
-      "totalBytes": 5419,
-      "withoutAttributionBytes": 4288,
-      "deltaBytes": 1131,
-      "deltaPct": 26.375932835820898
+      "totalBytes": 0,
+      "withoutAttributionBytes": 0,
+      "deltaBytes": 0,
+      "deltaPct": 0
     },
-    "detail": "all 5 checks passed; attribution overhead 1131B (26.4%) of 4288B"
+    "detail": "all 2 checks passed (quick: listing + collision only)"
+  },
+  "gateF": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "Rebase applied while alice online, bob offline",
+        "pass": true,
+        "detail": "{\"applied\":true,\"rebaseId\":\"B\"}"
+      },
+      {
+        "name": "Convergence: alice, bob and the relay have identical ProseMirror JSON",
+        "pass": true,
+        "detail": "identical"
+      },
+      {
+        "name": "Convergence: alice, bob and the relay have identical review maps",
+        "pass": true,
+        "detail": "identical"
+      },
+      {
+        "name": "A: untouched-paragraph comment resolves via crdt on alice, bob and the relay",
+        "pass": true,
+        "detail": "{\"alice\":{\"method\":\"crdt\",\"text\":\"never touched by anyone\",\"start\":45,\"end\":68},\"bob\":{\"method\":\"crdt\",\"text\":\"never touched by anyone\",\"start\":45,\"end\":68},\"relay\":{\"method\":\"crdt\",\"text\":\"never touched by anyone\",\"start\":45,\"end\":68}}"
+      },
+      {
+        "name": "B: rewritten-paragraph comment survives (anchor or quote) on alice, bob and the relay",
+        "pass": true,
+        "detail": "{\"alice\":{\"method\":\"crdt\",\"text\":\"plan for the rollout\",\"start\":145,\"end\":165},\"bob\":{\"method\":\"crdt\",\"text\":\"plan for the rollout\",\"start\":145,\"end\":165},\"relay\":{\"method\":\"crdt\",\"text\":\"plan for the rollout\",\"start\":145,\"end\":165}}"
+      },
+      {
+        "name": "C: deleted-paragraph comment orphans, quote kept, negative control (harbor) not captured",
+        "pass": true,
+        "detail": "{\"alice\":{\"method\":\"orphaned\",\"quote\":{\"exact\":\"old lighthouse keeper\",\"prefix\":\"etail.\\nThis paragraph about the \",\"suffix\":\" will be removed entirely in the\"}},\"bob\":{\"method\":\"orphaned\",\"quote\":{\"exact\":\"old lighthouse keeper\",\"prefix\":\"etail.\\nThis paragraph about the \",\"suffix\":\" will be removed entirely in the\"}},\"relay\":{\"method\":\"orphaned\",\"quote\":{\"exact\":\"old lighthouse keeper\",\"prefix\":\"etail.\\nThis paragraph about the \",\"suffix\":\" will be removed entirely in the\"}}}"
+      },
+      {
+        "name": "D: P and Q flagged concurrent-edit; offline (bob) and online (alice) upstream-conflicting text both survive; no unexpected flags",
+        "pass": true,
+        "detail": "pFlagged=true qFlagged=true textOk=true unexpected=[]"
+      },
+      {
+        "name": "D2: P2 (deleted upstream, edited offline by bob) resurrected exactly once, flagged, converged",
+        "pass": true,
+        "detail": "p2Deleted=true resurrections=1 survivesEverywhere=true"
+      },
+      {
+        "name": "Every block nobody touched equals commit B, on alice, bob and the relay",
+        "pass": true,
+        "detail": "all present"
+      },
+      {
+        "name": "A retried rebase changes nothing",
+        "pass": true,
+        "detail": "{\"applied\":false,\"reason\":\"already at target\",\"rebaseId\":\"B\"}; pmUnchanged=true reviewUnchanged=true"
+      }
+    ],
+    "detail": "all checks passed"
+  },
+  "gateF_continuousTyping": {
+    "name": "Variant: alice types continuously while the rebase is applied; still converges",
+    "pass": true,
+    "detail": "typingDone=true rebaseApplied=true converged=true intactRunOf40Xs=true"
   },
   "gateG": {
     "pass": true,
@@ -161,28 +192,8 @@
         "name": "G1. Restart (SIGTERM): both providers reconnect, content intact, new edit propagates",
         "pass": true,
         "detail": "contentIntact=true newEditPropagates=true"
-      },
-      {
-        "name": "G2. Hard kill (SIGKILL) before the store debounce",
-        "pass": true,
-        "detail": "sqlite bytes: 12288 -> 12288 (before/after kill); alice's own memory retained it=true; relay has it once alice's reconnect resynced it=true"
-      },
-      {
-        "name": "G2. Hard kill (SIGKILL) after the store debounce",
-        "pass": true,
-        "detail": "sqlite bytes: 16384 -> 16384 (before/after kill); alice's own memory retained it=true; relay has it once alice's reconnect resynced it=true"
-      },
-      {
-        "name": "G3. Edits made while the relay is down converge once it restarts",
-        "pass": true,
-        "detail": "editor1, editor2 and the relay converge (semantic + serializeDoc equality)"
-      },
-      {
-        "name": "G4. Offline editor reconnects and converges",
-        "pass": true,
-        "detail": "converge=true; both concurrent text insertions into the same paragraph survived (CRDT interleaves rather than drops): true; same-node link conflict (badge.svg, changed by both sides concurrently) resolved deterministically to one value, not corrupted or duplicated: https://from-bob.example (one of the two concurrent writes, as CRDT last-write-wins on a single attribute defines -- the losing side's href is what CRDT semantics discard here, not data loss)"
       }
     ],
-    "detail": "all 5 scenario(s) passed"
+    "detail": "all 1 scenario(s) passed (quick: G1 only)"
   }
 }

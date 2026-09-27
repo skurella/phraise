@@ -8,6 +8,7 @@
     "fetch": "node scripts/fetch-corpus.mjs",
     "gates": "tsx scripts/gates.ts",
     "gates:quick": "tsx scripts/gates.ts --quick",
+    "rebase:baseline": "tsx scripts/rebase-baseline.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

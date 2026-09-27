@@ -1,15 +1,16 @@
 # Stack 13: Yjs 13.6.33 + @tiptap/y-tiptap + Hocuspocus 4.7
 
-Status: brief 01 (gates A, B, C) and brief 03 (gates B3, D, E, G; the gate
-C corpus-size addendum) done. See
-[brief 01's log](../../context/logs/2026-09-27-builder-spike-5-stack13-core.md)
-and [brief 03's log](../../context/logs/2026-09-27-builder-spike-5-stack13-deg.md)
+Status: brief 01 (gates A, B, C), brief 03 (gates B3, D, E, G; the gate
+C corpus-size addendum) and brief 05 (gate F) done. See
+[brief 01's log](../../context/logs/2026-09-27-builder-spike-5-stack13-core.md),
+[brief 03's log](../../context/logs/2026-09-27-builder-spike-5-stack13-deg.md)
+and [brief 05's log](../../context/logs/2026-09-27-builder-spike-5-stack13-rebase.md)
 for the full narrative, including bugs found and fixed along the way.
-Gates F and H are later briefs' scope, not this package's.
+Gate H is the orchestrator's scope (primary sources), not this package's.
 
 ## Goal
 
-Answer gates A, B, B3, C, D, E and G of
+Answer gates A, B, B3, C, D, E, F and G of
 [the spike 5 charter](../../context/plans/2026-09-27-spike-5-charter-collab-stack.md)
 for stack 13: Yjs 13 stable, `@tiptap/y-tiptap` as the ProseMirror binding,
 Hocuspocus 4.7 as the relay with SQLite persistence, two live ProseMirror
@@ -18,7 +19,10 @@ connected over a real WebSocket, and spike 1's schema, parser and
 serializer -- with both of stack 13's Yjs-13 binding workarounds (root
 attrs, atom-node marks) implemented for *live* editing, not just
 seeding/reading a `Y.Doc` headlessly (spike 1's `src/yjs.ts` only covered
-the latter).
+the latter). Gate F additionally answers it for spike 2's rebase algorithm
+and schema, kept separate under `src/rebase/` (see "Gate F" below and that
+directory's own origin note): the rebase code is written against spike 2's
+own schema/Markdown converter, not spike 1's, per the brief.
 
 ## Origin of copied code
 
@@ -46,6 +50,23 @@ task 1; kept in place as the brief asked. Everything else added in brief 03
 `src/tiptapWorkaroundsExtension.ts`, `src/tiptapClient.ts`,
 `gates/gateD.ts`, `gates/gateE.ts`, `gates/gateG.ts`) is new code written
 for this package, not copied from elsewhere.
+
+Brief 05 (gate F): `src/rebase/{schema,ids,text,markdown,diff,seed,rebase,
+integrate,comments,replica}.ts` and `src/rebase/gates/{scenario,gate-a-c,
+gate-b,gate-d,gate-d2,gate-idempotent,convergence,types}.ts` are copied
+from branch `spike/2026-09-27-crdt-rebase` at commit `88bd85c` (spike 2,
+directory `spikes/2026-09-27-crdt-rebase-yjs-fork/`), per the brief's
+instruction to use spike 2's own schema and Markdown converter rather than
+port the rebase algorithm to spike 1's. Changed only where copied:
+`seed.ts`/`diff.ts`'s `y-prosemirror` imports retargeted to
+`@tiptap/y-tiptap` (same reasoning as spike 1's `src/yjs.ts` above);
+`schema.ts` gained `toDOM`/`parseDOM` on every node/mark (spike 2 never
+rendered a real `EditorView` either); `gates/scenario.ts`'s `labelBlocks`
+exported and retyped to take a bare `Y.Doc` instead of a (headless-only)
+`Replica`, since it only ever read `.doc`. Everything else added for gate F
+(`src/rebase/liveIntegration.ts`, `src/rebase/liveClient.ts`,
+`gates/gateF.ts`, the `rebase:` seeding/route additions to `src/relay.ts`)
+is new code written for this package.
 
 ## Layout
 
@@ -91,10 +112,36 @@ for this package, not copied from elsewhere.
   same `HocuspocusProvider` wiring.
 - `scratch/probe-atom-mark-change.ts` -- the orchestrator's probe that gate
   B3 promotes (kept per the brief).
+- `src/rebase/` -- brief 05 (gate F): spike 2's rebase core, copied per the
+  origin note above -- `schema.ts` (spike 2's own ProseMirror schema, no
+  root attrs, no inline atoms besides `text`), `seed.ts` (`seedDoc`/
+  `docToPM`, deterministic seed peer), `rebase.ts` (`computeRebaseUpdate`:
+  fork at the base snapshot, diff, return the fork's update since the
+  pre-edit state vector -- does not apply it), `integrate.ts` (needs-review
+  flags and resurrection, unchanged from spike 2), `comments.ts` (CRDT
+  position + quote-selector anchoring, unchanged), `diff.ts`/`markdown.ts`/
+  `ids.ts`/`text.ts` (unchanged support code), `replica.ts` (spike 2's
+  in-memory harness, kept only for `scripts/rebase-baseline.ts`'s headless
+  baseline, not used by gate F itself), `gates/` (spike 2's own headless
+  gates A-D/D2/idempotent, run unchanged by that same baseline script).
+- `src/rebase/liveIntegration.ts` (brief 05, new): `attachIntegrationHook`
+  -- the live equivalent of spike 2's `Replica.receive()` inline
+  `integrate()` call, using the `Y.Doc`'s own `beforeTransaction`/
+  `afterTransaction` events (see "Gate F" below).
+- `src/rebase/liveClient.ts` (brief 05, new): `createRebaseLiveClient` --
+  a live client for spike 2's schema/fragment, the same shape as
+  `src/client.ts` but with no workaround plugins (spike 2's schema has
+  neither of stack 13's two known losses) and the integration hook instead.
 - `scripts/gates.ts` -- the gate runner (below).
+- `scripts/rebase-baseline.ts` (brief 05, not part of `npm run gates`):
+  spike 2's own headless gates A-D/D2/idempotent, run unchanged through
+  `src/rebase/replica.ts`, confirming the port (task 1) didn't change their
+  behavior.
 - `scripts/quick-roundtrip.ts`, `scripts/check-fixture.ts`,
-  `scripts/smoke-relay.ts`, `scripts/smoke-client.ts` -- small standalone
-  verification scripts, not part of `npm run gates`.
+  `scripts/smoke-relay.ts`, `scripts/smoke-client.ts`,
+  `scripts/run-gate-f.ts` -- small standalone verification scripts, not
+  part of `npm run gates` (`run-gate-f.ts` is gate F alone, useful while
+  iterating on it without the rest of the suite).
 - `fixtures/live.md` -- the plan's common gate fixture: a leading blank
   line (non-default `lead`), a linked badge image, a link mixing text and
   an image, inline HTML, a footnote reference/definition, a hard break, an
@@ -115,16 +162,21 @@ for this package, not copied from elsewhere.
 ```bash
 npm ci
 npm run fetch        # corpus/fetched/ (gitignored), if missing
-npm run gates:quick  # A, B, B2, B3, C (5-file sample), D (no caret/undo), E (listing+collision only), G (G1 only) -- ~10s
-npm run gates        # same gates in full: C over all 266 corpus files, D/E/G every scenario -- ~65s
+npm run gates:quick  # A, B, B2, B3, C (5-file sample), D (no caret/undo), E (listing+collision only), G (G1 only), F (full) -- ~15s
+npm run gates        # same gates in full: C over all 266 corpus files, D/E/G every scenario, F (full) -- ~4min (gate C's full corpus pass dominates)
+npm run rebase:baseline  # spike 2's own headless gates A-D/D2/idempotent through src/rebase/replica.ts (not part of npm run gates)
 npx tsc --noEmit
 ```
 
 Writes `results/gates.md` and `results/gates.json`. As of this writing
-every gate in this package passes on both `npm run gates:quick` and the
-full `npm run gates` (exit 0); see "Known limitations" below for what was
-found and fixed along the way and what remains a genuine, reported
-constraint rather than a failure.
+every gate in this package passes on `npm run gates:quick`; on the full
+`npm run gates`, every gate passes except gate C's rare, pre-existing,
+timing-sensitive flake (one file out of 266, documented in "Known
+limitations" since brief 03 and confirmed unrelated to brief 05's own
+changes -- a standalone rerun of gate C alone passed 266/266 immediately
+after). See "Known limitations" below for what was found and fixed along
+the way and what remains a genuine, reported constraint rather than a
+failure.
 
 No relay process is left running after any command, including a failing
 one: every gate goes through `src/harness.ts`'s `startRelay`/`stop()`,
@@ -237,6 +289,46 @@ brief with `lsof -nP -iTCP:4210-4239 -sTCP:LISTEN`.
   mid-session, both sides make overlapping edits (including a genuine
   same-node conflict -- see "Known limitations"), the offline editor
   reconnects, and all three converge.
+- **F. Rebase port** (brief 05): spike 2's own scenario
+  (`src/rebase/gates/scenario.ts`: a 10-block document, commit A -> B,
+  three comments planted at A) run against the real relay and two live
+  editors instead of spike 2's in-memory `Replica`. Alice stays online and
+  edits paragraph Q; bob disconnects his `websocketProvider` and edits
+  paragraphs P and P2 offline; `POST /rebase/<docName>` runs the rebase on
+  the relay's own document while alice is still connected (so she receives
+  it as an ordinary broadcast update); bob then reconnects, and Hocuspocus's
+  own bidirectional y-protocols sync (not a custom delivery mechanism, see
+  below) exchanges what each side was missing. Checked once fully settled:
+  spike 2's gate A (untouched-paragraph comment resolves via crdt), B
+  (rewritten-paragraph comment -- quote "plan for the rollout" -- survives),
+  C (deleted-paragraph comment orphans, quote kept, "harbor" negative
+  control not captured), D (both P and Q flagged `concurrent-edit`, both
+  BOB EDIT and ALICE EDIT text survive, no unexpected flags) and D2 (P2
+  resurrected exactly once with bob's offline text) -- each checked on
+  alice's doc, bob's doc *and* the relay's own stored document, all three
+  required to agree; plus (own to this gate): alice, bob and the relay
+  converge to byte-identical ProseMirror JSON and an identical `review` map
+  (`canonicalJSON` from `src/rebase/gates/convergence.ts`); every block
+  nobody touched (the intro paragraph, the "harbor" paragraph, list items 1
+  and 3) equals commit B verbatim on all three; a retried identical
+  `POST /rebase` is a true no-op (`{applied:false}`, and the relay's own
+  ProseMirror JSON and review map are unchanged, not just "no error"); and
+  a variant where alice fires 40 single-character inserts with the rebase
+  POST in flight mid-burst, confirming the insert run lands intact and
+  everything still converges. All pass. What had to change from spike 2,
+  and a real bug found and fixed while building this gate (the relay's own
+  copy of the integration hook could flag every upstream-changed block as
+  a false `concurrent-edit` if left as a naive port) are in `gates/gateF.ts`'s
+  own top-of-file comment, `src/relay.ts`'s comments around
+  `REBASE_TX_ORIGIN`, and the brief's own log in full narrative detail.
+  Spike 2's own gate D additionally swept every batch-delivery permutation
+  and 50 shuffled per-update orders, made possible by its `Replica`/
+  `deliver()` harness giving tests explicit control over delivery order;
+  Hocuspocus's real sync protocol has no equivalent hook (delivery order is
+  the protocol's problem, not the test's), so this gate does not repeat
+  that sweep -- it relies on, and thereby exercises, the real protocol's
+  own delivery guarantees instead, which is the whole point of moving this
+  scenario off the headless harness.
 
 ## Workaround costs
 
@@ -431,6 +523,19 @@ session log) before building gate G and gate E's restart check around it.
   and a second full-pipeline rerun); logged here and in the session log
   as a real, rare, cause-unconfirmed flake for the orchestrator's own full
   run to watch for, rather than assumed fixed.
+
+  Brief 05 addendum: the full `npm run gates` pipeline (now with gate F
+  added) reproduced the same class of flake once more, but with a
+  **different symptom**: path B (client-loaded), editor 2, a byte mismatch
+  on `npm-underscore-readme.md` -- not path A's `lead`/root-attrs race on
+  `npm-bull-readme.md` from brief 03. A standalone rerun of gate C alone
+  immediately afterward again passed 266/266 (checked directly, not
+  assumed). Consistent with the same rare, timing-sensitive family of
+  issue -- gate F's own relay processes run on separate ports (4227-4228)
+  and never touch gate C's fixtures, schema or relays, so this is not
+  something gate F introduced -- but the different file and different path
+  this time is worth recording plainly rather than silently folding into
+  the brief 03 entry above as if it were the exact same occurrence.
 - Hocuspocus's `onStoreDocument` debounce defaults to 2000ms/10000ms
   (`debounce`/`maxDebounce`, found by reading
   `@hocuspocus/server`'s `defaultConfiguration` directly, not
