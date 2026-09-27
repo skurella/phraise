@@ -377,3 +377,74 @@ other gate running concurrently (p95 key-to-paint 14.2ms vs isolated
 committed.
 
 Next: gate J (feel, screenshots), then Firefox/WebKit, then final commands.
+
+## 23:28 -- gate J (feel) done, all screenshots committed-ready, another real bug found
+
+Another real bug found and fixed before writing any gate J test (not
+guessed): `web/src/nodeviews/codeBlockView.ts`'s `MermaidBlockView` had the
+EXACT SAME "opens in raw-source-editing mode before the editor has ever
+been focused" bug the fix list's front-matter finding already fixed in
+`rawBlockView.ts` -- `updateEditingState` there also had no
+`editor.isFocused` gate. Fixed identically (same `focus`/`blur` listeners,
+same `isFocused` check, same `destroy()` cleanup). Would have shown a
+Mermaid block's raw fence source instead of the rendered diagram in the
+mermaid screenshot below if a document happened to load with the initial
+selection inside it. Re-ran gate C (source blocks, includes gate C's own
+Mermaid assertions) after this fix: still 6/6.
+
+Corpus: added `kubernetes-enhancements-kepssigapimachinery4153declarativeva`
+to `corpus/needed.json`/fetched it -- the brief's own suggested
+`...kepssigapps4017-pod-index-label...` has NO GFM table at all (confirmed
+by grepping its raw source: zero `^|.*|` lines), so tried four other real
+kubernetes/enhancements KEPs from `corpus/manifest.json` and picked the one
+with both a real GFM table (3 tables) and fenced code blocks (16), per the
+brief's own "or similar, check it has both". Verified it round-trips byte
+for byte through the real parser/serializer before use (368 top-level
+blocks: 102 headings, 134 paragraphs, 31 bullet lists, 22 ordered lists, 16
+code blocks, 3 tables, 8 blockquotes, 52 raw blocks).
+
+`e2e/gateJ-feel.spec.ts` (new), 11 tests:
+1/2. **Automated no-visible-Markdown-syntax check**, on the Express README
+   and the design doc above: walks the rendered `#editor .ProseMirror`
+   DOM, concatenating visible text (a newline at each block-level
+   element's boundary, so the "line starting with `#` " check has real
+   lines), skipping any `<pre>` subtree entirely (covers real code blocks,
+   a source block's own open editor, AND a raw-text preview fallback --
+   all render as `<pre>`) and anything CSS-hidden (closed source editors).
+   Checks for `**`, `__`, backtick, `](`, `![`, `[^`, and a line starting
+   with `#` + space. Both real documents come back completely clean.
+3-11. **Screenshots** (1280x800, device scale 1 -- Playwright's own
+   default -- PNG, each asserted under 300KB): all ten the brief names,
+   using real content throughout (the two corpus documents above for the
+   two the brief ties to real corpus content; this spike's own established
+   real-if-plain-English fixtures -- `comments.md`, `collab.md`,
+   `source-blocks.md`, `gate-h.md`, `typing.md` -- for the rest, driven
+   with the same real click/keyboard techniques their own gates already
+   use, e.g. `e2e/mouseSelect.ts`'s `clickThenShiftClick` for the comment
+   phrase selection, gate H's own real Mod-K "Remove link" flow for the
+   unverifiable-block banner). One real bug found and fixed while building
+   the "two named cursors" screenshot (not guessed): the first attempt
+   placed Bob's caret via a bare `.click()` + `End` with no poll in
+   between, and it landed in the HEADING, not the target paragraph --
+   confirmed by reading the actual screenshot (per the orchestrator's own
+   instruction to look at every screenshot); fixed by polling the real
+   model selection after each click before sending further keys, the same
+   discipline every other gate's own caret-placement helper in this suite
+   already uses. All ten screenshots read back and visually confirmed
+   clean (not just "test passed") -- sizes 35KB-186KB, comfortably under
+   the 300KB budget. One pre-existing, non-blocking cosmetic note: two of
+   `collab.md`'s own badge images (`img.shields.io/badge/one-blue.svg`
+   etc., inline syntax, not reference-style -- this brief's reference-URL
+   fix does not apply) don't resolve to real images and show their alt
+   text instead, visible at the bottom of `two-named-cursors.png` below
+   the two carets that screenshot is actually about; a pre-existing gate D
+   fixture used elsewhere unchanged, not something this brief's scope
+   covers, noted here rather than silently left out.
+
+Verification: `npx tsc --noEmit` clean; `npx vitest run` 26 files,
+187/187; `npm run gates` (full suite, default parallelism, gates A-K):
+**95/95 passing**. Screenshots directory:
+`spikes/2026-09-27-web-editor-tiptap/screenshots/` (10 files).
+
+Next: Firefox/WebKit projects + cross-browser reporter table, then final
+commands (fresh-clone check).

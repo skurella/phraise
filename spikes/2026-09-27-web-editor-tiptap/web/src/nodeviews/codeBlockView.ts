@@ -116,6 +116,13 @@ class MermaidBlockView implements NodeView {
     this.renderMermaid();
     this.selectionHandler = () => this.updateEditingState();
     this.editor.on('selectionUpdate', this.selectionHandler);
+    // Brief 07 fix list: same fix as `rawBlockView.ts`'s `updateEditingState`
+    // -- a Mermaid block that happens to sit at ProseMirror's initial
+    // (unfocused) selection must not open in "editing" (raw source) mode
+    // before the user has ever actually focused the editor. See that
+    // file's own comment for the full explanation.
+    this.editor.on('focus', this.selectionHandler);
+    this.editor.on('blur', this.selectionHandler);
     this.updateEditingState();
   }
 
@@ -150,7 +157,7 @@ class MermaidBlockView implements NodeView {
 
   private updateEditingState(): void {
     const pos = this.getPos();
-    if (pos == null) {
+    if (pos == null || !this.editor.isFocused) {
       this.dom.classList.remove('phraise-editing');
       return;
     }
@@ -178,6 +185,8 @@ class MermaidBlockView implements NodeView {
 
   destroy(): void {
     this.editor.off('selectionUpdate', this.selectionHandler);
+    this.editor.off('focus', this.selectionHandler);
+    this.editor.off('blur', this.selectionHandler);
   }
 }
 
