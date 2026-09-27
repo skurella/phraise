@@ -39,3 +39,13 @@ Full `npm run gates` by the orchestrator: A pass (relay state 830 B, byte-identi
 Review (brief 05, reviewer log `2026-09-27-reviewer-spike-6-m1.md`): **blocker** — forged updates sent as sync step 2 bypass the check (same apply path server-side), reproduced by the reviewer; gate B only tested the update message. Other gates judged non-vacuous. Look-ahead: whole-document walks in `blockStatesAt`, restore when head moved past the draft base not handled yet. Milestone 1 is therefore not closed until the forgery fix lands; folded into brief 06 as task 1 to save a dispatch.
 
 Decision: forgery rule becomes a clock rule for all message types (other users' clocks the relay lacks are forgery unless the document is in a recovery window after a state loss). Residual stated.
+
+## 21:25 — milestone 2 closed
+
+Brief 06 (forgery clock rule, poller, gates F, G), brief 07 (gate H), brief 08 review, brief 09 fixes. Dispatches used: 9.
+
+Orchestrator change to gate H: its concurrent-formatting check skipped mark boundaries on a space; now counted separately. Found 2/78 with `&#x20;`, cause mark nesting order; fixed in brief 09.
+
+Review m2 blocker: edits during a commit push folded into the base snapshot (silent loss on a later rebase). Fixed in brief 09 with `transactExtendingSnapshot` and a commit sequence for editor marks. Attribution growth 33.8 MB per 2,000 keystrokes, coalesced to 78 KB.
+
+Full gates A to H at 21:20: all pass, exit 0. Findings doc started with milestone 1 and 2 results.
