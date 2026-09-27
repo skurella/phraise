@@ -86,7 +86,17 @@ export function rootAttrsPlugin(ydoc: Y.Doc, stats: RootAttrsStats = { mapWrites
         },
       };
     },
-    appendTransaction(_trs, _oldState, newState) {
+    appendTransaction(trs, oldState, newState) {
+      // Orchestrator fix (spike 5): write to the map only when these
+      // transactions actually changed doc.attrs, and never for our own
+      // map->doc transaction. The builder's version compared doc.attrs with
+      // the map on every transaction, so a remote update that carried both
+      // fragment and map changes, whose fragment observer happened to fire
+      // before the map observer, wrote the editor's stale default attrs
+      // over the freshly synced map. That lost `lead` on npm-bull-readme,
+      // the only corpus file with a non-default `lead`.
+      if (trs.some((tr) => tr.getMeta(rootAttrsPluginKey)?.fromMap)) return null;
+      if (!attrsDiffer(readDocAttrs(oldState), readDocAttrs(newState))) return null;
       const docAttrs = readDocAttrs(newState);
       const mapAttrs = readMapAttrs(meta);
       if (!attrsDiffer(docAttrs, mapAttrs)) return null;

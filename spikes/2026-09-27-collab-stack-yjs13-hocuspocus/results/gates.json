@@ -1,30 +1,30 @@
 {
-  "generatedAt": "2026-09-27T06:52:50.024Z",
+  "generatedAt": "2026-09-27T06:55:51.723Z",
   "quick": false,
   "gateA": {
     "pass": true,
-    "medianLatencyMs": 23.254500000000007,
+    "medianLatencyMs": 23.349416999999903,
     "latencies": [
-      22.096542,
-      22.409541999999988,
-      22.306124999999952,
-      22.339707999999973,
-      23.254500000000007,
-      22.773166999999944,
-      24.507916000000023,
-      24.223666999999978,
-      23.08345799999995,
-      22.727792000000022,
-      21.90758299999993,
-      24.41304100000002,
-      23.768750000000068,
-      23.959333000000015,
-      24.373959000000013,
-      22.67700000000002,
-      23.90070800000001,
-      22.68316600000003,
-      24.151499999999942,
-      23.826999999999998
+      23.24675000000002,
+      22.398458000000005,
+      22.508958000000007,
+      22.390083000000004,
+      22.505999999999972,
+      22.774708000000032,
+      22.940124999999966,
+      24.206083000000035,
+      23.546625000000063,
+      22.842958000000067,
+      23.349416999999903,
+      23.71170799999993,
+      23.78316700000005,
+      23.699749999999995,
+      23.969542000000047,
+      23.752749999999878,
+      24.152583999999933,
+      23.470250000000078,
+      23.00070800000003,
+      23.242334000000028
     ],
     "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 23.3ms"
   },
@@ -42,18 +42,11 @@
     "detail": "negative control confirmed the loss spike 1's gate A3 measured: icon.png's locally-added link mark was silently reverted by a later remote sync; pasted.png's link mark (from the paste) was silently reverted by a later remote sync"
   },
   "gateC": {
-    "pass": false,
+    "pass": true,
     "total": 266,
-    "pathAPassed": 265,
+    "pathAPassed": 266,
     "pathBPassed": 266,
-    "failures": [
-      {
-        "file": "npm-bull-readme.md",
-        "pathA": false,
-        "pathB": true,
-        "errorA": "byte mismatch (path A: server-seeded)"
-      }
-    ],
-    "elapsedMs": 61092
+    "failures": [],
+    "elapsedMs": 59800
   }
 }
