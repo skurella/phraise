@@ -40,3 +40,13 @@ Branch: REST non-force PATCH with a stale parent -> 422 "Update is not a fast fo
 
 ## 04:25 — gate G done (36 writes incl. one aborted run), gate B late snapshot
 First G run aborted after one flush (bug: a flag set inside a subshell), second run stopped by SIGPIPE before any write, third run clean. 1 MB random Markdown + 1 MB random binary: full flush 10.1 to 13.2 s wall (includes 4 enforced 1.1 s gaps); 1 MB blob POST 1.4 to 3.9 s; inline-tree flush (2.46 MB tree request) 6.9 to 7.3 s; reading the 1 MB blob back 1.15 s. B "late": events and activity list CreateEvent/PushEvent/branch_creation for all three scratch branches within seconds; nothing for any `refs/phraise-spike/` write. No Actions runs, no workflows, no hooks, no new notifications. Writes total: 132.
+
+## 04:26 — cleanup and read-only suite
+`cleanup.sh` deleted `spike-scratch/github-storage-c`, `-d`, `-e` (3 x 204). `run-nondestructive.sh` passes: selftest, smoke, B snapshot, retention probe readable via API and anonymous `git fetch`, only the probe remains in `ls-remote`. Writes total: 135.
+
+## 04:28 — extra: draft flush as one `git push` with lease (8 writes incl. one bad run)
+Decided to test `git push --force-with-lease` to a hidden ref because gate D showed REST has no CAS there and gate F showed REST flushes are write-hungry. Run 1 used `+` on the refspec, which overrides the lease: the stale push succeeded (recorded, script fixed). Run 2: create-if-absent ok 2.9 s, CAS overwrite with 1 MB + 1 MB ok 4.4 s, stale lease rejected "stale info", lease delete ok, then 404. Write class added: git push over SSH to `refs/phraise-spike/`. Writes total: 143.
+
+## 04:31 — findings doc written, review dispatched
+Findings: [spike 4 findings](../docs/2026-09-27-spike-4-findings-github-storage.md). Recommendation: D2 amend (CAS, git push transport, public-repo exposure, budget), D9 confirm with amendment (installation token for drafts). Dispatching one Sonnet reviewer per [review brief](../plans/2026-09-27-spike-4-brief-review.md). Worker dispatches so far: 1.
+
