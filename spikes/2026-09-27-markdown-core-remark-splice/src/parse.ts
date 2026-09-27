@@ -11,10 +11,39 @@ import { schema } from './schema.js';
 export interface BlockPos {
   /** PM position (doc-relative) where this block node starts. */
   pmStart: number;
-  /** Source [startOffset, endOffset) this block was parsed from. */
+  /**
+   * This node's own mdast source span [startOffset, endOffset) -- not the
+   * enclosing top-level block's span. For a top-level node these coincide
+   * (module the lead-indentation "hug" and gap-folding adjustments below);
+   * for a node nested inside a list/blockquote/etc, this is its own
+   * paragraph/heading/etc range, which is what gate B needs to confirm an
+   * edit's diff stayed inside the edited paragraph itself, not just inside
+   * its enclosing top-level block.
+   */
   source: [number, number];
   startLine: number;
   endLine: number;
+}
+
+/** A node's own mdast position, recorded during mdast->PM conversion. */
+interface NodePosInfo {
+  startLine: number;
+  endLine: number;
+  startOffset: number;
+  endOffset: number;
+}
+
+/** Per-doc-parse side table: PM node identity -> its own mdast position. */
+type BlockPosMap = WeakMap<PMNode, NodePosInfo>;
+
+function recordPos(posMap: BlockPosMap | undefined, pmNode: PMNode, mdastNode: any): void {
+  if (!posMap || !mdastNode?.position) return;
+  posMap.set(pmNode, {
+    startLine: mdastNode.position.start.line,
+    endLine: mdastNode.position.end.line,
+    startOffset: mdastNode.position.start.offset,
+    endOffset: mdastNode.position.end.offset,
+  });
 }
 
 export interface ParseResult {
@@ -343,66 +372,76 @@ function stripContainerIndentation(raw: string): string {
   return [lines[0], ...lines.slice(1).map((l) => l.slice(minIndent))].join('\n');
 }
 
-export function blockFromMdast(node: any, source: string, map?: MapCollector): PMNode {
+export function blockFromMdast(node: any, source: string, map?: MapCollector, posMap?: BlockPosMap): PMNode {
+  let result: PMNode;
   switch (node.type) {
     case 'paragraph':
-      return schema.node('paragraph', {}, inlineChildrenFromMdast(node.children, source, map));
+      result = schema.node('paragraph', {}, inlineChildrenFromMdast(node.children, source, map));
+      break;
 
     case 'heading': {
       const hints = headingHints(node, source);
-      return schema.node(
+      result = schema.node(
         'heading',
         { level: node.depth ?? 1, setextHint: hints.setextHint, closeHint: hints.closeHint },
         inlineChildrenFromMdast(node.children, source, map)
       );
+      break;
     }
 
     case 'blockquote': {
       // CommonMark allows an empty blockquote (`>` with nothing after); our
       // schema requires blockquote content `block+`, so fill with an empty
       // paragraph placeholder (same pattern as empty list items).
-      const children = node.children.map((c: any) => blockFromMdast(c, source, map));
-      return schema.node('blockquote', {}, children.length ? children : [schema.node('paragraph', {}, [])]);
+      const children = node.children.map((c: any) => blockFromMdast(c, source, map, posMap));
+      result = schema.node('blockquote', {}, children.length ? children : [schema.node('paragraph', {}, [])]);
+      break;
     }
 
     case 'list': {
-      const items = node.children.map((c: any) => listItemFromMdast(c, source, map));
+      const items = node.children.map((c: any) => listItemFromMdast(c, source, map, posMap));
       const tight = !node.spread;
       if (node.ordered) {
-        return schema.node(
+        result = schema.node(
           'ordered_list',
           { start: node.start ?? 1, tight, delimHint: delimHintOf(node, source) },
           items
         );
+      } else {
+        result = schema.node('bullet_list', { tight, markerHint: markerHintOf(node, source) }, items);
       }
-      return schema.node('bullet_list', { tight, markerHint: markerHintOf(node, source) }, items);
+      break;
     }
 
     case 'code': {
       const hints = fenceHints(node, source);
       const text = node.value ? [schema.text(node.value)] : [];
-      return schema.node(
+      result = schema.node(
         'code_block',
         { lang: node.lang ?? null, meta: node.meta ?? null, fenceHint: hints.fenceHint, fenceLenHint: hints.fenceLenHint },
         text
       );
+      break;
     }
 
     case 'thematicBreak':
-      return schema.node('horizontal_rule', { ruleHint: ruleHint(node, source) });
+      result = schema.node('horizontal_rule', { ruleHint: ruleHint(node, source) });
+      break;
 
     case 'table': {
       const align = node.align ?? [];
-      const rows = node.children.map((row: any, ri: number) =>
-        schema.node(
-          'table_row',
-          { header: ri === 0 },
-          row.children.map((cell: any) =>
-            schema.node('table_cell', {}, inlineChildrenFromMdast(cell.children, source, map))
-          )
-        )
-      );
-      return schema.node('table', { align }, rows);
+      const rows = node.children.map((row: any, ri: number) => {
+        const cells = row.children.map((cell: any) => {
+          const cellNode = schema.node('table_cell', {}, inlineChildrenFromMdast(cell.children, source, map));
+          recordPos(posMap, cellNode, cell);
+          return cellNode;
+        });
+        const rowNode = schema.node('table_row', { header: ri === 0 }, cells);
+        recordPos(posMap, rowNode, row);
+        return rowNode;
+      });
+      result = schema.node('table', { align }, rows);
+      break;
     }
 
     case 'html':
@@ -423,21 +462,27 @@ export function blockFromMdast(node: any, source: string, map?: MapCollector): P
         const raw = node.position ? source.slice(node.position.start.offset, node.position.end.offset) : '';
         text = stripContainerIndentation(raw);
       }
-      return schema.node('raw_block', { kind }, text ? [schema.text(text)] : []);
+      result = schema.node('raw_block', { kind }, text ? [schema.text(text)] : []);
+      break;
     }
 
     default: {
       const raw = node.position ? source.slice(node.position.start.offset, node.position.end.offset) : '';
       const text = stripContainerIndentation(raw);
-      return schema.node('raw_block', { kind: node.type }, text ? [schema.text(text)] : []);
+      result = schema.node('raw_block', { kind: node.type }, text ? [schema.text(text)] : []);
+      break;
     }
   }
+  recordPos(posMap, result, node);
+  return result;
 }
 
-function listItemFromMdast(node: any, source: string, map?: MapCollector): PMNode {
+function listItemFromMdast(node: any, source: string, map?: MapCollector, posMap?: BlockPosMap): PMNode {
   const checked = node.checked === true ? true : node.checked === false ? false : null;
-  const children = (node.children ?? []).map((c: any) => blockFromMdast(c, source, map));
-  return schema.node('list_item', { checked }, children.length ? children : [schema.node('paragraph', {}, [])]);
+  const children = (node.children ?? []).map((c: any) => blockFromMdast(c, source, map, posMap));
+  const result = schema.node('list_item', { checked }, children.length ? children : [schema.node('paragraph', {}, [])]);
+  recordPos(posMap, result, node);
+  return result;
 }
 
 function withAttrs(node: PMNode, extra: Record<string, unknown>): PMNode {
@@ -483,9 +528,19 @@ export interface ParseBlockResult {
 }
 
 const parseBlockCache = new Map<string, ParseBlockResult>();
+// Perf: parseBlock is called once per top-level block (self-description check
+// at parse time, splice/verify at serialize time), always with the same `ctx`
+// string for a given document. Re-parsing `ctx` alone just to count how many
+// top-level nodes it produces (`skip`) was O(blocks) reparses of the same
+// text; cache it by content so it is paid once per distinct ctx, not once per
+// block. On a large real-world file with many link/footnote definitions and
+// many blocks this was the dominant cost (see builder log, gate harness
+// profiling, 2026-09-27).
+const ctxSkipCache = new Map<string, number>();
 
 export function clearParseBlockCache(): void {
   parseBlockCache.clear();
+  ctxSkipCache.clear();
 }
 
 /**
@@ -494,16 +549,35 @@ export function clearParseBlockCache(): void {
  * link/footnote references resolve as they did in the full document.
  */
 export function parseBlock(src: string, ctx: string, opts?: { map?: boolean }): ParseBlockResult {
-  const cacheKey = (opts?.map ? 'M\u0000' : 'N\u0000') + ctx + '\u0000' + src;
+  // Perf: link references (`[text][id]`, `[text]`), image references
+  // (`![alt][id]`) and footnote references (`[^id]`) all require a literal
+  // `[` in the source. A block with no `[` cannot resolve against `ctx` no
+  // matter its content, so skip prepending it entirely: this avoids
+  // reparsing `ctx + src` (often much larger than `src` alone) for the
+  // common case of a plain paragraph/heading/etc. Restricted to the
+  // no-map path: the map's sourceOffsets are relative to `ctx + src`
+  // (serialize.ts's trySplice subtracts `ctx.length` to get a src-relative
+  // offset), so the map path must always parse against the real `ctx` to
+  // keep that arithmetic correct.
+  const effectiveCtx = !opts?.map && ctx.length > 0 && !src.includes('[') ? '' : ctx;
+
+  const cacheKey = (opts?.map ? 'M\u0000' : 'N\u0000') + effectiveCtx + '\u0000' + src;
   const cached = parseBlockCache.get(cacheKey);
   if (cached) return cached;
 
-  const full = ctx + src;
+  const full = effectiveCtx + src;
   const tree = parseMdast(full);
   let skip = 0;
-  if (ctx.length > 0) {
-    const ctxTree = parseMdast(ctx);
-    skip = ctxTree.children.length;
+  if (effectiveCtx.length > 0) {
+    const existing = ctxSkipCache.get(effectiveCtx);
+    if (existing !== undefined) {
+      skip = existing;
+    } else {
+      const ctxTree = parseMdast(effectiveCtx);
+      const count: number = ctxTree.children.length;
+      ctxSkipCache.set(effectiveCtx, count);
+      skip = count;
+    }
   }
   const remaining = tree.children.slice(skip);
   const mapCollector: MapCollector | undefined = opts?.map ? { runs: [] } : undefined;
@@ -580,6 +654,7 @@ export function parseMarkdown(md: string, opts: ParseOpts = {}): ParseResult {
   const rawSpans: [number, number][] = [];
   const rawLines: [number, number][] = [];
   const gaps: string[] = [];
+  const posMap: BlockPosMap | undefined = opts.positions ? new WeakMap() : undefined;
 
   // Rare micromark/mdast quirk: a link/footnote definition immediately
   // followed (no blank line) by a setext-heading-eligible paragraph can
@@ -603,7 +678,7 @@ export function parseMarkdown(md: string, opts: ParseOpts = {}): ParseResult {
       gap = gap.slice(wsStart);
     }
     const src = md.slice(startOff, endOff);
-    let block = blockFromMdast(child, md);
+    let block = blockFromMdast(child, md, undefined, posMap);
     block = withAttrs(block, { src, gap });
     blocks.push(block);
     rawSpans.push([startOff, endOff]);
@@ -644,26 +719,40 @@ export function parseMarkdown(md: string, opts: ParseOpts = {}): ParseResult {
   clearParseBlockCache();
   if (changed) doc = schema.node('doc', { lead, eol }, checked);
 
-  if (!opts.positions) return { doc };
+  if (!opts.positions || !posMap) return { doc };
 
-  // For every non-inline, non-text node at any depth, record its PM start
-  // position and the enclosing top-level block's source span/lines. This is
-  // test instrumentation only.
+  // Top-level nodes need an explicit override: `withAttrs` (src/gap) and the
+  // self-description check (opaque replacement) both construct a new node
+  // instance for the top-level block, so the position `blockFromMdast`
+  // recorded against the pre-withAttrs/pre-replacement instance is orphaned.
+  // Re-key it against the actual final top-level node using the block's own
+  // (hug- and gap-adjusted) span, which is also what `src`/`gap` reflect.
+  // Nested descendants are untouched by either step (same child fragment),
+  // so their own recorded positions still resolve.
+  checked.forEach((topBlock, i) => {
+    const [tStart, tEnd] = rawSpans[i];
+    const [tStartLine, tEndLine] = rawLines[i];
+    posMap.set(topBlock, { startOffset: tStart, endOffset: tEnd, startLine: tStartLine, endLine: tEndLine });
+  });
+
+  // For every non-inline, non-text node at any depth that has a recorded
+  // position, report its own mdast source span/lines (not the enclosing
+  // top-level block's). A node inside a top-level block that became opaque
+  // (raw_block) has no descendants left to record, so it naturally has no
+  // entries -- consistent with brief 03.
   const positions: BlockPos[] = [];
-  let topIndex = -1;
-  doc.forEach((topBlock, offset) => {
-    topIndex++;
-    const [tStart, tEnd] = rawSpans[topIndex];
-    const [tStartLine, tEndLine] = rawLines[topIndex];
-    const collect = (node: PMNode, pos: number) => {
-      if (node.type.name !== 'text' && !node.isInline) {
-        positions.push({ pmStart: pos, source: [tStart, tEnd], startLine: tStartLine, endLine: tEndLine });
-      }
-      node.forEach((child, childOffset) => {
-        collect(child, pos + 1 + childOffset);
+  doc.descendants((node, pos) => {
+    if (node.type.name === 'text' || node.isInline) return true;
+    const info = posMap.get(node);
+    if (info) {
+      positions.push({
+        pmStart: pos,
+        source: [info.startOffset, info.endOffset],
+        startLine: info.startLine,
+        endLine: info.endLine,
       });
-    };
-    collect(topBlock, offset);
+    }
+    return true;
   });
 
   return { doc, positions };

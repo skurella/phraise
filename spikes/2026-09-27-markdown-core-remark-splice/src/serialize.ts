@@ -10,7 +10,12 @@ import { detectStyle, type Style } from './style.js';
 import { isMetaAttrName } from './schema.js';
 
 export interface TraceInfo {
-  kind: 'verbatim' | 'splice' | 're-serialize' | 'unverified';
+  // 'opaque-edit': a raw_block (front matter, HTML, math, etc.) whose text
+  // content was directly edited (no longer equal to its own `src`), so it is
+  // emitted as its current text rather than the original bytes. Pre-existing
+  // runtime value that the type union omitted (harmless in JS, but the gates
+  // harness's path-distribution reporting needs it to type-check).
+  kind: 'verbatim' | 'splice' | 're-serialize' | 'unverified' | 'opaque-edit';
   type: string;
 }
 
