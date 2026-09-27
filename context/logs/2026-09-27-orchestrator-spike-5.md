@@ -1,6 +1,6 @@
 # Orchestrator log, spike 5: live collaboration stack
 
-Status: active
+Status: done
 Author: spike 5 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Charter: [spike 5 charter](../plans/2026-09-27-spike-5-charter-collab-stack.md)
@@ -61,3 +61,6 @@ Also probed yjs/y-prosemirror#241 (swap bold for code in one transaction): syncs
 
 ## 15:49 — Review received; findings doc written
 Reviewer (fresh clone at a717e37): stack 13 clean-checkout full run all pass; stack 14 matches committed results; no vacuous gates; one weak check in stack 14 gate D (awareness check could not fail), fixed by me and re-run (7/7 pass). Reviewer claimed B3 is confined to whole-doc replaces; not so, case 4 (replace one image node) is an ordinary edit; corrected in the stack 14 README note and the findings. Added orchestrator notes at the top of both READMEs.
+
+## 15:51 — Final checks and handback
+Fresh clone of 3539b04: stack 14 npm ci (postinstall dedupe), fetch, tsc, gates:quick as expected (B3 fails upstream, rest pass). Stack 13 clean checkout was verified by the reviewer at a717e37; later stack 13 changes are README only. No listeners on 4200-4299, no relay or gate processes left. Dispatches used: 7 (6 builders, 1 reviewer). Handing back.
