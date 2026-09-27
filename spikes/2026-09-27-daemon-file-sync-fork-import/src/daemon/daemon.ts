@@ -10,7 +10,7 @@ import * as Y from 'yjs';
 import { HocuspocusProvider } from '@hocuspocus/provider';
 
 import { DocSync, ORIGIN_IMPORT, type Author, type ImportResult } from '../core/docsync.js';
-import { chooseBase, hashText, type Version, type VersionOrigin } from '../core/versions.js';
+import { chooseBase, diffCost, hashText, type Version, type VersionOrigin } from '../core/versions.js';
 import { FRAGMENT_NAME, META_MAP_NAME } from '../md/yjs.js';
 import {
   readGitState,
@@ -262,6 +262,7 @@ export class Daemon extends EventEmitter {
       } else {
         try {
           const choice = chooseBase(disk, this.docSync.candidates());
+          if (process.env.PHRAISE_DEBUG) console.error(`    RESTART candidates ${this.docSync.candidates().map((v) => `${v.origin}:${v.hash.slice(0, 8)}:${diffCost(v.text, disk)}`).join(" ")} chose ${choice.base.hash.slice(0, 8)}`);
           // Validate the chosen snapshot can still be forked before trusting it as a base.
           assertForkable(this.docSync.doc, choice.base.snapshot);
           const result = this.docSync.importText(disk, { author: this.localAuthor(), base: choice.base });
@@ -317,7 +318,7 @@ export class Daemon extends EventEmitter {
       return;
     }
 
-    const rendered = this.docSync.render();
+    const rendered = this.docSync.renderDetailed().text;
     const headContent = await readAtRevision(this.repoDir, 'HEAD', this.relFile);
     if (disk === undefined || disk === headContent) {
       this.writeFreshFile(rendered);
@@ -328,7 +329,7 @@ export class Daemon extends EventEmitter {
   }
 
   private async handleForkFailure(disk: string | undefined): Promise<void> {
-    const rendered = this.docSync.render();
+    const rendered = this.docSync.renderDetailed().text;
     if (disk !== undefined && disk === rendered) {
       this.lastKnown = disk;
       this.recordWriteIfNew(rendered);
@@ -675,7 +676,11 @@ export class Daemon extends EventEmitter {
     const start = Date.now();
     let text: string;
     try {
-      text = this.docSync.render();
+      const r = this.docSync.renderDetailed();
+      text = r.text;
+      if (r.degraded.length > 0 || r.boundaryRepairs > 0 || !r.composed) {
+        this.emit('export-degraded', { blocks: r.degraded, boundaryRepairs: r.boundaryRepairs, composed: r.composed });
+      }
     } catch (err) {
       this.emit('error', { message: err instanceof Error ? err.message : String(err) });
       return;

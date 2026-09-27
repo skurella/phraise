@@ -12,6 +12,7 @@
 //      re-arm) isn't mistaken for settled.
 import * as fs from 'node:fs';
 import * as Y from 'yjs';
+import { hashText } from '../../src/core/versions.js';
 import type { Daemon } from '../../src/daemon/daemon.js';
 import type { RemoteClient } from '../../src/testkit/remote-client.js';
 
@@ -42,7 +43,11 @@ function stateVectorsEqual(a: Y.Doc, b: Y.Doc): boolean {
 function settled(opts: QuiesceOptions, lastText: string | undefined): { ok: boolean; text: string | undefined } {
   const text = readFileSafe(opts.filePath);
   const fileStable = text === lastText;
-  const daemonIdle = opts.daemon.idle;
+  // The daemon must also have seen the file as it is now: an editor save whose
+  // watcher event has not fired yet leaves the daemon idle but behind
+  // (orchestrator fix: seed 439041119 ended with the last save never imported).
+  const daemonSawFile = text === undefined || opts.daemon.status().lastKnownHash === hashText(text);
+  const daemonIdle = opts.daemon.idle && daemonSawFile;
   const docsEqual = opts.client ? stateVectorsEqual(opts.daemon.docSync.doc, opts.client.ydoc) : true;
   return { ok: fileStable && daemonIdle && docsEqual, text };
 }

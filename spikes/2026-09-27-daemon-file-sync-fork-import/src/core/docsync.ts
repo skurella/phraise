@@ -8,6 +8,7 @@ import { yXmlFragmentToProseMirrorRootNode, updateYFragment } from 'y-prosemirro
 import type { Node as PMNode } from 'prosemirror-model';
 import {
   parseMarkdown,
+  parseMdast,
   serializeDoc,
   docToYDoc,
   yDocToDoc,
@@ -152,10 +153,93 @@ export class DocSync {
     return this.ring.push({ text, hash: hashText(text), snapshot, origin: 'write', at: Date.now() });
   }
 
+  /**
+   * What the daemon writes (orchestrator addition after the gate I fuzz).
+   * Never throws for content reasons:
+   *
+   * - A block no serialization verifies for (spike 1's refusal) is written as
+   *   the serializer's best effort and listed in `degraded`. Refusing froze the
+   *   file for good once, for example, a remote peer deleted the definition a
+   *   reference link used (fuzz seeds 439041107, 439041115). The best effort
+   *   keeps all text; it can lose markup in that block.
+   * - Block serialization is verified per block in isolation, which is not
+   *   compositional: a block that was last keeps its end-of-file gap (one line
+   *   break) when a block is appended after it, and the two paragraphs merge
+   *   (seed 439041129); an unclosed fence swallows what follows. A cheap check
+   *   compares the number of top-level blocks the output parses to; on a
+   *   mismatch, the first differing boundary is repaired by giving the block
+   *   before it a blank-line gap, then by dropping that block's `src` so it is
+   *   re-serialized (which closes a fence), up to 8 times.
+   */
+  renderDetailed(): { text: string; degraded: number[]; boundaryRepairs: number; composed: boolean } {
+    let doc = yDocToDoc(this.doc);
+    const degraded: number[] = [];
+    const serialize = (d: PMNode) => {
+      degraded.length = 0;
+      let index = -1;
+      return serializeDoc(d, {
+        onUnverified: 'emit',
+        trace: (info) => {
+          index++;
+          if (info.kind === 'unverified') degraded.push(index);
+        },
+      });
+    };
+    let out = serialize(doc);
+    let boundaryRepairs = 0;
+    const blankGap = doc.attrs.eol === '\r\n' ? '\r\n\r\n' : '\n\n';
+    const tried = new Set<string>();
+    while (parseMdast(out).children.length !== doc.childCount && boundaryRepairs < 8) {
+      const reparsed = parseMarkdown(out).doc;
+      let i = 0;
+      while (i < doc.childCount && i < reparsed.childCount && semanticEq(doc.child(i), reparsed.child(i))) i++;
+      // Block i is the first that re-parses differently: either it swallowed
+      // what follows (fix its own gap or source) or it was swallowed by the
+      // block before (fix that one's). Try the cheapest change first.
+      let at = -1;
+      let replacement: PMNode | undefined;
+      for (const [kind, k] of [
+        ['gap', i],
+        ['gap', i - 1],
+        ['src', i - 1],
+        ['src', i],
+      ] as const) {
+        if (k < 0 || k >= doc.childCount || tried.has(`${kind}:${k}`)) continue;
+        const node = doc.child(k);
+        tried.add(`${kind}:${k}`);
+        if (kind === 'gap' && k < doc.childCount - 1 && !/\r?\n[ \t]*\r?\n/.test((node.attrs.gap as string | null) ?? '')) {
+          replacement = node.type.create({ ...node.attrs, gap: blankGap }, node.content, node.marks);
+        } else if (kind === 'src' && node.attrs.src != null) {
+          replacement = node.type.create({ ...node.attrs, src: null }, node.content, node.marks);
+        } else {
+          continue;
+        }
+        at = k;
+        break;
+      }
+      if (!replacement) break;
+      const children: PMNode[] = [];
+      doc.forEach((c, _o, idx) => children.push(idx === at ? replacement : c));
+      doc = doc.type.create(doc.attrs, children, doc.marks);
+      out = serialize(doc);
+      boundaryRepairs++;
+    }
+    const composed = parseMdast(out).children.length === doc.childCount;
+    return { text: out, degraded: [...degraded], boundaryRepairs, composed };
+  }
+
   /** `render()` per plan 3.5: `serializeDoc(yDocToDoc(live))`. */
   render(opts: RenderOptions = {}): string {
     const doc = yDocToDoc(this.doc);
-    const out = serializeDoc(doc);
+    let out: string;
+    try {
+      out = serializeDoc(doc);
+    } catch (err) {
+      if (process.env.PHRAISE_DEBUG && err instanceof UnverifiedSerializationError && err.blockIndex >= 0) {
+        console.error(`UNVERIFIED-BLOCK ${JSON.stringify(doc.child(err.blockIndex).toJSON())}`);
+      }
+      throw err;
+    }
     if (opts.wholeDocCheck) {
       const reparsed = parseMarkdown(out).doc;
       if (!semanticEq(doc, reparsed)) {
@@ -189,6 +273,7 @@ export class DocSync {
       clientId = Math.floor(Math.random() * 0xffffffff);
       target.clientID = clientId;
       svBeforeDiff = Y.encodeStateVector(target);
+      if (process.env.PHRAISE_DEBUG) (target as any).__toksBefore = new Set(target.getXmlFragment(FRAGMENT_NAME).toString().match(/ZZTOK\w+/g) ?? []);
     } else {
       target = this.doc;
       clientId = this.doc.clientID;
@@ -233,7 +318,50 @@ export class DocSync {
 
     if (forked) {
       const update = Y.encodeStateAsUpdate(target, svBeforeDiff!);
+      const toks = (d: Y.Doc) => new Set(d.getXmlFragment(FRAGMENT_NAME).toString().match(/ZZTOK\w+/g) ?? []);
+      const before = process.env.PHRAISE_DEBUG ? toks(this.doc) : undefined;
       Y.applyUpdate(this.doc, update, ORIGIN_IMPORT);
+      if (before) {
+        const after = toks(this.doc);
+        const gone = [...before].filter((t) => !after.has(t));
+        if (gone.length) {
+          // Find the (now deleted) items holding each vanished token's text.
+          const found: string[] = [];
+          const walk = (t: any, path: string) => {
+            if (t instanceof Y.XmlText) {
+              const items: any[] = [];
+              for (let it = (t as any)._start; it; it = it.right) items.push(it);
+              const all = items.map((it) => (typeof it.content?.str === 'string' ? it.content.str : '')).join('');
+              for (const g of gone) {
+                const at = all.indexOf(g.slice(5, 12));
+                if (at < 0) continue;
+                let pos = 0;
+                const parts: string[] = [];
+                for (const it of items) {
+                  const str = typeof it.content?.str === 'string' ? it.content.str : '';
+                  if (pos + str.length > at - 8 && pos < at + g.length) parts.push(`${it.id.client}:${it.id.clock}+${it.length}${it.deleted ? 'D' : ''}=${JSON.stringify(str)}`);
+                  pos += str.length;
+                }
+                found.push(`${g} in ${path} (text deleted=${(t as any)._item?.deleted}): ${parts.join(' ')}`);
+              }
+            } else if (t) {
+              let k = 0;
+              for (let it = t._start; it; it = it.right, k++) {
+                const ty = (it.content as any)?.type;
+                if (ty) walk(ty, `${path}/${k}${it.deleted ? 'D' : ''}`);
+              }
+            }
+          };
+          walk(this.doc.getXmlFragment(FRAGMENT_NAME), '');
+          const dec = Y.decodeUpdate(update);
+          const ds: string[] = [];
+          dec.ds.clients.forEach((ranges: any[], client: number) => ranges.forEach((r) => ds.push(`${client}:${r.clock}+${r.len}`)));
+          console.error(`    ITEMS ${found.join(' || ')}`);
+          console.error(`    UPDATE-DS ${ds.join(' ')} forkClient=${target.clientID} base=${base.origin}`);
+          console.error(`    BASE-SV ${JSON.stringify([...base.snapshot.sv.entries()])}`);
+        }
+        if (gone.length) console.error(`    MERGE REMOVED ${gone.join(' ')}; fork had them before diff: ${gone.map((t) => (target as any).__toksBefore?.has(t))}; saved text has them: ${gone.map((t) => text.includes(t))}`);
+      }
     }
 
     const snapshot = Y.snapshot(target);

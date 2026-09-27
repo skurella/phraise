@@ -5,36 +5,25 @@
 // A failing trial N (0-based within the run) used seed `<seed> + N`, printed
 // per failure, and replays alone with `--trials 1 --seed <that seed>`.
 //
-// -- Concurrency rule for delete-vs-edit vs lost (brief: "decide concurrency
-// conservatively and explain the rule in a comment") --
-// Only the remote actor ever deletes a *whole* block in this harness (per
-// brief 03 task 3's step list, "occasionally delete a whole paragraph" is a
-// remote-only edit kind). So the one race worth naming specially is: the
-// local editor inserted a token into ITS OWN buffer (derived from a
-// possibly-stale disk read) while, independently, the remote actor deleted
-// some whole block from ITS OWN view. Neither side can see the other's
-// in-flight edit before the next sync point, so if that local token is
-// later missing with no explicit single-token delete ever recorded for it,
-// and at least one remote whole-block delete happened at or after the
-// editor's last reload before the insert (orchestrator correction: the
-// editor sees remote changes only by reloading, so a delete before the insert
-// but after the reload is still concurrent), rather than at or after the
-// token's insertion step, this counts as `delete-vs-edit` rather than
-// `lost`. This is deliberately coarse: it does not verify the deleted block
-// was actually the token's own paragraph (this harness does not track
-// paragraph identity across the two independently-evolving actor views,
-// only their token contents), so an unrelated whole-block delete elsewhere
-// in the document can also satisfy it. That trades a small amount of
-// missed detection (a genuine loss coinciding with an unrelated whole-block
-// delete would be under-reported) for a rule simple enough to state and
-// verify in a comment, which is what the brief asks for. A token inserted
-// by REMOTE is never given this pass: local never deletes whole blocks, so
-// there is no matching concurrent event to excuse a remote-inserted token's
-// disappearance -- if one goes missing unexplained, it is `lost`.
+// -- Token outcome categories (rules revised by the orchestrator) --
+// A token is checked by its random suffix minus the last character, in the
+// parsed file text or the raw bytes (see the comment at the check).
+// - present, never deleted: fine.
+// - present, deleted by someone: `resurrected`, unless the editor deleted a
+//   remote peer's token and the daemon judged that save against a base that
+//   never contained it: `ambiguous-delete`, by design (plan 3.2), reported.
+// - absent, never deleted: located in the Y document with deleted content
+//   included (lib/locate-token.ts). Inside a deleted block: `delete-vs-edit`,
+//   a CRDT property accepted in spike 2 (S2-10), reported. Otherwise `lost`.
+// The first version of this harness decided delete-vs-edit from step numbers
+// and only for remote whole-block deletes; it missed blocks the editor's own
+// save restructured (a joined list item, a table turned paragraph) and
+// deletes the editor had not yet seen.
 import { readFileSync } from 'node:fs';
 import * as Y from 'yjs';
 import { setupFixture } from './lib/fixture.js';
 import { quiesce } from './lib/quiesce.js';
+import { locateToken } from './lib/locate-token.js';
 import { mulberry32, randInt, pick } from './lib/prng.js';
 import { pickBaseDoc } from './lib/fuzz-doc.js';
 import {
@@ -84,6 +73,10 @@ export interface TrialOutcome {
   noops: number;
   baseMisjudged: number;
   wholeDocMismatch: boolean;
+  ambiguousDelete: number;
+  degradedFinal: boolean;
+  degradedExports: number;
+  duplicated: number;
   messages: string[];
 }
 
@@ -97,7 +90,7 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
   const echoes: string[] = [];
   const detaches: string[] = [];
   const messages: string[] = [];
-  const stats = { forks: 0, coarse: 0, repairs: 0, noops: 0, baseMisjudged: 0 };
+  const stats = { forks: 0, coarse: 0, repairs: 0, noops: 0, baseMisjudged: 0, degradedExports: 0, boundaryRepairs: 0 };
   const exportedHashes = new Set<string>();
   const harnessWrittenHashes = new Set<string>([hashText(base.text)]);
   const tokens = new Map<string, TokenRecord>();
@@ -107,6 +100,9 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
   let totalSteps = 0;
   let editorBuffer = base.text;
   let lastReloadStep = -1;
+  const savedTextByHash = new Map<string, string>();
+  // (base, save) pairs of every import, to classify resurrections by design.
+  const importedPairs: Array<{ baseText: string; savedText: string }> = [];
   // The text the editor's buffer was derived from (its last reload or its own
   // last save): the true base of its next save. Used to measure base choice.
   let editorBaseHash = hashText(base.text);
@@ -136,6 +132,9 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
       }
     }
     d.on('import', (e: any) => {
+      const baseText = d.docSync.versions.find((v) => v.hash === e.base)?.text;
+      const savedText = savedTextByHash.get(e.hash);
+      if (baseText !== undefined && savedText !== undefined) importedPairs.push({ baseText, savedText });
       const lineage = lineageAtSave.get(e.hash);
       const expected = lineage ? [...lineage].reverse().find(wasSeen)?.hash : undefined;
       const baseRight = expected === undefined || expected === e.base;
@@ -155,6 +154,10 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
       } else if (!harnessWrittenHashes.has(e.hash)) {
         echoes.push(`step ${step}: import event's text was never written by the harness (echo)`);
       }
+    });
+    d.on('export-degraded', (e: any) => {
+      if (e.blocks?.length) stats.degradedExports++;
+      stats.boundaryRepairs += e.boundaryRepairs ?? 0;
     });
     d.on('import-noop', (e: any) => {
       markSeen(e.hash);
@@ -207,6 +210,7 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
     const style = pick(rng, SAVE_STYLES);
     const savedHash = hashText(editorBuffer);
     harnessWrittenHashes.add(savedHash);
+    savedTextByHash.set(savedHash, editorBuffer);
     if (!lineageAtSave.has(savedHash)) lineageAtSave.set(savedHash, [...editorLineage]);
     editorLineage.push({ hash: savedHash, t: performance.now(), reload: false });
     editorBaseHash = savedHash;
@@ -278,6 +282,23 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
 
     totalSteps = 15 + randInt(rng, 16);
     for (step = 0; step < totalSteps; step++) {
+      // FUZZ_EDITOR=autoreload models an editor that reloads a clean buffer
+      // when the file changes (VS Code, vim with autoread), 9 times in 10.
+      // The default editor never reloads on its own: every save after a
+      // daemon write is then a stale save, the hostile case.
+      if (process.env.FUZZ_EDITOR === 'autoreload' && rng() < 0.9) {
+        try {
+          const disk = readFileSync(fx.repo.file, 'utf8');
+          if (disk !== editorBuffer) {
+            editorBuffer = disk;
+            editorBaseHash = hashText(disk);
+            editorLineage = [{ hash: editorBaseHash, t: performance.now(), reload: true }];
+            lastReloadStep = step;
+          }
+        } catch {
+          // mid-rename: keep the buffer
+        }
+      }
       const r = rng();
       let kind = '?';
       if (r < 0.3) {
@@ -338,16 +359,29 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
   let deleteVsEdit = 0;
   let resurrected = 0;
   let wholeDocMismatch = false;
+  let ambiguousDelete = 0;
+  let degradedFinal = false;
+  let duplicated = 0;
 
   if (exceptions.length === 0) {
     try {
-      const daemonRender = daemon.docSync.render();
+      if (process.env.FUZZ_DEBUG) {
+        const os = await import('node:os');
+        const fs = await import('node:fs');
+        fs.writeFileSync(`${os.tmpdir()}/phraise-fuzz-${seed}.ydoc`, Y.encodeStateAsUpdate(daemon.docSync.doc));
+      }
+      const detailed = daemon.docSync.renderDetailed();
+      const daemonRender = detailed.text;
+      const finalDegraded = detailed.degraded.length > 0;
       // Whole-document check, reported as its own category: blocks verify in
       // isolation, but some constructs are not compositional (plan 3.5).
       const liveDoc = yDocToDoc(daemon.docSync.doc);
       const reparsed = parseMarkdown(daemonRender).doc;
       if (!semanticEq(liveDoc, reparsed)) {
-        wholeDocMismatch = true;
+        // A block written as best effort (serializer refusal) differs by
+        // construction; that is the `degraded` category, not a mismatch.
+        if (finalDegraded) degradedFinal = true;
+        else wholeDocMismatch = true;
         const a: string[] = [];
         const b: string[] = [];
         liveDoc.forEach((n) => a.push(`${n.type.name}:${n.textContent.slice(0, 40)}`));
@@ -356,8 +390,8 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
         while (i < a.length && a[i] === b[i]) i++;
         messages.push(`whole-doc mismatch at top-level block ${i}: doc has ${JSON.stringify(a.slice(i, i + 2))}, file re-parses to ${JSON.stringify(b.slice(i, i + 2))}`);
       }
-      const clientRenderedText = serializeDoc(yDocToDoc(client.ydoc));
-      if (daemonRender !== clientRenderedText) divergence = true;
+      // Compare documents, not renders: a render can refuse a block.
+      if (JSON.stringify(liveDoc.toJSON()) !== JSON.stringify(yDocToDoc(client.ydoc).toJSON())) divergence = true;
 
       const daemonSv = Buffer.from(Y.encodeStateVector(daemon.docSync.doc));
       const clientSv = Buffer.from(Y.encodeStateVector(client.ydoc));
@@ -370,28 +404,54 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
       for (const rec of tokens.values()) {
         // Semantic presence: the serializer may escape a character of a token
         // (e.g. `&#x67;` next to intraword emphasis), which is not a loss.
-        const present = fileSemanticText.includes(rec.token);
+        // Core of the token: its random suffix without the last character (the
+        // `ZZTOK<n><label>` prefix is shared between tokens). The editor binding diffs text by common prefix and suffix,
+        // so a remote insertion next to a word that shares its first or last
+        // characters is placed inside that word; if the other side deletes the
+        // word concurrently, those shared characters go with it. That is the
+        // binding's character-level CRDT behaviour, not a sync loss.
+        const core = rec.token.slice(-6, -1);
+        // Raw bytes too: a token inside inline HTML is not in textContent.
+        const present = fileSemanticText.includes(core) || fileText.includes(core);
         if (present) {
-          if (rec.deletedAtStep !== undefined) {
+          // By design (plan 3.2): the editor deleted text a remote peer had
+          // inserted, and the daemon judged the save against a base that
+          // never contained it, so the save's lack of it was not a deletion.
+          const ambiguousByDesign =
+            rec.deletedBy === 'local' &&
+            rec.insertedBy === 'remote' &&
+            importedPairs.some((p) => !p.baseText.includes(rec.token) && !p.savedText.includes(rec.token));
+          const copies = fileText.split(core).length - 1;
+          if (copies > 1) {
+            // A save judged against too old a base re-inserts text the editor
+            // already had (plan 3.2: the chosen failure mode under ambiguity).
+            duplicated++;
+            messages.push(`duplicated: ${rec.token} appears ${copies} times`);
+          } else if (rec.deletedAtStep !== undefined && ambiguousByDesign) {
+            ambiguousDelete++;
+            messages.push(`ambiguous-delete (by design): ${rec.token} deleted by local at step ${rec.deletedAtStep}, kept`);
+          } else if (rec.deletedAtStep !== undefined) {
             resurrected++;
             messages.push(`resurrected: ${rec.token} (deleted by ${rec.deletedBy} at step ${rec.deletedAtStep}, still present)`);
           }
         } else if (rec.deletedAtStep === undefined) {
-          const concurrentParaDelete =
-            rec.insertedBy === 'local' && paragraphDeleteEvents.some((e) => e.step >= (rec.editorLoadStep ?? 0));
-          if (concurrentParaDelete) {
+          // Orchestrator rule, replacing the step-based guess: look the token
+          // up in the Y document, deleted content included. If its characters
+          // sit inside a deleted block, the block was deleted (or restructured:
+          // a list item joined, a paragraph that became a table) by one side
+          // while the other edited it. Yjs deletes a deleted element's whole
+          // content, concurrent insertions included: delete-versus-edit, the
+          // category spike 2 accepted (S2-10). Anything else is `lost`.
+          const where = locateToken(daemon.docSync.doc.getXmlFragment('prosemirror'), core);
+          if (where.found && where.inDeletedBlock) {
             deleteVsEdit++;
+            messages.push(`delete-vs-edit: ${rec.token} (inserted by ${rec.insertedBy} at step ${rec.insertedAtStep}) is inside a deleted block`);
           } else {
             lost++;
-            if (process.env.FUZZ_DEBUG) {
-              liveDoc.forEach((n, _o, idx) => {
-                if (n.textContent.includes(rec.token)) {
-                  console.error(`  LOST-BLOCK ${idx} ${n.type.name} src=${JSON.stringify(n.attrs.src)?.slice(0, 300)}`);
-                  console.error(`  LOST-JSON ${JSON.stringify(n.toJSON()).slice(0, 1500)}`);
-                }
-              });
-            }
-            messages.push(`lost: ${rec.token} (inserted by ${rec.insertedBy} at step ${rec.insertedAtStep}, no delete recorded; in doc text: ${liveDoc.textContent.includes(rec.token)}; in Y xml: ${daemon.docSync.doc.getXmlFragment("prosemirror").toString().includes(rec.token)})`);
+            messages.push(
+              `lost: ${rec.token} (inserted by ${rec.insertedBy} at step ${rec.insertedAtStep}, no delete recorded; ` +
+                `in Y: ${where.found}, own text deleted: ${where.textDeleted})`,
+            );
           }
         }
       }
@@ -410,6 +470,7 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
     !fileNotRender &&
     lost === 0 &&
     resurrected === 0 &&
+    duplicated === 0 &&
     echoes.length === 0 &&
     detaches.length === 0 &&
     !wholeDocMismatch;
@@ -433,6 +494,10 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
     noops: stats.noops,
     baseMisjudged: stats.baseMisjudged,
     wholeDocMismatch,
+    ambiguousDelete,
+    degradedFinal,
+    degradedExports: stats.degradedExports,
+    duplicated,
     messages: [...exceptions, ...echoes, ...detaches, ...messages],
   };
 }
@@ -453,7 +518,11 @@ export interface FuzzRunSummary {
     echo: number;
     detach: number;
     wholeDocMismatch: number;
+    ambiguousDelete: number;
+    degradedFinal: number;
+    duplicated: number;
   };
+  degradedExports: number;
   baseMisjudged: number;
   forks: number;
   coarse: number;
@@ -474,7 +543,11 @@ export async function runFuzz(trials: number, seedBase: number): Promise<FuzzRun
     echo: 0,
     detach: 0,
     wholeDocMismatch: 0,
+    ambiguousDelete: 0,
+    degradedFinal: 0,
+    duplicated: 0,
   };
+  let degradedExports = 0;
   let baseMisjudged = 0;
   let forks = 0;
   let coarse = 0;
@@ -493,6 +566,10 @@ export async function runFuzz(trials: number, seedBase: number): Promise<FuzzRun
     repairs += outcome.repairs;
     noops += outcome.noops;
     categories.deleteVsEdit += outcome.deleteVsEdit; // always reported, never a failure
+    categories.ambiguousDelete += outcome.ambiguousDelete; // by design, reported, not a failure
+    // Serializer refusals written as best effort: a spike 1 limit, reported, not a sync failure.
+    if (outcome.degradedFinal) categories.degradedFinal++;
+    degradedExports += outcome.degradedExports;
     baseMisjudged += outcome.baseMisjudged; // a measurement of base choice, not a failure by itself
 
     const failing: string[] = [];
@@ -516,6 +593,10 @@ export async function runFuzz(trials: number, seedBase: number): Promise<FuzzRun
       categories.lost += outcome.lost;
       failing.push('lost');
     }
+    if (outcome.duplicated > 0) {
+      categories.duplicated += outcome.duplicated;
+      failing.push('duplicated');
+    }
     if (outcome.resurrected > 0) {
       categories.resurrected += outcome.resurrected;
       failing.push('resurrected');
@@ -533,7 +614,7 @@ export async function runFuzz(trials: number, seedBase: number): Promise<FuzzRun
     else failingSeeds.push({ seed, categories: failing });
   }
 
-  return { trials, seedBase, passed, categories, baseMisjudged, forks, coarse, repairs, noops, failingSeeds, outcomes };
+  return { trials, seedBase, passed, categories, degradedExports, baseMisjudged, forks, coarse, repairs, noops, failingSeeds, outcomes };
 }
 
 export function printSummary(summary: FuzzRunSummary): void {
@@ -541,6 +622,7 @@ export function printSummary(summary: FuzzRunSummary): void {
   console.log(`passed: ${summary.passed}/${summary.trials}`);
   console.log('categories:');
   for (const [k, v] of Object.entries(summary.categories)) console.log(`  ${k}: ${v}`);
+  console.log(`degraded exports (serializer refusal written as best effort): ${summary.degradedExports}`);
   console.log(`base choice: ${summary.baseMisjudged} imports chose a base other than the editor's true base`);
   console.log(`import counters: forks=${summary.forks} coarseTextblocks=${summary.coarse} repairs=${summary.repairs} noops=${summary.noops}`);
   if (summary.failingSeeds.length > 0) {
@@ -586,6 +668,7 @@ async function main(): Promise<void> {
         passed: summary.passed,
         categories: summary.categories,
         baseMisjudged: summary.baseMisjudged,
+        degradedExports: summary.degradedExports,
         forks: summary.forks,
         coarse: summary.coarse,
         repairs: summary.repairs,

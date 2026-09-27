@@ -104,9 +104,25 @@ export interface BaseChoice {
 }
 
 /**
- * cost(v) = diffCost(v.text, text). Minimum cost wins; ties go to the
- * newest candidate (iterating oldest-to-newest with `<=` so a later
- * candidate overwrites an earlier one on a tie).
+ * Walk the candidates oldest (the anchor) to newest. Move from the current
+ * choice C to a newer candidate W only when the save is closer to W by at
+ * least half the distance between C and W:
+ *
+ *   cost(W) <= cost(C) - d(C, W) / 2
+ *
+ * Why: let R be the remote changes between C and W and U the user's edits.
+ * If the editor reloaded W, cost(C) - cost(W) is about +|R|; if it did not,
+ * about -|R|. The midpoint rule (plain minimum cost) is fooled when U happens
+ * to resemble the inverse of R (gate I fuzz, seed 439041136: a new paragraph
+ * the user typed was within a few characters of one a remote peer had typed).
+ * Requiring half of |R| as evidence biases the choice toward the older
+ * version. Choosing too old a base re-applies remote changes the user already
+ * had (a remote insertion can be duplicated); choosing too new a base reverts
+ * remote changes the user never saw (silent loss). Duplication is visible;
+ * loss is not, so ambiguity resolves toward the older base.
+ *
+ * An exact match with a newer candidate always moves (cost(W) = 0 and
+ * cost(C) = d(C, W)); an exact match with C never does.
  */
 export function chooseBase(text: string, candidates: readonly Version[]): BaseChoice {
   if (candidates.length === 0) {
@@ -116,9 +132,14 @@ export function chooseBase(text: string, candidates: readonly Version[]): BaseCh
   let bestCost = diffCost(best.text, text);
   for (let i = 1; i < candidates.length; i++) {
     const v = candidates[i];
-    // A tie goes to the newer candidate, so it only has to reach bestCost.
+    if (v.text === best.text) {
+      best = v; // same bytes, newer snapshot
+      continue;
+    }
     const c = diffCost(v.text, text, bestCost + 1);
-    if (c <= bestCost) {
+    if (c > bestCost) continue;
+    const between = diffCost(best.text, v.text);
+    if (c <= bestCost - between / 2) {
       best = v;
       bestCost = c;
     }

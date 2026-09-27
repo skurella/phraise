@@ -16,6 +16,30 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+
+// Orchestrator change: new paragraphs used to be one template ("Sentence with
+// token X inside it."), so every inserted paragraph was within a few
+// characters of every other one. That is an adversarial worst case for any
+// text-similarity heuristic (block pairing, base choice) and unlike real
+// writing. Sentences are now random words; FUZZ_TEMPLATED=1 restores the
+// template as a stress variant.
+const VOCAB = (
+  'the a daemon file editor remote change save merge branch commit block list table code ' +
+  'paragraph heading review draft comment token user peer relay document version history ' +
+  'quickly slowly carefully always never often before after during while because although ' +
+  'write read watch import export render parse serialize fork rebase detach restart persist ' +
+  'green blue small large simple complex stale fresh local shared hidden visible careful exact'
+).split(' ');
+
+export function sentenceWith(token: string, rng: () => number): string {
+  if (process.env.FUZZ_TEMPLATED) return `Sentence with token ${token} inside it.`;
+  const n = 5 + randInt(rng, 8);
+  const words = Array.from({ length: n }, () => pick(rng, VOCAB));
+  words.splice(randInt(rng, n + 1), 0, token);
+  const s = words.join(' ');
+  return s[0].toUpperCase() + s.slice(1) + '.';
+}
+
 // ---------------------------------------------------------------- local (buffer)
 
 /** Insert `token` at a random `\S+` word boundary (just before or just after that word). No-op (returns unchanged) if the buffer has no words. */
@@ -45,7 +69,7 @@ export function localInsertParagraph(text: string, token: string, rng: () => num
   while ((m = re.exec(text))) gaps.push(m.index + m[0].length);
   gaps.push(text.length);
   const gap = pick(rng, gaps);
-  const paragraph = `Sentence with token ${token} inside it.`;
+  const paragraph = sentenceWith(token, rng);
   if (gap === text.length) return `${text}${text.endsWith('\n') ? '' : '\n'}\n${paragraph}\n`;
   if (gap === 0) return `${paragraph}\n\n${text}`;
   return `${text.slice(0, gap)}${paragraph}\n\n${text.slice(gap)}`;
@@ -101,7 +125,7 @@ export function remoteDeleteTokenIfPresent(client: RemoteClient, token: string):
 export function remoteInsertParagraph(client: RemoteClient, token: string, rng: () => number): void {
   const doc = client.editor.currentDoc();
   const blockIndex = randInt(rng, doc.childCount);
-  client.editor.insertParagraphAfter(blockIndex, `Sentence with token ${token} inside it.`);
+  client.editor.insertParagraphAfter(blockIndex, sentenceWith(token, rng));
 }
 
 /** Deletes a random whole top-level block (never the last remaining one: `doc` requires `block+`). Returns the deleted block's text content (for token bookkeeping), or `undefined` if skipped. */
