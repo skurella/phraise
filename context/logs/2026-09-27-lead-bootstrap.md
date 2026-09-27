@@ -90,3 +90,9 @@ Three-level hub and spoke. Workflow doc, AGENTS.md, decision register and spikes
 ## 03:10 — Finding: Bash sandbox now active
 
 `gh` fails inside the sandbox with a TLS verification error and `git fetch` over SSH fails. Network git and GitHub CLI commands need the sandbox disabled per command. Relevant to every orchestrator that pushes.
+
+## 03:12 — Spike 1 dispatched
+
+Wrote the charter `context/plans/2026-09-27-spike-1-charter-markdown-round-trip.md` on branch `spike/2026-09-27-markdown-round-trip`, pushed it, and launched one Opus orchestrator in the background in its own worktree. Toolchain facts passed in the charter: Node 22.12.0, npm 11, pnpm broken on this machine, Rust 1.93 available. The spike branch is based on the unmerged bootstrap branch; the lead will rebase it onto `main` after PR 1 is squash-merged.
+
+Awaiting the orchestrator's handback. Next lead actions: read handback and findings doc, review register rows, open the spike PR, write the spike 2 charter.
