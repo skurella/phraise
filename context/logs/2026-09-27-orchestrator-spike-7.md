@@ -27,3 +27,15 @@ Plan: one approach, `spikes/2026-09-27-web-editor-tiptap/`, six build briefs, on
 ## 16:31 — brief 01 accepted; brief 02 written
 
 Brief 01 (dispatch 1) handed back: foundation done, commits `fe9ab21`, `f882046`. I re-ran `npm test` (31 pass) and `npm run gates` (gate A smoke PASS, other gates "not run"); nothing left listening. Bundle is 596 KB minified, 182 KB gzip, one chunk. `results/` is ignored by the spike's .gitignore; decide at the end how to commit final results. Wrote brief 02 (gates A and B); dispatching it (dispatch 2).
+
+## 17:44 — brief 02 accepted; brief 03 written
+
+Brief 02 (dispatch 2) handed back: gates A (22 tests) and B (23 tests) pass, 69 unit tests. Commit `fdbea7d`. I re-ran both: same result, nothing left listening.
+
+Findings from the builder to carry:
+- Enter on an empty list item leaves an empty top-level paragraph, which has no Markdown form, so `serializeDoc` throws. Real UX problem, not only a test problem: brief 03 step 1 adds a wrapper that omits empty paragraphs.
+- The builder replaced real Shift+Arrow and Shift+End selection with `setTextSelection` in some tests because selection "extended far past the line". Hypothesis: on macOS Chromium, End moves to the end of the document, not the line (Cmd+Right is line end). To check myself; the gate says real keyboard, so selection should be by keyboard or mouse where possible.
+- Copy test copies only plain words, so it does not prove Markdown syntax on the clipboard. Needs a formatted selection (bold, link, list). Carried to the fix list.
+- Paste tests dispatch a real ClipboardEvent rather than Mod-V (brief's fallback); copy tests use real Mod-C and Mod-V.
+
+Wrote brief 03 (gates C, H, styling). Dispatching (dispatch 3).
