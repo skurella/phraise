@@ -124,3 +124,7 @@ Spike 1 status from its log: core builder handed back at 03:50 and was verified,
 Charters pushed on `spike/2026-09-27-crdt-rebase` and `spike/2026-09-27-github-storage`, both based on `main`. One Opus orchestrator each, background, own worktree. Three orchestrators now running: spikes 1, 2 and 4. Spike 3 (daemon) waits for spikes 1 and 2. Both new prompts include a guard against the nested-agent stall described in claude-code issue 75043: do not end a turn waiting on a worker; check its log and files instead.
 
 Pending lead actions at each handback: read handback and findings, transfer decisions to the register, rebase spike 1 onto `main`, open one PR per spike.
+
+## 06:37 — Spikes 4 and 1 accepted
+
+Spike 4 merged by the owner as PR 3. Spike 1 verified by the lead, rebased onto `main`, and opened as PR 4. Details in the lead's handback logs for each spike. Two rules added to AGENTS.md from spike 1's lessons: commit incrementally, and verify claims that have consequences. Spike 2 still running; spike 3 waits for its recommendation on D5.
