@@ -26,7 +26,11 @@ function pageExtensions(): AnyExtension[] {
     }),
     PhraiseWorkarounds.configure({
       ydoc,
-      stats: { rootAttrs: { mapWrites: 0, docWrites: 0 }, leafMarks: { attrWrites: 0, restores: 0 } },
+      stats: {
+        rootAttrs: { mapWrites: 0, docWrites: 0 },
+        leafMarks: { attrWrites: 0, restores: 0 },
+        localCaretFollow: { corrections: 0 },
+      },
     }),
   ];
 }

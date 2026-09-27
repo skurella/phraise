@@ -1,16 +1,18 @@
-# Spike 7: the web editor, briefs 01-04 (foundation, typing, source blocks, collab/undo/offline)
+# Spike 7: the web editor, briefs 01-05 (foundation, typing, source blocks, collab/undo/offline, caret/IME/flakes)
 
-Status: briefs 01-04 done. See
+Status: briefs 01-05 done. See
 [the plan](../../context/plans/2026-09-27-spike-7-plan.md),
 [the charter](../../context/plans/2026-09-27-spike-7-charter-web-editor.md),
 [brief 01](../../context/plans/2026-09-27-spike-7-brief-01-foundation.md),
 [brief 02](../../context/plans/2026-09-27-spike-7-brief-02-typing.md),
-[brief 03](../../context/plans/2026-09-27-spike-7-brief-03-source-blocks.md) and
-[brief 04](../../context/plans/2026-09-27-spike-7-brief-04-collab-offline.md).
+[brief 03](../../context/plans/2026-09-27-spike-7-brief-03-source-blocks.md),
+[brief 04](../../context/plans/2026-09-27-spike-7-brief-04-collab-offline.md) and
+[brief 05](../../context/plans/2026-09-27-spike-7-brief-05-caret-ime.md).
 Logs: [brief 01](../../context/logs/2026-09-27-builder-spike-7-foundation.md),
 [brief 02](../../context/logs/2026-09-27-builder-spike-7-typing.md),
 [brief 03](../../context/logs/2026-09-27-builder-spike-7-source-blocks.md),
-[brief 04](../../context/logs/2026-09-27-builder-spike-7-collab-offline.md).
+[brief 04](../../context/logs/2026-09-27-builder-spike-7-collab-offline.md),
+[brief 05](../../context/logs/2026-09-27-builder-spike-7-caret-ime.md).
 
 ## Goal
 
@@ -40,6 +42,19 @@ surviving a reload and a full page close/reopen while offline and
 reconverging with no edit lost once back online (gate I). Serves D4, D5
 and D6's offline path in
 [the architecture decisions](../../context/docs/2026-09-27-architecture-decisions.md).
+Brief 05 fixed a real y-tiptap 3.0.9 selection-recovery bug (an idle local
+caret does not follow a remote edit earlier in the same paragraph) with a
+third workaround plugin, without touching `node_modules`; root-caused and
+fixed two real gate E/full-suite flakes (a rare CDP input-delivery miss,
+and a rare Chromium contentEditable space-to-U+00A0 substitution under
+parallel load); added gate G (IME composition through the DevTools
+protocol -- Japanese, Chinese pinyin, cancellation, a concurrent remote
+mark change, an empty paragraph, a table cell, all alongside a second
+user editing the same document); and added pending-IndexedDB-write
+tracking with a "Saving on this device" status, `pagehide`/
+`visibilitychange` flushing and a `beforeunload` prompt for gate I, plus a
+measurement of how much an offline edit survives closing the page the
+instant after typing.
 
 ## Layout
 
@@ -218,6 +233,26 @@ and D6's offline path in
   change: `test/schemaEquivalence.spec.ts` still passes) and exposes
   test-only `window.phraise.builtFrom`, `flushIndexeddb()`,
   `offlineReady`, `statusLabel()` alongside the existing hooks.
+- `src/collab/workarounds/localCaretFollow.ts` (brief 05, workaround 3 of
+  3) — for a transaction the binding dispatches for a remote change or a
+  local undo/redo, recomputes a plain text selection purely from the Yjs
+  relative position, bypassing `@tiptap/y-tiptap` 3.0.9's
+  `recoverSelectionEndpoint` structural-move heuristic (added upstream in
+  3.0.6/3.0.7 for drag-and-drop, but also misfires for an ordinary
+  concurrent edit in the same paragraph -- see the file's own comment and
+  the builder log for the confirmed bug and the upstream issue text).
+  `node`/`nodeRange`/`all` selections are left untouched. Wired into
+  `PhraiseWorkarounds` last; order enforced by `test/workaroundOrder.spec.ts`.
+- `src/offline/pendingWrites.ts` (brief 05) — `createPendingWriteTracker`:
+  tracks IndexedDB writes in flight by piggybacking on the same
+  `storeState(persistence, true)` `flushIndexeddb()` already uses; every
+  local doc update starts one flush, `pendingCount()` is the number not
+  yet settled. Backs the "Saving on this device" status and the
+  `pagehide`/`visibilitychange`-triggered flush and `beforeunload` prompt
+  in `web/src/main.ts`.
+- `e2e/gateG-ime.spec.ts` (brief 05) — IME composition through the
+  DevTools protocol (`page.context().newCDPSession(page)`,
+  `Input.imeSetComposition`, `Input.insertText`); see "Brief 05" below.
 
 ## Origin of copied code
 
@@ -270,28 +305,35 @@ which are spike 5/spike 2 concerns this brief has no use for), `web/`,
 ```bash
 npm ci                 # install
 npm run setup          # Playwright browsers (.pw-browsers/, git-ignored) + the two fetched corpus files
-npm test               # vitest: 138 unit tests
+npm test               # vitest: 148 unit tests
 npm run typecheck      # tsc --noEmit
 npm run gates          # builds the page, runs the Playwright gates, prints the gate table
 npm start              # builds if needed, seeds from examples/, serves on 127.0.0.1:4480 (relay 4481)
 ```
 
 `npm run gates` runs gates `[A]` (22 tests), `[B]` (23 tests), `[C]`
-(6 tests), `[D]` (4 tests), `[E]` (3 tests), `[H]` (4 tests) and `[I]`
-(1 test); later briefs add F, G, J and K. The reporter marks every gate
-with no tests "not run", not a failure. Every gate that does run passes.
+(6 tests), `[D]` (6 tests), `[E]` (3 tests), `[G]` (6 tests), `[H]`
+(4 tests) and `[I]` (2 tests); F, J and K are still out of scope. The
+reporter marks every gate with no tests "not run", not a failure. Every
+gate that does run passes.
 
-`expect: { timeout: 10_000 }` in `playwright.config.ts` (raised from
-Playwright's 5s default) applies to every `expect.poll`/`toBeVisible`
-etc. in the suite: gate D/E/I's multi-context tests poll for a real
-cross-client network round trip (relay -> the other browser's own
-WebSocket -> its `ySyncPlugin`/`y-tiptap` apply cycle), and under
-`npm run gates`' full worker parallelism (several Chromium instances and
-relay processes competing for CPU at once) that round trip was observed
-taking noticeably longer than 5s, causing one real, reproduced (not
-guessed) flake in a gate E test that passed reliably every time run in
-isolation. Two full `npm run gates` runs after raising it: 63/63 both
-times.
+`expect: { timeout: 15_000 }` in `playwright.config.ts` (raised in two
+steps: 5s -> 10s in brief 04, 10s -> 15s in brief 05) applies to every
+`expect.poll`/`toBeVisible` etc. in the suite: gate D/E/I's multi-context
+tests poll for a real cross-client network round trip (relay -> the
+other browser's own WebSocket -> its `ySyncPlugin`/`y-tiptap` apply
+cycle), and under `npm run gates`' full worker parallelism (several
+Chromium instances and relay processes competing for CPU at once) that
+round trip can take noticeably longer than a lower timeout. Brief 05 also
+root-caused and fixed, at their actual cause rather than by raising this
+timeout further, two other real flakes found running the whole suite
+with `--repeat-each=5` at default worker parallelism: a rare CDP
+input-delivery miss (`page.keyboard.type()` occasionally not reaching the
+page at all) and a rare Chromium contentEditable quirk under CPU
+contention (a typed space landing as U+00A0 instead of U+0020, reaching
+even the serialized Markdown) -- see the builder log for both. The whole
+suite, `--repeat-each=5` at default workers, passed 360/360 three times
+in a row after these fixes.
 
 ## Gate H's demonstration
 
@@ -323,19 +365,22 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
 
 ## Verified
 
-- `npx vitest run` — 18 files, 138 tests, all passing (brief 01's schema
+- `npx vitest run` — 20 files, 148 tests, all passing (brief 01's schema
   equivalence, corpus round-trip and workaround-order tests; brief 02's
   `freshSrc`, `pasteMarkdown`, `copyMarkdown`, `inputRulePatterns` and
   `tableNav` tests; brief 03's `stripEmptyParagraphs`, `rawBlockLabels`,
   `frontMatterPreview`, `sanitizeHtml`, `sourceBlockBoundary` and
   `blockCheckCache` tests; brief 04's `presence`, `editorGate`,
-  `syncStatus` and `imageEdit` tests).
+  `syncStatus` and `imageEdit` tests; brief 05's `localCaretFollow` and
+  `pendingWrites` tests, plus `syncStatus`/`workaroundOrder` extended).
 - `npx tsc --noEmit` — clean.
 - `npm run gates` — builds the page, runs gates `[A]`, `[B]`, `[C]`,
-  `[D]`, `[E]`, `[H]` and `[I]` in Chromium, 63/63 passing, prints the
-  table, writes `results/gates.md`/`gates.json`, exits 0. Run twice in a
-  row after the `expect.timeout` fix (see "Commands"): 63/63 both times.
+  `[D]`, `[E]`, `[G]`, `[H]` and `[I]` in Chromium, 72/72 passing, prints
+  the table, writes `results/gates.md`/`gates.json`, exits 0.
   `lsof -nP -iTCP:4400-4499 -sTCP:LISTEN` is empty afterward.
+- Whole-suite flake sweep (brief 05): `playwright test --repeat-each=5`
+  at default worker parallelism, run three times in a row after the two
+  flake fixes documented above: 360/360 passing every time.
 - `npm start` — prints the open URL; `curl` of the page returns 200; a
   real Ctrl-C (verified by sending `SIGINT` to the whole process group,
   not just the top pid — confirmed with `ps -o pid,ppid,pgid` that
@@ -393,6 +438,90 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
   located/counted in gate D/E/I — ProseMirror renders invisible
   `.ProseMirror-separator` `<img>` placeholders around inline atoms that
   otherwise shift `nth()` indices.
+
+## Brief 05: the caret fix, IME (gate G), and the flake sweep
+
+- **The caret bug (finding 1) and its fix**: `@tiptap/y-tiptap` 3.0.9's
+  `restoreRelativeSelection` resolves a plain text selection correctly
+  from the Yjs relative position, then runs it through
+  `recoverSelectionEndpoint`'s `isMisresolvedAfterStructuralChange`
+  heuristic (added upstream in 3.0.6/3.0.7 for drag-and-drop block
+  moves), which treats ANY change to the selection's paragraph's
+  `textContent` as a misresolution and can substitute a stale/wrong
+  position for the already-correct one. Reproduced against the real app
+  (a minimal hand-rolled two-`Y.Doc` unit test did NOT reproduce it —
+  see the builder log for why) with two new `e2e/gateD-collab.spec.ts`
+  tests, and confirmed as a true positive by temporarily removing the fix
+  and observing the exact predicted corruption (`AAA AlicXYZe's
+  paragraph...` instead of `AAA Alice's XYZparagraph...`). Fixed by
+  `src/collab/workarounds/localCaretFollow.ts`, a third `PhraiseWorkarounds`
+  plugin, without touching `node_modules` or the pinned version. Upstream
+  issue text (title, minimal repro, cause) written into the builder log
+  for the lead to file.
+- **Gate E's flake** (the "type alternately" test, 2/18 in the
+  orchestrator's own measurement): root-caused as a real, rare (~1 in
+  100-150) CDP input-delivery miss on this machine — `page.keyboard.type()`
+  occasionally dispatches into a page that had real focus established
+  moments earlier, yet the keystrokes never reach the document at all
+  (confirmed: polling the local model for 30+ further seconds afterward
+  showed it never changes, versus single-digit milliseconds when it
+  works). Fixed with `typeAndVerify` (type, poll the LOCAL selection,
+  retry the same text if nothing landed) in every gate E/G/I test file
+  that types through two alternating users.
+- **Gate I: pending-write tracking, "Saving on this device", the
+  close-at-once measurement**: `src/offline/pendingWrites.ts` tracks
+  IndexedDB writes in flight; `deriveSyncStatus` gains a `saving` state;
+  `main.ts` flushes on `pagehide`/`visibilitychange` and registers a
+  `beforeunload` prompt when offline with a write still pending. The
+  existing gate I test now waits for "Offline, changes kept on this
+  device" before closing the page (what a real user would see and wait
+  for) — the fix for the orchestrator's own 6/24 measurement. A NEW test,
+  explicitly a finding and not a gate, measures what happens WITHOUT that
+  wait: closing the instant after typing, offline, survived only
+  **21/100 (21%)** of the time across ten runs of ten repetitions each,
+  always all-or-nothing (never a partial/corrupted string) — confirmed
+  the app really does attempt a flush every time the page could be going
+  away (a temporary `console.log` inside the flush handler showed it
+  firing for all 100 attempts), but a tab close does not wait for async
+  IndexedDB work to finish, a platform limitation this fix narrows but
+  cannot close.
+- **Gate G (IME composition)**, new, driven through the DevTools protocol
+  (`Input.imeSetComposition`, `Input.insertText`; Playwright's own
+  `keyboard` API cannot simulate an in-progress, uncommitted composition
+  at all). Real finding, confirmed directly: `editor.view.composing`
+  genuinely reads `true` during an active CDP-driven composition, but
+  ProseMirror applies each preview step as real, already-synced document
+  content — the live, still-uncommitted preview reaches OTHER users'
+  pages before any commit, and a plain mouse click on a paragraph another
+  user is actively composing in can land on `CollaborationCaret`'s own
+  caret/label DOM decoration instead of on editable text (never moving
+  the selection at all). Worked around with `editor.commands
+  .setTextSelection` for positioning instead of clicks. All 6 scenarios
+  (Japanese, Chinese pinyin, a cancelled/empty commit, a concurrent
+  remote mark change, an empty paragraph, a table cell) pass reliably —
+  no `test.fail()` scenarios were needed in the end, once a real (not
+  guessed) timing race between a local typist and a still-arriving
+  remote composition preview was fixed the same way as gate E's flake
+  (wait for the remote change to actually finish arriving before typing).
+- **The flake sweep** (`playwright test --repeat-each=5`, default
+  workers, whole suite): found and fixed, at their cause, the gate E
+  input-delivery flake's own retry logic being too strict under real
+  parallel load (it could see "landed, just slower than 2s" and
+  mistakenly treat that as "nothing landed"), and a genuine Chromium
+  contentEditable quirk under CPU contention where a typed space lands as
+  U+00A0 (non-breaking space) instead of U+0020 — confirmed to reach not
+  just the live DOM but this app's own serialized Markdown, via a
+  char-code dump of a captured failure. Normalized at the two points
+  these three gate files read text back for comparison
+  (`selectionInfo()`, `markdown()`). Three consecutive clean 360/360 runs
+  after both fixes.
+- A second, independent confirmation of the `seedFiles` multi-element
+  array Playwright fixture-option bug this README already documented
+  (see "Notes for the next brief" below): hit again in
+  `e2e/gateG-ime.spec.ts` and `e2e/gateI-offline.spec.ts`'s new
+  measurement test, worked around the same way (a nested `test.describe`
+  per extra fixture file, or copying a seed file directly into
+  `phraiseServer.seedsDir` at runtime for a test needing many of them).
 
 ## Bundle sizes (brief 03, after the Mermaid split)
 
@@ -529,4 +658,35 @@ accounts for the rest of the increase.
     "Commands"); a future gate that polls a cross-client network round
     trip should rely on this rather than adding its own per-assertion
     timeout, so the whole suite's tolerance for parallel-worker
-    contention stays in one place.
+    contention stays in one place. (Brief 05 raised it again, to 15s.)
+- Brief 05, for brief 06 (comments) and beyond:
+  - `page.keyboard.type()`/`.press()` can occasionally not reach the page
+    at all (a real CDP input-delivery miss on this machine, roughly 1 in
+    100-150 keystroke sequences) and, under real parallel load, can
+    insert a space as U+00A0 instead of U+0020 (a genuine Chromium
+    contentEditable quirk, reaching even the serialized Markdown). Both
+    are real, not test bugs; `typeAndVerify` (type, poll the LOCAL
+    selection, retry if nothing landed, tolerate the U+00A0 substitution)
+    in `gateE-undo.spec.ts`/`gateG-ime.spec.ts`/`gateI-offline.spec.ts` is
+    the established fix for both — reuse it rather than a bare
+    `page.keyboard.type()` in any new multi-user test that types through
+    two alternating pages.
+  - A real, uncommitted composition inserts its preview text as actual,
+    already-synced document content on this stack (`editor.view.composing`
+    reads `true`, but the preview reaches other users before any commit) —
+    do not assume a composing user's content is invisible to collaborators
+    until they commit.
+  - `editor.commands.setTextSelection` (or `.chain().focus()
+    .setTextSelection(...).run()`) is the reliable way to position a
+    caret in a test where a real click risks landing on
+    `CollaborationCaret`'s own caret/label DOM decoration instead of
+    editable text — this can happen whenever ANOTHER user's live caret or
+    an active composition is inside the paragraph being clicked into, not
+    only during IME.
+  - The `seedFiles` multi-element-array Playwright fixture-option bug
+    (see the "Brief 04" notes above) has now been hit three times across
+    three different spec files; treat it as a certainty, not a
+    coincidence, for any new test needing more than one extra seed file —
+    either nest nested `test.describe`s (fine for 2-3 files) or copy
+    files directly into `phraiseServer.seedsDir` at runtime (better for
+    many, e.g. one per loop repetition).

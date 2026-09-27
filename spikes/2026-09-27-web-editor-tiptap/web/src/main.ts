@@ -27,6 +27,7 @@ import { schema } from '../../src/model/schema.js';
 import { serializeDoc } from '../../src/model/serialize.js';
 import { colorForName } from '../../src/collab/presence.js';
 import { createBuildGate, type GateSource } from '../../src/offline/editorGate.js';
+import { createPendingWriteTracker } from '../../src/offline/pendingWrites.js';
 import type { ProviderConnectionStatus } from '../../src/offline/status.js';
 import { FreshSrc } from '../../src/editing/freshSrc.js';
 import { stripEmptyTopLevelParagraphs } from '../../src/editing/stripEmptyParagraphs.js';
@@ -140,11 +141,26 @@ async function main(): Promise<void> {
   // is `connected` -- wired as soon as the provider exists, not gated
   // behind the editor build, so the indicator is live through the initial
   // connecting phase too.
+  //
+  // Brief 05, task 4: a third fact -- whether any local edit's write to
+  // IndexedDB is still in flight (`pendingWrites`, `src/offline/
+  // pendingWrites.ts`) -- so the indicator can show "Saving on this
+  // device" until it settles, then "Offline, changes kept on this device".
+  // `flushIndexeddb()` below is deliberately reused as the tracker's own
+  // flush function: one real, durable write of the CURRENT doc state per
+  // local update (see the tracker's own file comment for why this needs no
+  // de-duplication).
   let browserOnline = navigator.onLine;
   let providerStatus: ProviderConnectionStatus = 'connecting';
   function updateStatus(): void {
-    renderStatus(statusEl, browserOnline, providerStatus);
+    renderStatus(statusEl, browserOnline, providerStatus, pendingWrites.pendingCount() > 0);
   }
+  const pendingWrites = createPendingWriteTracker(
+    ydoc,
+    () => storeIndexeddbState(persistence, true).then(() => undefined),
+    updateStatus,
+    persistence,
+  );
   provider.on('status', ({ status }: { status: ProviderConnectionStatus }) => {
     providerStatus = status;
     updateStatus();
@@ -158,6 +174,35 @@ async function main(): Promise<void> {
     updateStatus();
   });
   updateStatus();
+
+  // Brief 05, task 4: flush on `pagehide` and `visibilitychange` (going
+  // hidden) -- the two events a real tab close/navigation/app-switch
+  // reliably fires before the page may disappear, so any local edit typed
+  // just before closing gets one more explicit attempt at reaching
+  // IndexedDB rather than waiting on whatever triggered the last flush.
+  // This narrows, but (per the platform's own guarantees, or lack of them)
+  // cannot fully close, the loss window a synchronous tab close leaves for
+  // an async IndexedDB write in flight -- measured, not assumed, by gate
+  // I's own "type then close at once" test (see the builder log).
+  function flushOnHide(): void {
+    void pendingWrites.flushNow();
+  }
+  window.addEventListener('pagehide', flushOnHide);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushOnHide();
+  });
+
+  // Brief 05, task 4: "when offline with changes that the relay has not
+  // acknowledged, register a beforeunload prompt, as Google Docs does."
+  // Only while offline AND a write is still in flight -- online, the relay
+  // (not just IndexedDB) is the durable store, and once every write has
+  // settled there is nothing left for a close to lose.
+  window.addEventListener('beforeunload', (e) => {
+    if (!browserOnline && pendingWrites.pendingCount() > 0) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
 
   // Brief 04, task 5: build the editor after whichever comes first --
   // IndexedDB loaded WITH CONTENT (a previous offline session already wrote
@@ -239,7 +284,11 @@ async function main(): Promise<void> {
     }),
     PhraiseWorkarounds.configure({
       ydoc,
-      stats: { rootAttrs: { mapWrites: 0, docWrites: 0 }, leafMarks: { attrWrites: 0, restores: 0 } },
+      stats: {
+        rootAttrs: { mapWrites: 0, docWrites: 0 },
+        leafMarks: { attrWrites: 0, restores: 0 },
+        localCaretFollow: { corrections: 0 },
+      },
     }),
     FreshSrc,
     UnverifiedCheck,

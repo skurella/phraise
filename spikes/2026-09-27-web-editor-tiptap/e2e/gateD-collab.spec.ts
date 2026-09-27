@@ -305,3 +305,104 @@ test("[D] a linked badge image's address and link, changed together through the 
   await context3.close();
   await context2.close();
 });
+
+// Brief 05, finding 1: the local caret does not follow a remote edit made
+// EARLIER in the same paragraph while it is idle. Root cause (confirmed by
+// reading `node_modules/@tiptap/y-tiptap/dist/y-tiptap.js` 3.0.9, see the
+// builder log): `restoreRelativeSelection` resolves the selection correctly
+// from the Yjs relative position, then `recoverSelectionEndpoint`'s
+// `isMisresolvedAfterStructuralChange` heuristic (added in 3.0.6/3.0.7 for
+// drag-and-drop block moves) treats the paragraph's changed `textContent`
+// as a sign of misresolution and can "recover" a stale absolute offset from
+// the OLD document instead. Fixed by `src/collab/workarounds/
+// localCaretFollow.ts` (a third `PhraiseWorkarounds` plugin) without
+// touching `node_modules` or the pinned version.
+test("[D] the local caret stays in place while the other user types before it in the same paragraph", async ({
+  page,
+  phraiseServer,
+  browser,
+}) => {
+  const alice = page;
+  const context2 = await browser.newContext();
+  const bob = await context2.newPage();
+
+  await openAndWait(alice, phraiseServer, 'Alice');
+  await openAndWait(bob, phraiseServer, 'Bob');
+  await waitForInitialSync(alice, bob);
+
+  const target = ALICE_TEXT;
+  const bobOffset = "Alice's ".length; // right before "paragraph"
+
+  // Bob places his caret MID-paragraph and then stays idle -- no re-click,
+  // no fresh selection read, before his next keystroke below. This is the
+  // exact shape of the bug: an idle local caret whose position must be
+  // carried forward by the binding itself, not by anything this test does.
+  await bob.bringToFront();
+  await placeCaret(bob, paragraphAt(bob, ALICE_PARAGRAPH), target, bobOffset);
+
+  // Alice types before Bob's caret, at the very start of the same paragraph.
+  await alice.bringToFront();
+  await placeCaret(alice, paragraphAt(alice, ALICE_PARAGRAPH), target, 0);
+  await alice.keyboard.type('AAA ');
+
+  const afterAlice = 'AAA ' + target;
+  await expect.poll(() => markdown(bob)).toContain(afterAlice);
+
+  // Bob's very next keystroke, typed WITHOUT touching his caret again,
+  // must land at the SAME logical point (right before "paragraph"), not
+  // four characters early (inside the "AAA " the fix must have already
+  // carried his caret past).
+  await bob.bringToFront();
+  await bob.keyboard.type('XYZ');
+
+  const expectedParagraph = 'AAA ' + target.slice(0, bobOffset) + 'XYZ' + target.slice(bobOffset);
+  const expected = ORIGINAL.replace(target, expectedParagraph);
+
+  await expect.poll(() => markdown(alice)).toBe(expected);
+  await expect.poll(() => markdown(bob)).toBe(expected);
+
+  await context2.close();
+});
+
+test('[D] both users place idle carets in the same paragraph first, then type several words interleaved; each lands contiguously at its own caret', async ({
+  page,
+  phraiseServer,
+  browser,
+}) => {
+  const alice = page;
+  const context2 = await browser.newContext();
+  const bob = await context2.newPage();
+
+  await openAndWait(alice, phraiseServer, 'Alice');
+  await openAndWait(bob, phraiseServer, 'Bob');
+  await waitForInitialSync(alice, bob);
+
+  const target = ALICE_TEXT;
+
+  // BOTH carets placed BEFORE either user types anything -- Alice at the
+  // very start, Bob at the very end of the same paragraph (the exact
+  // position the orchestrator's own repro used).
+  await alice.bringToFront();
+  await placeCaret(alice, paragraphAt(alice, ALICE_PARAGRAPH), target, 0);
+  await bob.bringToFront();
+  await placeCaret(bob, paragraphAt(bob, ALICE_PARAGRAPH), target, target.length);
+
+  const aliceWords = ['one', 'two', 'three'];
+  const bobWords = ['uno', 'dos', 'tres'];
+  for (let i = 0; i < aliceWords.length; i++) {
+    await alice.bringToFront();
+    await alice.keyboard.type(aliceWords[i] + ' ');
+    await bob.bringToFront();
+    await bob.keyboard.type(' ' + bobWords[i]);
+  }
+
+  const aliceTyped = aliceWords.map((w) => `${w} `).join('');
+  const bobTyped = bobWords.map((w) => ` ${w}`).join('');
+  const expectedParagraph = aliceTyped + target + bobTyped;
+  const expected = ORIGINAL.replace(target, expectedParagraph);
+
+  await expect.poll(() => markdown(alice)).toBe(expected);
+  await expect.poll(() => markdown(bob)).toBe(expected);
+
+  await context2.close();
+});

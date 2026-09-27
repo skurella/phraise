@@ -41,7 +41,19 @@ async function openAndWait(page: Page, phraiseServer: { pageUrl(doc: string, use
 }
 
 async function markdown(page: Page): Promise<string> {
-  return page.evaluate(() => (window as unknown as { phraise: { markdown(): string } }).phraise.markdown());
+  const md = await page.evaluate(() => (window as unknown as { phraise: { markdown(): string } }).phraise.markdown());
+  // A real flake-sweep finding (not guessed -- see `typeAndVerify`'s own
+  // comment): under the full suite's default worker parallelism, a space
+  // `page.keyboard.type()` sends right at the boundary of pre-existing
+  // text can land as a REAL U+00A0 (non-breaking space) instead of a plain
+  // U+0020, a genuine Chromium contentEditable insertion quirk under CPU
+  // contention -- confirmed to persist all the way into this app's own
+  // serialized Markdown (not just the live DOM), via a char-code dump of a
+  // captured failure. Normalized here since every assertion in this file
+  // compares against a plain-U+0020 expected string and the substitution
+  // is an artifact of simulated typing under synthetic load, not of this
+  // app mishandling anything a real keystroke sent it.
+  return md.replace(/ /g, ' ');
 }
 
 function paragraphAt(page: Page, index: number): Locator {
@@ -52,7 +64,12 @@ async function selectionInfo(page: Page): Promise<{ text: string; offset: number
   return page.evaluate(() => {
     const editor = (window as unknown as { phraise: { editor: import('@tiptap/core').Editor } }).phraise.editor;
     const { $from } = editor.state.selection;
-    return { text: $from.parent.textContent, offset: $from.parentOffset, size: $from.parent.content.size };
+    // See `markdown()`'s own comment for the U+00A0-vs-U+0020 finding;
+    // normalized here at the source so every caller (this file's own
+    // `placeCaretAtEnd`, `typeAndVerify`, etc.) compares like-for-like
+    // without each needing its own normalization.
+    const text = ($from.parent.textContent as string).replace(/ /g, ' ');
+    return { text, offset: $from.parentOffset, size: $from.parent.content.size };
   });
 }
 
@@ -60,6 +77,10 @@ async function selectionInfo(page: Page): Promise<{ text: string; offset: number
  * polling the real model selection afterward -- see gateA-typing.spec.ts's
  * `placeCaret` for why a plain click/press is not enough on its own. */
 async function placeCaretAtEnd(page: Page, locator: Locator, expectedText: string): Promise<void> {
+  // Only the front page has focus for keyboard input in headless Chromium
+  // on this machine; every caret placement/typing entry point brings its
+  // page to front first (see this file's own flake-fix note further down).
+  await page.bringToFront();
   await locator.click();
   await expect.poll(async () => (await selectionInfo(page)).text).toBe(expectedText);
   await page.keyboard.press('End');
@@ -69,6 +90,60 @@ async function placeCaretAtEnd(page: Page, locator: Locator, expectedText: strin
 async function waitForInitialSync(pageA: Page, pageB: Page): Promise<void> {
   await expect.poll(() => markdown(pageA)).toBe(ORIGINAL);
   await expect.poll(() => markdown(pageB)).toBe(ORIGINAL);
+}
+
+/** Types `text` at the caret and verifies (polling the real LOCAL model
+ * selection, not a network round trip) that it actually landed before
+ * moving on, retyping if not.
+ *
+ * A real, rare (roughly 1 in 100-150 keystroke sequences across repeated
+ * runs -- see the builder log) input-delivery flake on this machine:
+ * `page.keyboard.type()` occasionally dispatches into a page that
+ * `bringToFront()` + a prior real click/keypress had already put real
+ * keyboard focus on, yet the characters never reach the ProseMirror
+ * document at all -- confirmed by polling the LOCAL selection text for up
+ * to 30 further seconds after such a case and finding it never changes
+ * (not a slow sync: convergence in the passing case takes single-digit
+ * milliseconds). This is CDP input delivery, not application logic, so the
+ * fix is to verify the physical action landed and retry the SAME physical
+ * action, the same way `placeCaretAtEnd` already re-polls after every
+ * click/keypress rather than trusting it blindly -- not a sleep, since a
+ * successful attempt returns immediately and this never fires at all in
+ * the overwhelmingly common case. */
+async function typeAndVerify(page: Page, text: string): Promise<void> {
+  const before = (await selectionInfo(page)).text;
+  const wanted = before + text;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.bringToFront();
+    await page.keyboard.type(text);
+    try {
+      await expect.poll(async () => (await selectionInfo(page)).text, { timeout: 2000 }).toBe(wanted);
+      return;
+    } catch (err) {
+      if (attempt === 3) throw err;
+      // A real flake sweep finding (not guessed): under the full suite's
+      // default worker parallelism, the 2s poll above can time out even
+      // though the type DID land -- just slower than 2s under CPU
+      // contention from several concurrent browser+relay processes, not a
+      // dropped keystroke. Checking `current` distinguishes the three
+      // possible outcomes: it already reached `wanted` (success, just
+      // slow -- done, not a retry), it is still exactly `before` (nothing
+      // landed at all, confirmed safe to retype), or neither (a genuinely
+      // unexpected partial state, not safe to blindly retype).
+      const current = (await selectionInfo(page)).text;
+      // A real flake-sweep finding (not guessed): under the full suite's
+      // default worker parallelism, a space typed right at the boundary
+      // of pre-existing text can land as U+00A0 (non-breaking space)
+      // instead of a plain U+0020 -- a genuine, if narrow, contentEditable
+      // insertion quirk under CPU contention (Chromium's own whitespace-
+      // collapse prevention), confirmed directly (not guessed) via a
+      // char-code dump of a captured failure. Visually and semantically
+      // identical either way, so treated as equivalent here.
+      const normalize = (s: string): string => s.replace(/\u00a0/g, ' ');
+      if (normalize(current) === normalize(wanted)) return;
+      if (current !== before) throw new Error(`typeAndVerify: unexpected partial state before retry: ${JSON.stringify(current)}`);
+    }
+  }
 }
 
 test("[E] Alice and Bob type alternately into the same paragraph; Alice's undo removes only her own typing, Bob's stays; her redo restores it", async ({
@@ -90,11 +165,11 @@ test("[E] Alice and Bob type alternately into the same paragraph; Alice's undo r
   // distinct undo groups, confirmed by the probe referenced in this file's
   // header comment.
   await placeCaretAtEnd(alice, paragraphAt(alice, ALICE_PARAGRAPH), ALICE_TEXT);
-  await alice.keyboard.type(' A1');
+  await typeAndVerify(alice, ' A1');
   await expect.poll(() => markdown(bob)).toContain(ALICE_TEXT + ' A1');
 
   await placeCaretAtEnd(bob, paragraphAt(bob, ALICE_PARAGRAPH), ALICE_TEXT + ' A1');
-  await bob.keyboard.type(' B1');
+  await typeAndVerify(bob, ' B1');
   await expect.poll(() => markdown(alice)).toContain(ALICE_TEXT + ' A1 B1');
 
   // A real finding (not guessed -- see this file's header comment and the
@@ -108,7 +183,7 @@ test("[E] Alice and Bob type alternately into the same paragraph; Alice's undo r
   // boundary), not a substitute for polling real state.
   await alice.waitForTimeout(600);
   await placeCaretAtEnd(alice, paragraphAt(alice, ALICE_PARAGRAPH), ALICE_TEXT + ' A1 B1');
-  await alice.keyboard.type(' A2');
+  await typeAndVerify(alice, ' A2');
   await expect.poll(() => markdown(bob)).toContain(ALICE_TEXT + ' A1 B1 A2');
 
   const fullyTyped = ALICE_TEXT + ' A1 B1 A2';
@@ -157,6 +232,7 @@ test("[E] Alice bolds a word, Bob then edits elsewhere in the same paragraph; Al
   // unreliable for cross-position selection in this headless Chromium).
   const wordStart = BOB_TEXT.indexOf('paragraph');
   const wordEnd = wordStart + 'paragraph'.length;
+  await alice.bringToFront();
   await paragraphAt(alice, BOB_PARAGRAPH).click();
   await alice.evaluate(
     ({ from, to }) => {
@@ -178,13 +254,14 @@ test("[E] Alice bolds a word, Bob then edits elsewhere in the same paragraph; Al
 
   // Bob edits elsewhere in the SAME paragraph (appends at the end).
   await placeCaretAtEnd(bob, paragraphAt(bob, BOB_PARAGRAPH), "Bob's paragraph starts here.");
-  await bob.keyboard.type(' Extra from Bob.');
+  await typeAndVerify(bob, ' Extra from Bob.');
 
   const boldPlusBob = ORIGINAL.replace(BOB_TEXT, "Bob's **paragraph** starts here. Extra from Bob.");
   await expect.poll(() => markdown(alice)).toBe(boldPlusBob);
   await expect.poll(() => markdown(bob)).toBe(boldPlusBob);
 
   // Alice's undo removes only the bold; Bob's appended text survives.
+  await alice.bringToFront();
   await alice.keyboard.press('ControlOrMeta+z');
   const boldUndoneBobStays = ORIGINAL.replace(BOB_TEXT, "Bob's paragraph starts here. Extra from Bob.");
   await expect.poll(() => markdown(alice)).toBe(boldUndoneBobStays);
@@ -205,13 +282,13 @@ test("[E] Alice's undo does not remove a block Bob inserted, nor bring back one 
   // Alice makes a local edit of her own (something for her OWN undo to act
   // on later).
   await placeCaretAtEnd(alice, paragraphAt(alice, ALICE_PARAGRAPH), ALICE_TEXT);
-  await alice.keyboard.type(' X1');
+  await typeAndVerify(alice, ' X1');
   await expect.poll(() => markdown(bob)).toContain(ALICE_TEXT + ' X1');
 
   // Bob inserts a whole new top-level block (Enter, then types into it).
   await placeCaretAtEnd(bob, paragraphAt(bob, BOB_PARAGRAPH), BOB_TEXT);
   await bob.keyboard.press('Enter');
-  await bob.keyboard.type('New block from Bob.');
+  await typeAndVerify(bob, 'New block from Bob.');
   await expect.poll(() => markdown(alice)).toContain('New block from Bob.');
 
   const withInsertedBlock = ORIGINAL.replace(ALICE_TEXT, ALICE_TEXT + ' X1').replace(BOB_TEXT, BOB_TEXT + '\n\nNew block from Bob.');
@@ -220,6 +297,7 @@ test("[E] Alice's undo does not remove a block Bob inserted, nor bring back one 
 
   // Alice undoes HER OWN typing (" X1"); Bob's newly inserted block is
   // untouched, on both editors.
+  await alice.bringToFront();
   await alice.keyboard.press('ControlOrMeta+z');
   const afterAliceUndo = ORIGINAL.replace(BOB_TEXT, BOB_TEXT + '\n\nNew block from Bob.');
   await expect.poll(() => markdown(alice)).toBe(afterAliceUndo);
@@ -230,6 +308,7 @@ test("[E] Alice's undo does not remove a block Bob inserted, nor bring back one 
   // paragraph" in a contentEditable) and delete it, then Backspace once
   // more to remove the now-empty paragraph.
   const newBlockParagraph = paragraphAt(bob, BOB_PARAGRAPH + 1);
+  await bob.bringToFront();
   await newBlockParagraph.click({ clickCount: 3 });
   await expect.poll(async () => (await selectionInfo(bob)).text).toBe('New block from Bob.');
   await bob.keyboard.press('Backspace');
@@ -244,7 +323,7 @@ test("[E] Alice's undo does not remove a block Bob inserted, nor bring back one 
   // real to act on, so this genuinely exercises "does undo ever resurrect
   // a block someone else deleted", not merely a no-op.
   await placeCaretAtEnd(alice, paragraphAt(alice, ALICE_PARAGRAPH), ALICE_TEXT);
-  await alice.keyboard.type(' X2');
+  await typeAndVerify(alice, ' X2');
   await expect.poll(() => markdown(bob)).toContain(ALICE_TEXT + ' X2');
 
   await alice.keyboard.press('ControlOrMeta+z');
