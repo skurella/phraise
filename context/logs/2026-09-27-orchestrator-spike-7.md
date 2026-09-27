@@ -75,3 +75,9 @@ Two things in the handback I did not accept as stated:
 2. **`typeAndVerify` retries** hide dropped keystrokes if the editor ever drops them. I instrumented each retry to print a line. Whole suite `--repeat-each=5`: 360/360 pass with the CSS fix and no normalization; one retry in 360 tests, in gate G, when Bob typed `BEFORE-` at the start of a paragraph while Alice had an active composition: nothing landed within 2 s, and the retype did. Unexplained; recorded as an open risk (a keystroke may be lost while a remote composition is in progress), not proven either way.
 
 `npm test` 148 pass, `tsc` clean, ports clean.
+
+## 22:22 — brief 06 verified; brief 07 written
+
+Brief 06 (dispatch 6) handed back: gate F 6 tests, comments model in `src/comments/`, sidebar and highlight in `web/src/comments/`; 175 unit tests. My check: whole suite `--repeat-each=4`, 312/312 pass; one logged retry (`placeCaret-retry`, a click landing at offset 37 instead of 53 in gate F), a harness-level click placement, not a lost keystroke.
+
+Wrote brief 07: the fix list (formatted copy test, keyboard selection, unlink through UI, always build on start, styling problems from my screenshots), gate K measurements with stated thresholds (first load under 5 s, p95 key-to-paint under 50 ms with the Markdown panel closed), gate J syntax-visibility check and screenshots, Firefox and WebKit as an informational second table, fresh-clone check. Dispatching (dispatch 7).
