@@ -2,21 +2,23 @@
   {
     "id": "commonmark-spec",
     "repo": "commonmark/commonmark-spec",
-    "sha": "0.30",
+    "sha": "3da939428d80f146f270cd1765e4ba462e96bb1b",
     "path": "spec.txt",
     "license": "CC-BY-SA-4.0",
-    "url": "https://raw.githubusercontent.com/commonmark/commonmark-spec/master/spec.txt",
+    "url": "https://raw.githubusercontent.com/commonmark/commonmark-spec/3da939428d80f146f270cd1765e4ba462e96bb1b/spec.txt",
     "bytes": 206108,
-    "sha256": "43fad3e0ac5190a3b0bc6a41f7b1a853201a26ec2e6b74871f5d96239a8c34cf"
+    "sha256": "43fad3e0ac5190a3b0bc6a41f7b1a853201a26ec2e6b74871f5d96239a8c34cf",
+    "licenseNote": "Fetched only, never committed. Example inputs are used as test data."
   },
   {
     "id": "gfm-spec",
     "repo": "github/cmark-gfm",
     "sha": "499789b49373bfa045d0e7547e5ee63444c77bca",
     "path": "test/spec.txt",
-    "license": "BSD-2-Clause",
+    "license": "CC-BY-SA-4.0",
     "url": "https://raw.githubusercontent.com/github/cmark-gfm/499789b49373bfa045d0e7547e5ee63444c77bca/test/spec.txt",
     "bytes": 216680,
-    "sha256": "7d8e5814befec287ac116786d81ff14e0adc9b13295b4494649e995408fd871c"
+    "sha256": "7d8e5814befec287ac116786d81ff14e0adc9b13295b4494649e995408fd871c",
+    "licenseNote": "Spec text license per its front matter; fetched only, never committed."
   }
 ]

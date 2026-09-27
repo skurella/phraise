@@ -286,17 +286,6 @@
     "sha256": "83afc9420595c1f7bb4ad5e13c2d77614676983f3df1e58acbb6985ed6a2ad7b"
   },
   {
-    "id": "npm-cli-table-readme",
-    "kind": "readme",
-    "repo": "Automattic/cli-table",
-    "sha": "8d8fcd820dac4968f301369af2543514175b0582",
-    "path": "README.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/Automattic/cli-table/8d8fcd820dac4968f301369af2543514175b0582/README.md",
-    "bytes": 5818,
-    "sha256": "c126980d552709b5eaf3ecad9fc04b85d30e5dde9523ae79feece7a51ec00ab7"
-  },
-  {
     "id": "npm-ora-readme",
     "kind": "readme",
     "repo": "sindresorhus/ora",
@@ -1375,17 +1364,6 @@
     "sha256": "770870bc1ae8b1cf0f41d226abd958e1525fb53be8f5b1da2b5f689974ccd60b"
   },
   {
-    "id": "npm-caniuse-lite-readme",
-    "kind": "readme",
-    "repo": "browserslist/caniuse-lite",
-    "sha": "c890d6abe392b20e418bc7b29cb8d4716c5d9093",
-    "path": "README.md",
-    "license": "CC-BY-4.0",
-    "url": "https://raw.githubusercontent.com/browserslist/caniuse-lite/c890d6abe392b20e418bc7b29cb8d4716c5d9093/README.md",
-    "bytes": 3125,
-    "sha256": "a33074efcee77520417bd7d521de19a8221917bbc67f49567e44143fbf17466c"
-  },
-  {
     "id": "npm-postcss-readme",
     "kind": "readme",
     "repo": "postcss/postcss",
@@ -1793,17 +1771,6 @@
     "sha256": "e1c7e9edee7b87067013aa4fbd32ef81ded5d0c95fcd9a43534dd8b5f3aa5f20"
   },
   {
-    "id": "npm-pm2-readme",
-    "kind": "readme",
-    "repo": "Unitech/pm2",
-    "sha": "8c2fd972b4edfd04d05f0a5ee7c58598c160a405",
-    "path": "README.md",
-    "license": "AGPL-3.0",
-    "url": "https://raw.githubusercontent.com/Unitech/pm2/8c2fd972b4edfd04d05f0a5ee7c58598c160a405/README.md",
-    "bytes": 6510,
-    "sha256": "02c359d337cc1a11cdd0bb485fdccdb6b23f53d5c02131c0bff58a2772a42944"
-  },
-  {
     "id": "npm-cross-env-readme",
     "kind": "readme",
     "repo": "kentcdodds/cross-env",
@@ -1978,17 +1945,6 @@
     "url": "https://raw.githubusercontent.com/firebase/firebase-tools/ce76dff815bf8ce6a4ef3ee97f6cf6a6f91d9b5f/README.md",
     "bytes": 22766,
     "sha256": "aa7575616d2715df665de8f4318ed7c545c92bee31ae9cbe7f5eb5bff9a79591"
-  },
-  {
-    "id": "npm-serverless-readme",
-    "kind": "readme",
-    "repo": "serverless/serverless",
-    "sha": "bd2e5cc0e090c5179fcb487b0e84e4d9b860add2",
-    "path": "README.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/serverless/serverless/bd2e5cc0e090c5179fcb487b0e84e4d9b860add2/README.md",
-    "bytes": 28504,
-    "sha256": "33c1aacc574d24d06773569a51694711cf54592887766255fb0104bf2666bbe8"
   },
   {
     "id": "npm-nunjucks-readme",
@@ -2865,10 +2821,11 @@
     "repo": "nodejs/node",
     "sha": "14e8f5bca4bfac077be1bed9594245bd1ad2bb88",
     "path": "doc/api/addons.md",
-    "license": "NOASSERTION",
+    "license": "MIT",
     "url": "https://raw.githubusercontent.com/nodejs/node/14e8f5bca4bfac077be1bed9594245bd1ad2bb88/doc/api/addons.md",
     "bytes": 42301,
-    "sha256": "73eddf03a39e05b983cfb96f6ac65deee85e41b6498b8fe205eb93b8620fabbc"
+    "sha256": "73eddf03a39e05b983cfb96f6ac65deee85e41b6498b8fe205eb93b8620fabbc",
+    "licenseNote": "Node.js LICENSE file is MIT for Node itself; GitHub reports NOASSERTION because the file also lists bundled dependencies"
   },
   {
     "id": "nodejs-node-docapiclimd",
@@ -2876,10 +2833,11 @@
     "repo": "nodejs/node",
     "sha": "14e8f5bca4bfac077be1bed9594245bd1ad2bb88",
     "path": "doc/api/cli.md",
-    "license": "NOASSERTION",
+    "license": "MIT",
     "url": "https://raw.githubusercontent.com/nodejs/node/14e8f5bca4bfac077be1bed9594245bd1ad2bb88/doc/api/cli.md",
     "bytes": 144919,
-    "sha256": "0c7b45df9a8795d2c9cdb7c275a10bd2e434b5463d13dfebace61ed56162e2b2"
+    "sha256": "0c7b45df9a8795d2c9cdb7c275a10bd2e434b5463d13dfebace61ed56162e2b2",
+    "licenseNote": "Node.js LICENSE file is MIT for Node itself; GitHub reports NOASSERTION because the file also lists bundled dependencies"
   },
   {
     "id": "nodejs-node-docapidiagnosticschannelmd",
@@ -2887,10 +2845,11 @@
     "repo": "nodejs/node",
     "sha": "14e8f5bca4bfac077be1bed9594245bd1ad2bb88",
     "path": "doc/api/diagnostics_channel.md",
-    "license": "NOASSERTION",
+    "license": "MIT",
     "url": "https://raw.githubusercontent.com/nodejs/node/14e8f5bca4bfac077be1bed9594245bd1ad2bb88/doc/api/diagnostics_channel.md",
     "bytes": 59442,
-    "sha256": "8b9bc71fed220b124967f9cbcd9aca394b6678f51a81212f9fbb56542b9cb218"
+    "sha256": "8b9bc71fed220b124967f9cbcd9aca394b6678f51a81212f9fbb56542b9cb218",
+    "licenseNote": "Node.js LICENSE file is MIT for Node itself; GitHub reports NOASSERTION because the file also lists bundled dependencies"
   },
   {
     "id": "nodejs-node-docapierrorsmd",
@@ -2898,10 +2857,11 @@
     "repo": "nodejs/node",
     "sha": "14e8f5bca4bfac077be1bed9594245bd1ad2bb88",
     "path": "doc/api/errors.md",
-    "license": "NOASSERTION",
+    "license": "MIT",
     "url": "https://raw.githubusercontent.com/nodejs/node/14e8f5bca4bfac077be1bed9594245bd1ad2bb88/doc/api/errors.md",
     "bytes": 127650,
-    "sha256": "f2280e2f4279b8b516208bfe8108eaf4cbbe14c69e3cc930f90f0a65952983a5"
+    "sha256": "f2280e2f4279b8b516208bfe8108eaf4cbbe14c69e3cc930f90f0a65952983a5",
+    "licenseNote": "Node.js LICENSE file is MIT for Node itself; GitHub reports NOASSERTION because the file also lists bundled dependencies"
   },
   {
     "id": "nodejs-node-docapihttp2md",
@@ -2909,10 +2869,11 @@
     "repo": "nodejs/node",
     "sha": "14e8f5bca4bfac077be1bed9594245bd1ad2bb88",
     "path": "doc/api/http2.md",
-    "license": "NOASSERTION",
+    "license": "MIT",
     "url": "https://raw.githubusercontent.com/nodejs/node/14e8f5bca4bfac077be1bed9594245bd1ad2bb88/doc/api/http2.md",
     "bytes": 175914,
-    "sha256": "a73d09ce31d833052fb67f9ebce34239de9f9bfe948e08cb02bfdeb12e40d766"
+    "sha256": "a73d09ce31d833052fb67f9ebce34239de9f9bfe948e08cb02bfdeb12e40d766",
+    "licenseNote": "Node.js LICENSE file is MIT for Node itself; GitHub reports NOASSERTION because the file also lists bundled dependencies"
   },
   {
     "id": "nodejs-node-docapinapimd",
@@ -2920,10 +2881,11 @@
     "repo": "nodejs/node",
     "sha": "14e8f5bca4bfac077be1bed9594245bd1ad2bb88",
     "path": "doc/api/n-api.md",
-    "license": "NOASSERTION",
+    "license": "MIT",
     "url": "https://raw.githubusercontent.com/nodejs/node/14e8f5bca4bfac077be1bed9594245bd1ad2bb88/doc/api/n-api.md",
     "bytes": 245936,
-    "sha256": "ee4e9ff3924381484113554a22643e704a9b94e86193e3649bc67ef086d8f5a2"
+    "sha256": "ee4e9ff3924381484113554a22643e704a9b94e86193e3649bc67ef086d8f5a2",
+    "licenseNote": "Node.js LICENSE file is MIT for Node itself; GitHub reports NOASSERTION because the file also lists bundled dependencies"
   },
   {
     "id": "nodejs-node-docapiprocessmd",
@@ -2931,10 +2893,11 @@
     "repo": "nodejs/node",
     "sha": "14e8f5bca4bfac077be1bed9594245bd1ad2bb88",
     "path": "doc/api/process.md",
-    "license": "NOASSERTION",
+    "license": "MIT",
     "url": "https://raw.githubusercontent.com/nodejs/node/14e8f5bca4bfac077be1bed9594245bd1ad2bb88/doc/api/process.md",
     "bytes": 135088,
-    "sha256": "547924f8aa5ea1803254977aa4d557af6617b4a8a84e043ebec11e3114836d90"
+    "sha256": "547924f8aa5ea1803254977aa4d557af6617b4a8a84e043ebec11e3114836d90",
+    "licenseNote": "Node.js LICENSE file is MIT for Node itself; GitHub reports NOASSERTION because the file also lists bundled dependencies"
   },
   {
     "id": "nodejs-node-docapisingleexecutableapplicationsmd",
@@ -2942,10 +2905,11 @@
     "repo": "nodejs/node",
     "sha": "14e8f5bca4bfac077be1bed9594245bd1ad2bb88",
     "path": "doc/api/single-executable-applications.md",
-    "license": "NOASSERTION",
+    "license": "MIT",
     "url": "https://raw.githubusercontent.com/nodejs/node/14e8f5bca4bfac077be1bed9594245bd1ad2bb88/doc/api/single-executable-applications.md",
     "bytes": 29581,
-    "sha256": "21dce5fcc59a085a41ca2031e36334054bdff2d94b03208e513868d64e368f88"
+    "sha256": "21dce5fcc59a085a41ca2031e36334054bdff2d94b03208e513868d64e368f88",
+    "licenseNote": "Node.js LICENSE file is MIT for Node itself; GitHub reports NOASSERTION because the file also lists bundled dependencies"
   },
   {
     "id": "nodejs-node-docapitlsmd",
@@ -2953,10 +2917,11 @@
     "repo": "nodejs/node",
     "sha": "14e8f5bca4bfac077be1bed9594245bd1ad2bb88",
     "path": "doc/api/tls.md",
-    "license": "NOASSERTION",
+    "license": "MIT",
     "url": "https://raw.githubusercontent.com/nodejs/node/14e8f5bca4bfac077be1bed9594245bd1ad2bb88/doc/api/tls.md",
     "bytes": 102860,
-    "sha256": "d043d98959705f6bf144f6cb3f48f4550ce155483465e71be469c18bd6a2245c"
+    "sha256": "d043d98959705f6bf144f6cb3f48f4550ce155483465e71be469c18bd6a2245c",
+    "licenseNote": "Node.js LICENSE file is MIT for Node itself; GitHub reports NOASSERTION because the file also lists bundled dependencies"
   },
   {
     "id": "nodejs-node-docapivfsmd",
@@ -2964,119 +2929,10 @@
     "repo": "nodejs/node",
     "sha": "14e8f5bca4bfac077be1bed9594245bd1ad2bb88",
     "path": "doc/api/vfs.md",
-    "license": "NOASSERTION",
+    "license": "MIT",
     "url": "https://raw.githubusercontent.com/nodejs/node/14e8f5bca4bfac077be1bed9594245bd1ad2bb88/doc/api/vfs.md",
     "bytes": 25701,
-    "sha256": "5ea6bd29760e4c7676774146352b97a81197a751fdd1eeff7d320cb0a9422edb"
-  },
-  {
-    "id": "emberjs-rfcs-text0001transformattributemetaparametermd",
-    "kind": "design-doc",
-    "repo": "emberjs/rfcs",
-    "sha": "087c30aa4036c728c240b61e7052c584365cd893",
-    "path": "text/0001-transform-attribute-meta-parameter.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/emberjs/rfcs/087c30aa4036c728c240b61e7052c584365cd893/text/0001-transform-attribute-meta-parameter.md",
-    "bytes": 3306,
-    "sha256": "16299c30278abf572be7e172015a565ab4177b504525f10a38756c9c6e275d07"
-  },
-  {
-    "id": "emberjs-rfcs-text0090addontreecachingmd",
-    "kind": "design-doc",
-    "repo": "emberjs/rfcs",
-    "sha": "087c30aa4036c728c240b61e7052c584365cd893",
-    "path": "text/0090-addon-tree-caching.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/emberjs/rfcs/087c30aa4036c728c240b61e7052c584365cd893/text/0090-addon-tree-caching.md",
-    "bytes": 4984,
-    "sha256": "a04d723b2eae00a7f442c47c8129532213734d43f8dc54da3b3983a2ad042e4a"
-  },
-  {
-    "id": "emberjs-rfcs-text0225emberenginesmountparamsmd",
-    "kind": "design-doc",
-    "repo": "emberjs/rfcs",
-    "sha": "087c30aa4036c728c240b61e7052c584365cd893",
-    "path": "text/0225-ember-engines-mount-params.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/emberjs/rfcs/087c30aa4036c728c240b61e7052c584365cd893/text/0225-ember-engines-mount-params.md",
-    "bytes": 4418,
-    "sha256": "569af9918f16c4aac5cdc0493b3e0f8e9da8a96604114175e98653f9d98c4ee8"
-  },
-  {
-    "id": "emberjs-rfcs-text0331deprecateglobalsresolvermd",
-    "kind": "design-doc",
-    "repo": "emberjs/rfcs",
-    "sha": "087c30aa4036c728c240b61e7052c584365cd893",
-    "path": "text/0331-deprecate-globals-resolver.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/emberjs/rfcs/087c30aa4036c728c240b61e7052c584365cd893/text/0331-deprecate-globals-resolver.md",
-    "bytes": 5085,
-    "sha256": "54f0d31a0918ee063819713ed858fae3201ed79097f82fd714ef29c97fc691de"
-  },
-  {
-    "id": "emberjs-rfcs-text0431guidesrestructuremd",
-    "kind": "design-doc",
-    "repo": "emberjs/rfcs",
-    "sha": "087c30aa4036c728c240b61e7052c584365cd893",
-    "path": "text/0431-guides-restructure.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/emberjs/rfcs/087c30aa4036c728c240b61e7052c584365cd893/text/0431-guides-restructure.md",
-    "bytes": 26695,
-    "sha256": "fc78df43e29734cea6acc93bf9a66e602aca540b7017749eb1adaa325a75fa8d"
-  },
-  {
-    "id": "emberjs-rfcs-text0507embroiderv2packageformatmd",
-    "kind": "design-doc",
-    "repo": "emberjs/rfcs",
-    "sha": "087c30aa4036c728c240b61e7052c584365cd893",
-    "path": "text/0507-embroider-v2-package-format.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/emberjs/rfcs/087c30aa4036c728c240b61e7052c584365cd893/text/0507-embroider-v2-package-format.md",
-    "bytes": 59619,
-    "sha256": "fedd2a630361b235d828452131d731f5ee43509bc6f6288842c59472663a66c3"
-  },
-  {
-    "id": "emberjs-rfcs-text0669trackedstorageprimitivemd",
-    "kind": "design-doc",
-    "repo": "emberjs/rfcs",
-    "sha": "087c30aa4036c728c240b61e7052c584365cd893",
-    "path": "text/0669-tracked-storage-primitive.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/emberjs/rfcs/087c30aa4036c728c240b61e7052c584365cd893/text/0669-tracked-storage-primitive.md",
-    "bytes": 20220,
-    "sha256": "3bfd7771ee2d34d17c4d88b1ae4403628c4da6ef231fb3c8377c0382f807b813"
-  },
-  {
-    "id": "emberjs-rfcs-text0745emberdatadeprecatemethodsonpromisemanya",
-    "kind": "design-doc",
-    "repo": "emberjs/rfcs",
-    "sha": "087c30aa4036c728c240b61e7052c584365cd893",
-    "path": "text/0745-ember-data-deprecate-methods-on-promise-many-array.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/emberjs/rfcs/087c30aa4036c728c240b61e7052c584365cd893/text/0745-ember-data-deprecate-methods-on-promise-many-array.md",
-    "bytes": 6081,
-    "sha256": "500a0f7d25086c5b0b945ebf1e2cb2278cf0bf4ab5d9ba8f7ec1a26a5385c2a9"
-  },
-  {
-    "id": "emberjs-rfcs-text0848deprecatearrayprototypeextensionsmd",
-    "kind": "design-doc",
-    "repo": "emberjs/rfcs",
-    "sha": "087c30aa4036c728c240b61e7052c584365cd893",
-    "path": "text/0848-deprecate-array-prototype-extensions.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/emberjs/rfcs/087c30aa4036c728c240b61e7052c584365cd893/text/0848-deprecate-array-prototype-extensions.md",
-    "bytes": 8757,
-    "sha256": "7f7b9485d7a8705d28ef411814ab5c7979e03f60c3970880d258e94867b29415"
-  },
-  {
-    "id": "emberjs-rfcs-text1055vanillaprettiersetupinblueprintsmd",
-    "kind": "design-doc",
-    "repo": "emberjs/rfcs",
-    "sha": "087c30aa4036c728c240b61e7052c584365cd893",
-    "path": "text/1055-vanilla-prettier-setup-in-blueprints.md",
-    "license": "Unknown",
-    "url": "https://raw.githubusercontent.com/emberjs/rfcs/087c30aa4036c728c240b61e7052c584365cd893/text/1055-vanilla-prettier-setup-in-blueprints.md",
-    "bytes": 2898,
-    "sha256": "165f91efdfc5faf64f80d64a886223e3dcee37bc867ab91657c99f6f972905e5"
+    "sha256": "5ea6bd29760e4c7676774146352b97a81197a751fdd1eeff7d320cb0a9422edb",
+    "licenseNote": "Node.js LICENSE file is MIT for Node itself; GitHub reports NOASSERTION because the file also lists bundled dependencies"
   }
 ]
