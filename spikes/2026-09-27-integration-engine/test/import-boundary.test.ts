@@ -49,6 +49,24 @@ test('no file outside src/crdt/ imports yjs, y-protocols, lib0 or @tiptap/y-tipt
   expect(violations, violations.join('\n')).toEqual([]);
 });
 
+test('src/git imports nothing from src/crdt (brief 02: git is standalone, no Yjs knowledge)', () => {
+  const gitDir = path.join(SRC_DIR, 'git');
+  const gitFiles = walk(gitDir);
+  expect(gitFiles.length).toBeGreaterThan(0);
+  const violations: string[] = [];
+  for (const file of gitFiles) {
+    for (const spec of importsOf(file)) {
+      if (!spec.startsWith('.')) continue; // only a relative specifier can resolve into src/crdt
+      const resolved = path.resolve(path.dirname(file), spec);
+      const relFromSrc = path.relative(SRC_DIR, resolved);
+      if (relFromSrc === 'crdt' || relFromSrc.startsWith('crdt' + path.sep)) {
+        violations.push(`${path.relative(SRC_DIR, file)} imports "${spec}" (resolves into src/crdt)`);
+      }
+    }
+  }
+  expect(violations, violations.join('\n')).toEqual([]);
+});
+
 test('the import-boundary test itself has something to scan (sanity: src/crdt exists and imports yjs)', () => {
   const crdtFiles = walk(path.join(SRC_DIR, 'crdt'));
   expect(crdtFiles.length).toBeGreaterThan(0);

@@ -44,12 +44,15 @@ src/
               The five-point CRDT interface (plan section 3).
   engine/     (not yet built) Rebase, import, comments, review flags, attribution,
               commit prep, generations. Uses crdt + markdown.
-  git/        (not yet built) Git storage against a remote: head polling, draft
-              flush/restore, commit. Shells out to the git CLI. No Yjs.
+  git/        Git storage against a remote given by URL/path: head polling, read
+              file at commit, draft flush/restore (lease), commit (lease).
+              Shells out to the git CLI via plumbing in a bare cache repo
+              (no working tree). No Yjs.
   relay/      (not yet built) Hocuspocus server as a library plus a thin CLI.
   daemon/     (not yet built) File materialization on top of engine + crdt.
   testkit/    Temp dirs, PRNG, tokens, waitFor, corpus loader, port allocation
-              (4300-4399). May import anything in src/; src/ never imports testkit.
+              (4300-4399), temp bare git remotes and clones (`remote.ts`).
+              May import anything in src/; src/ never imports testkit.
 gates/        gates/index.ts runs all registered gates and prints a results table
               (placeholder for now; gates/<letter>.ts land one per brief).
 test/         vitest unit tests, one or more per module.
@@ -100,7 +103,10 @@ copies of the four source spikes were extracted read-only under
 Files not listed above (`src/markdown/index.ts`, `src/crdt/index.ts`,
 `src/crdt/inspectUpdate.ts`, `src/crdt/meta.ts`, `src/crdt/render.ts`,
 `src/testkit/ports.ts`, `src/testkit/tmp.ts`, `gates/index.ts`, all of
-`test/*`, and the scaffold files) are new for this spike.
+`test/*`, and the scaffold files) are new for this spike. Brief 02 adds
+`src/git/*` (`gitProcess.ts`, `plumbing.ts`, `index.ts`) and
+`src/testkit/remote.ts`, also new -- see `src/git/README.md` for its API
+and two documented deviations from the plan's stated fetch behaviour.
 
 ## Changes to copied code (brief 01)
 
