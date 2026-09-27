@@ -536,3 +536,182 @@ body {
   font: inherit;
   min-width: 220px;
 }
+
+/* Brief 06 (comments, gate F): the highlight (task 3), the sidebar (task
+   4), the floating "Comment" trigger and the composer. Plain and clean,
+   matching brief 03's own styling choice for the rest of the page: a soft
+   yellow wash, stronger for the active thread, and a slim grey-bordered
+   column to the right of the page (same visual family as
+   `#markdown-panel`). */
+.phraise-comment-highlight {
+  background: rgba(255, 212, 0, 0.28);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.phraise-comment-highlight--active {
+  background: rgba(255, 176, 0, 0.55);
+}
+
+#comments-sidebar {
+  width: 280px;
+  flex: none;
+  border-left: 1px solid #e2e2e2;
+  overflow: auto;
+  background: #fafafa;
+  padding: 12px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.phraise-comments-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  color: #57606a;
+}
+
+.phraise-show-resolved-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.phraise-comments-empty {
+  color: #6e7781;
+  padding: 8px 2px;
+}
+
+.phraise-comment-group-heading {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6e7781;
+  margin-top: 4px;
+}
+
+.phraise-comment-thread,
+.phraise-comment-composer {
+  background: #fff;
+  border: 1px solid #e2e2e2;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.phraise-comment-thread--active {
+  border-color: #d4a600;
+  box-shadow: 0 0 0 1px #d4a600;
+}
+
+.phraise-comment-quote {
+  color: #6e7781;
+  font-size: 12px;
+  border-left: 2px solid #d0d7de;
+  padding-left: 8px;
+  overflow-wrap: anywhere;
+}
+
+.phraise-comment-orphan-note {
+  color: #9a6700;
+  font-size: 12px;
+}
+
+.phraise-comment-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.phraise-comment-message-meta {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.phraise-comment-author {
+  font-size: 12.5px;
+}
+
+.phraise-comment-time {
+  color: #6e7781;
+  font-size: 11px;
+}
+
+.phraise-comment-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.phraise-comment-reply-row,
+.phraise-comment-composer textarea {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.phraise-comment-reply-input,
+.phraise-comment-composer-input {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 6px 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.phraise-comment-thread-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.phraise-comment-thread-actions button {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.phraise-comment-thread-actions button:hover {
+  background: #f3f4f6;
+}
+
+.phraise-comment-resolve-btn,
+.phraise-comment-composer-submit {
+  border-color: #0969da !important;
+  color: #0969da;
+}
+
+#phraise-comment-button {
+  position: absolute;
+  z-index: 20;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #fff;
+  color: #24292f;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+#phraise-comment-button:hover {
+  background: #f3f4f6;
+}
+
+#phraise-comment-button[hidden] {
+  display: none;
+}

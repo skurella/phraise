@@ -48,6 +48,9 @@ import { codeBlockNodeView } from './nodeviews/codeBlockView.js';
 import { renderPresenceBadges } from './presenceView.js';
 import { renderStatus } from './statusView.js';
 import { registerServiceWorker, primeOfflineCache } from './offlineShell.js';
+import { CommentHighlights } from './comments/highlightExtension.js';
+import { CommentTrigger } from './comments/commentTrigger.js';
+import { CommentsController } from './comments/controller.js';
 import 'katex/dist/katex.min.css';
 
 interface PhraiseWindowHook {
@@ -65,6 +68,11 @@ interface PhraiseWindowHook {
   offlineReady: Promise<void>;
   /** Test-only (gate I): the current status label shown in the top bar. */
   statusLabel(): string;
+  /** Test-only (gate F): direct access to the comments controller, so a
+   * test can assert on model state (e.g. a resolved flag, a reply having
+   * landed) without scraping the DOM for everything -- the UI itself is
+   * still driven by real keyboard/mouse input in every gate F test. */
+  comments: CommentsController;
 }
 
 declare global {
@@ -97,6 +105,7 @@ async function main(): Promise<void> {
   const markdownPanel = document.getElementById('markdown-panel')!;
   const markdownOutput = document.getElementById('markdown-output')!;
   const presenceBadgesEl = document.getElementById('presence-badges')!;
+  const commentsSidebarEl = document.getElementById('comments-sidebar')!;
   const statusEl = document.getElementById('status-indicator')!;
 
   // Brief 03, task 6: the top bar shows the document name and the user's
@@ -263,6 +272,14 @@ async function main(): Promise<void> {
     return ext;
   });
 
+  // Brief 06 (comments, gate F): `CommentHighlights`/`CommentTrigger` both
+  // need to call into the `CommentsController`, which itself needs the
+  // built `Editor` -- a chicken-and-egg problem solved by a mutable ref
+  // populated right after `new Editor(...)` below and read lazily by both
+  // extensions' callbacks (never called before the editor finishes
+  // constructing, since nothing can select/type before that).
+  const commentsRef: { current: CommentsController | null } = { current: null };
+
   const extensions: AnyExtension[] = [
     ...baseExtensions,
     Collaboration.configure({ document: ydoc, field: FRAGMENT_NAME }),
@@ -302,6 +319,14 @@ async function main(): Promise<void> {
     SourceBlockKeymap,
     MarkdownPasteRule,
     MarkdownCopyRule,
+    CommentHighlights.configure({
+      ydoc,
+      getActiveThreadId: () => commentsRef.current?.getActiveThreadId() ?? null,
+      onActivate: (id) => commentsRef.current?.activateThread(id),
+    }),
+    CommentTrigger.configure({
+      onStartComment: (from, to) => commentsRef.current?.startNewComment(from, to),
+    }),
   ];
 
   const editor = new Editor({
@@ -336,6 +361,15 @@ async function main(): Promise<void> {
   provider.awareness?.on('update', updatePresence);
   updatePresence();
 
+  // Brief 06 (comments, gate F): the controller needs the editor (for
+  // selection/anchoring) and the sidebar element; both extensions above
+  // reach it lazily through `commentsRef` (see that variable's own
+  // comment). Initial `render()` shows the empty-state message/toggle
+  // before any thread exists.
+  const commentsController = new CommentsController(editor, ydoc, commentsSidebarEl, userName);
+  commentsRef.current = commentsController;
+  commentsController.render();
+
   window.phraise = {
     editor,
     markdown,
@@ -346,6 +380,7 @@ async function main(): Promise<void> {
     flushIndexeddb: () => storeIndexeddbState(persistence, true).then(() => undefined),
     offlineReady: offlineReadyPromise,
     statusLabel: () => statusEl.textContent ?? '',
+    comments: commentsController,
   };
 
   const refreshMarkdown = debounce(() => {
