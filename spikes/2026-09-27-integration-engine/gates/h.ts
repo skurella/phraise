@@ -301,12 +301,18 @@ function checkComposition(): Check[] {
 }
 
 /** 200 seeded (50 in --quick) concurrent bold/italic merges over nested, overlapping word ranges (a merge of two replicas' concurrent formatting toggles); count outputs with a NEW `&#` reference. Must be 0. */
-function runConcurrentFormattingCheck(quick: boolean): { total: number; entityCount: number; mismatches: number } {
+function runConcurrentFormattingCheck(quick: boolean): { total: number; entityCount: number; mismatches: number; spaceTotal: number; spaceEntities: number } {
   const words = ['foo', 'bar', 'baz', 'qux', 'quux', 'corge', 'grault'];
   const seeds = quick ? 50 : 200;
   let entityCount = 0;
   let mismatches = 0;
   let total = 0;
+  // Orchestrator (2026-09-27): cases whose mark boundary falls on a space are
+  // no longer skipped. They are what a merge of concurrent formatting
+  // actually produces, so they are counted, separately, as spaceTotal and
+  // spaceEntities and reported beside the main count.
+  let spaceTotal = 0;
+  let spaceEntities = 0;
 
   for (let seed = 0; seed < seeds; seed++) {
     const rng = mulberry32(seed + 1);
@@ -333,7 +339,7 @@ function runConcurrentFormattingCheck(quick: boolean): { total: number; entityCo
     // covered directly by the dedicated whitespace-boundary tests above
     // and documented as a known residual in the module README.
     const boundaryChars = [bStrong[0], bStrong[1] - 1, bEm[0], bEm[1] - 1].map((i) => text[i]);
-    if (boundaryChars.some((c) => c === ' ')) continue;
+    const onSpace = boundaryChars.some((c) => c === ' ');
 
     const cuts = new Set([0, text.length, bStrong[0], bStrong[1], bEm[0], bEm[1]]);
     const points = [...cuts].filter((p) => p >= 0 && p <= text.length).sort((x, y) => x - y);
@@ -350,18 +356,25 @@ function runConcurrentFormattingCheck(quick: boolean): { total: number; entityCo
     }
     if (nodes.length === 0) continue;
 
-    total++;
+    if (onSpace) spaceTotal++;
+    else total++;
     const p = schema.node('paragraph', {}, nodes);
     const doc = schema.node('doc', { lead: '', eol: '\n' }, [p]);
     try {
       const out = serializeDoc(doc, { onUnverified: 'emit' });
-      if (hasEntity(out)) entityCount++;
+      if (hasEntity(out)) {
+        if (onSpace) {
+          spaceEntities++;
+          if (process.env.H_DEBUG) console.error("ENTITY", seed, JSON.stringify(doc.toJSON()), JSON.stringify(out));
+        }
+        else entityCount++;
+      }
       if (parseMarkdown(out).doc.child(0).textContent !== text) mismatches++;
     } catch {
       mismatches++;
     }
   }
-  return { total, entityCount, mismatches };
+  return { total, entityCount, mismatches, spaceTotal, spaceEntities };
 }
 
 // ---------------------------------------------------------------------------
@@ -515,8 +528,8 @@ export async function run(opts: { quick?: boolean } = {}): Promise<GateHResult> 
   const formatting = runConcurrentFormattingCheck(quick);
   checks.push({
     name: `concurrent-formatting check: ${formatting.total} nested bold/italic merges produce no numeric character reference`,
-    pass: formatting.entityCount === 0,
-    detail: `${formatting.entityCount}/${formatting.total} produced &#..., ${formatting.mismatches} content mismatches (best-effort/degraded, not entity-related)`,
+    pass: formatting.entityCount === 0 && formatting.spaceEntities === 0 && formatting.mismatches === 0,
+    detail: `${formatting.entityCount}/${formatting.total} produced &#... (boundaries inside words); ${formatting.spaceEntities}/${formatting.spaceTotal} with a mark boundary on a space; ${formatting.mismatches} content mismatches`,
   });
 
   const pass = checks.every((c) => c.pass);
@@ -535,6 +548,8 @@ export async function run(opts: { quick?: boolean } = {}): Promise<GateHResult> 
       gateBEditsTotal: bTotal,
       formattingChecked: formatting.total,
       formattingEntities: formatting.entityCount,
+      formattingSpaceBoundaryChecked: formatting.spaceTotal,
+      formattingSpaceBoundaryEntities: formatting.spaceEntities,
     },
   };
 }
