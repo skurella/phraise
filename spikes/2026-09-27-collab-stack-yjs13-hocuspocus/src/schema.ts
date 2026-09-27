@@ -4,6 +4,15 @@
 //  - semantic: compared by semanticEq (src/compare.ts)
 //  - meta: ignored by comparison. Meta attrs are `src`, `gap`, and anything
 //    whose name ends in `Hint`.
+//
+// toDOM/parseDOM below are new for spike 5 (spike 1 never rendered a real
+// EditorView, only parsed/serialized/compared doc trees headlessly). They
+// exist so a live jsdom EditorView can render this schema and so
+// `view.pasteHTML` (gate B's paste step) has parse rules to build a paste
+// Slice from. They carry no semantic weight of their own -- semanticEq
+// (src/compare.ts) never looks at rendered DOM -- and deliberately don't
+// try to round-trip every meta/hint attr through the DOM; a paste is a
+// fresh edit, not a re-parse of the original Markdown.
 import { Schema, type NodeSpec, type MarkSpec } from 'prosemirror-model';
 
 /** True if an attribute name is meta (ignored by semantic comparison). */
@@ -32,6 +41,8 @@ const nodes: Record<string, NodeSpec> = {
     content: 'inline*',
     group: 'block',
     attrs: { ...srcGapAttrs },
+    toDOM: () => ['p', 0],
+    parseDOM: [{ tag: 'p' }],
   },
 
   heading: {
@@ -43,12 +54,16 @@ const nodes: Record<string, NodeSpec> = {
       closeHint: { default: false },
       ...srcGapAttrs,
     },
+    toDOM: (node) => [`h${Math.min(Math.max(node.attrs.level, 1), 6)}`, 0],
+    parseDOM: [1, 2, 3, 4, 5, 6].map((level) => ({ tag: `h${level}`, attrs: { level } })),
   },
 
   blockquote: {
     content: 'block+',
     group: 'block',
     attrs: { ...srcGapAttrs },
+    toDOM: () => ['blockquote', 0],
+    parseDOM: [{ tag: 'blockquote' }],
   },
 
   bullet_list: {
@@ -59,6 +74,8 @@ const nodes: Record<string, NodeSpec> = {
       markerHint: { default: '-' },
       ...srcGapAttrs,
     },
+    toDOM: () => ['ul', 0],
+    parseDOM: [{ tag: 'ul' }],
   },
 
   ordered_list: {
@@ -70,6 +87,15 @@ const nodes: Record<string, NodeSpec> = {
       delimHint: { default: '.' },
       ...srcGapAttrs,
     },
+    toDOM: (node) => ['ol', node.attrs.start !== 1 ? { start: node.attrs.start } : {}, 0],
+    parseDOM: [
+      {
+        tag: 'ol',
+        getAttrs: (dom) => ({
+          start: dom.hasAttribute('start') ? Number(dom.getAttribute('start')) : 1,
+        }),
+      },
+    ],
   },
 
   list_item: {
@@ -77,6 +103,8 @@ const nodes: Record<string, NodeSpec> = {
     attrs: {
       checked: { default: null as boolean | null },
     },
+    toDOM: () => ['li', 0],
+    parseDOM: [{ tag: 'li' }],
   },
 
   code_block: {
@@ -91,6 +119,8 @@ const nodes: Record<string, NodeSpec> = {
       fenceLenHint: { default: 3 },
       ...srcGapAttrs,
     },
+    toDOM: () => ['pre', ['code', 0]],
+    parseDOM: [{ tag: 'pre', preserveWhitespace: 'full' }],
   },
 
   horizontal_rule: {
@@ -99,6 +129,8 @@ const nodes: Record<string, NodeSpec> = {
       ruleHint: { default: '---' },
       ...srcGapAttrs,
     },
+    toDOM: () => ['hr'],
+    parseDOM: [{ tag: 'hr' }],
   },
 
   table: {
@@ -108,6 +140,8 @@ const nodes: Record<string, NodeSpec> = {
       align: { default: [] as (string | null)[] },
       ...srcGapAttrs,
     },
+    toDOM: () => ['table', ['tbody', 0]],
+    parseDOM: [{ tag: 'table' }],
   },
 
   table_row: {
@@ -115,11 +149,15 @@ const nodes: Record<string, NodeSpec> = {
     attrs: {
       header: { default: false },
     },
+    toDOM: () => ['tr', 0],
+    parseDOM: [{ tag: 'tr' }],
   },
 
   table_cell: {
     content: 'inline*',
     attrs: {},
+    toDOM: () => ['td', 0],
+    parseDOM: [{ tag: 'td' }, { tag: 'th' }],
   },
 
   raw_block: {
@@ -131,6 +169,7 @@ const nodes: Record<string, NodeSpec> = {
       kind: { default: 'html' },
       ...srcGapAttrs,
     },
+    toDOM: (node) => ['pre', { 'data-raw-kind': node.attrs.kind }, 0],
   },
 
   text: {
@@ -144,6 +183,8 @@ const nodes: Record<string, NodeSpec> = {
       breakHint: { default: '  \n' },
       leafMarks: { default: null as string | null },
     },
+    toDOM: () => ['br'],
+    parseDOM: [{ tag: 'br' }],
   },
 
   image: {
@@ -158,6 +199,17 @@ const nodes: Record<string, NodeSpec> = {
       label: { default: null as string | null },
       leafMarks: { default: null as string | null },
     },
+    toDOM: (node) => ['img', { src: node.attrs.url, alt: node.attrs.alt, title: node.attrs.title }],
+    parseDOM: [
+      {
+        tag: 'img[src]',
+        getAttrs: (dom) => ({
+          url: dom.getAttribute('src') || '',
+          alt: dom.getAttribute('alt') || '',
+          title: dom.getAttribute('title') || null,
+        }),
+      },
+    ],
   },
 
   raw_inline: {
@@ -168,21 +220,30 @@ const nodes: Record<string, NodeSpec> = {
       value: { default: '' },
       leafMarks: { default: null as string | null },
     },
+    toDOM: (node) => ['span', { 'data-raw-kind': node.attrs.kind }, node.attrs.value],
   },
 };
 
 const marks: Record<string, MarkSpec> = {
   em: {
     attrs: { markerHint: { default: '*' } },
+    toDOM: () => ['em', 0],
+    parseDOM: [{ tag: 'em' }, { tag: 'i' }],
   },
   strong: {
     attrs: { markerHint: { default: '**' } },
+    toDOM: () => ['strong', 0],
+    parseDOM: [{ tag: 'strong' }, { tag: 'b' }],
   },
   strike: {
     attrs: {},
+    toDOM: () => ['s', 0],
+    parseDOM: [{ tag: 's' }, { tag: 'del' }, { tag: 'strike' }],
   },
   code: {
     attrs: {},
+    toDOM: () => ['code', 0],
+    parseDOM: [{ tag: 'code' }],
   },
   link: {
     attrs: {
@@ -193,6 +254,16 @@ const marks: Record<string, MarkSpec> = {
       label: { default: null as string | null },
       kindHint: { default: 'inline' },
     },
+    toDOM: (mark) => ['a', { href: mark.attrs.href, title: mark.attrs.title }, 0],
+    parseDOM: [
+      {
+        tag: 'a[href]',
+        getAttrs: (dom) => ({
+          href: dom.getAttribute('href') || '',
+          title: dom.getAttribute('title') || null,
+        }),
+      },
+    ],
   },
 };
 
