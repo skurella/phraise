@@ -42,7 +42,7 @@ async function markdown(page: Page): Promise<string> {
   // Chromium contentEditable insertion quirk under CPU contention,
   // confirmed to reach this app's own serialized Markdown).
   const md = await page.evaluate(() => (window as unknown as { phraise: { markdown(): string } }).phraise.markdown());
-  return md.replace(/ /g, ' ');
+  return md;
 }
 
 function paragraphAt(page: Page, index: number): Locator {
@@ -55,7 +55,7 @@ async function selectionInfo(page: Page): Promise<{ text: string; offset: number
     const { $from } = editor.state.selection;
     // See `markdown()`'s own comment for the U+00A0-vs-U+0020 finding;
     // normalized here at the source so every caller compares like-for-like.
-    const text = ($from.parent.textContent as string).replace(/ /g, ' ');
+    const text = ($from.parent.textContent as string);
     return { text, offset: $from.parentOffset };
   });
 }
@@ -141,6 +141,7 @@ async function typeAndVerify(page: Page, text: string, at: 'start' | 'end' = 'en
       await expect.poll(async () => (await selectionInfo(page)).text, { timeout: 2000 }).toBe(wanted);
       return;
     } catch (err) {
+      console.log(`[typeAndVerify-retry] ${JSON.stringify(text)} attempt ${attempt}: ${(err as Error).message.split("\n").slice(0,6).join(" | ")}`);
       if (attempt === 3) throw err;
       // See gate E's `typeAndVerify` for why: under full-suite load the
       // poll can time out even though the type landed, just slower than
@@ -149,7 +150,7 @@ async function typeAndVerify(page: Page, text: string, at: 'start' | 'end' = 'en
       // See gate E's `typeAndVerify` for the U+00A0-vs-U+0020 finding
       // (a genuine contentEditable insertion quirk under CPU contention,
       // confirmed directly with a char-code dump of a captured failure).
-      const normalize = (s: string): string => s.replace(/\u00a0/g, ' ');
+      const normalize = (s: string): string => s;
       if (normalize(current) === normalize(wanted)) return;
       if (current !== before) {
         throw new Error(

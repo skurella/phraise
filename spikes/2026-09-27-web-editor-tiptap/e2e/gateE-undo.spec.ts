@@ -53,7 +53,7 @@ async function markdown(page: Page): Promise<string> {
   // compares against a plain-U+0020 expected string and the substitution
   // is an artifact of simulated typing under synthetic load, not of this
   // app mishandling anything a real keystroke sent it.
-  return md.replace(/ /g, ' ');
+  return md;
 }
 
 function paragraphAt(page: Page, index: number): Locator {
@@ -68,7 +68,7 @@ async function selectionInfo(page: Page): Promise<{ text: string; offset: number
     // normalized here at the source so every caller (this file's own
     // `placeCaretAtEnd`, `typeAndVerify`, etc.) compares like-for-like
     // without each needing its own normalization.
-    const text = ($from.parent.textContent as string).replace(/ /g, ' ');
+    const text = ($from.parent.textContent as string);
     return { text, offset: $from.parentOffset, size: $from.parent.content.size };
   });
 }
@@ -120,6 +120,7 @@ async function typeAndVerify(page: Page, text: string): Promise<void> {
       await expect.poll(async () => (await selectionInfo(page)).text, { timeout: 2000 }).toBe(wanted);
       return;
     } catch (err) {
+      console.log(`[typeAndVerify-retry] ${JSON.stringify(text)} attempt ${attempt}: ${(err as Error).message.split("\n").slice(0,6).join(" | ")}`);
       if (attempt === 3) throw err;
       // A real flake sweep finding (not guessed): under the full suite's
       // default worker parallelism, the 2s poll above can time out even
@@ -139,7 +140,7 @@ async function typeAndVerify(page: Page, text: string): Promise<void> {
       // collapse prevention), confirmed directly (not guessed) via a
       // char-code dump of a captured failure. Visually and semantically
       // identical either way, so treated as equivalent here.
-      const normalize = (s: string): string => s.replace(/\u00a0/g, ' ');
+      const normalize = (s: string): string => s;
       if (normalize(current) === normalize(wanted)) return;
       if (current !== before) throw new Error(`typeAndVerify: unexpected partial state before retry: ${JSON.stringify(current)}`);
     }

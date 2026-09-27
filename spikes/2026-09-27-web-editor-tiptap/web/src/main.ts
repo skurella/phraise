@@ -307,7 +307,10 @@ async function main(): Promise<void> {
   const editor = new Editor({
     element: editorEl,
     extensions,
-    injectCSS: false,
+    // Tiptap's base CSS is required: without `white-space: pre-wrap` on the
+    // editable, Chromium inserts U+00A0 for a typed trailing space, which then
+    // reaches the document and the Markdown file (found by the orchestrator).
+    injectCSS: true,
     autofocus: false,
   });
 

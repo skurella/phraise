@@ -65,3 +65,13 @@ Root causes found:
 2. **Gate I:** after typing offline and closing the page at once, the reopened page lacks the tail of the typing (`EDIT-A EDIT-` for `EDIT-A EDIT-C`): the last keystrokes had not reached IndexedDB. A real local-loss window when a user closes the tab right after typing.
 
 Wrote brief 05 (caret workaround plugin or pin 3.0.5, E and I flakes, local-save status and beforeunload, gate G IME through CDP, flake sweep). Dispatching (dispatch 5). Comments move to brief 06; scale, screenshots, styling and other browsers to brief 07.
+
+## 21:36 — brief 05 verified; NBSP root cause fixed myself
+
+Brief 05 (dispatch 5) handed back: caret workaround plugin `src/collab/workarounds/localCaretFollow.ts` (third workaround; verified as a true positive by disabling it), gate G 6 IME scenarios all passing, gate I waits for the local-save status, close-at-once measurement 21 of 100 full survival (all or nothing). Gates 72/72.
+
+Two things in the handback I did not accept as stated:
+1. **U+00A0 for typed spaces.** The builder normalized NBSP away in the E, G and I tests, calling it a Chromium quirk under load. Cause is ours: the page built Tiptap with `injectCSS: false` and our stylesheet never set `white-space: pre-wrap` on the editable, which ProseMirror requires; without it Chromium inserts U+00A0 for a trailing typed space, and it reaches the Markdown file. A real user who pauses after a space would hit it. Fixed myself: `injectCSS: true` in `web/src/main.ts`, and removed the normalization from the three test files so a stray U+00A0 now fails the gates.
+2. **`typeAndVerify` retries** hide dropped keystrokes if the editor ever drops them. I instrumented each retry to print a line. Whole suite `--repeat-each=5`: 360/360 pass with the CSS fix and no normalization; one retry in 360 tests, in gate G, when Bob typed `BEFORE-` at the start of a paragraph while Alice had an active composition: nothing landed within 2 s, and the retype did. Unexplained; recorded as an open risk (a keystroke may be lost while a remote composition is in progress), not proven either way.
+
+`npm test` 148 pass, `tsc` clean, ports clean.
