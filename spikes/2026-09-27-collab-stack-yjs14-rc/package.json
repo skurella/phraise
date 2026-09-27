@@ -1,0 +1,62 @@
+{
+  "name": "collab-stack-yjs14-rc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spike 5, brief 04: stack 14 (@y/y 14.0.0-rc.26, @y/prosemirror 2.0.0-13) on a Hocuspocus 4.7 relay (yjs/y-protocols/lib0 deduped onto @y/y/@y/protocols by npm overrides + a postinstall symlink step), with a minimal custom relay kept as a --relay custom alternative.",
+  "scripts": {
+    "postinstall": "node scripts/postinstall-dedupe.mjs",
+    "fetch": "node scripts/fetch-corpus.mjs",
+    "gates": "tsx scripts/gates.ts",
+    "gates:quick": "tsx scripts/gates.ts --quick",
+    "rebase:baseline": "tsx scripts/rebase-baseline.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "unified": "^11.0.5",
+    "remark-parse": "^11.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-math": "^6.0.0",
+    "mdast-util-to-markdown": "^2.1.2",
+    "mdast-util-gfm": "^3.0.0",
+    "mdast-util-frontmatter": "^2.0.1",
+    "mdast-util-math": "^3.0.0",
+    "prosemirror-model": "^1.23.0",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-transform": "^1.10.2",
+    "prosemirror-view": "^1.37.0",
+    "prosemirror-commands": "^1.6.2",
+    "diff": "^7.0.0",
+    "@tiptap/core": "3.31.3",
+    "@tiptap/pm": "3.31.3",
+    "@y/y": "14.0.0-rc.26",
+    "@y/prosemirror": "2.0.0-13",
+    "@y/protocols": "1.0.6-rc.1",
+    "lib0": "1.0.0-rc.33",
+    "ws": "^8.18.0",
+    "@hocuspocus/server": "4.7.0",
+    "@hocuspocus/provider": "4.7.0",
+    "@hocuspocus/extension-sqlite": "4.7.0",
+    "markdown-it": "^14.1.0",
+    "prosemirror-markdown": "^1.13.1",
+    "approx-string-match": "^2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.2",
+    "vitest": "^3.0.5",
+    "jsdom": "^25.0.1",
+    "global-jsdom": "^25.0.0",
+    "@types/node": "^22.9.0",
+    "@types/diff": "^6.0.0",
+    "@types/ws": "^8.5.13",
+    "@types/markdown-it": "^14.1.2"
+  },
+  "overrides": {
+    "yjs": "npm:@y/y@14.0.0-rc.26",
+    "y-protocols": "npm:@y/protocols@1.0.6-rc.1",
+    "lib0": "$lib0"
+  }
+}

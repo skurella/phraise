@@ -81,6 +81,21 @@ Attributed commits and comments, fine-grained permissions, higher limits. Org in
 
 **Language, default:** TypeScript, because Yjs, Tiptap and Hocuspocus are JavaScript and the daemon, MCP server and VS Code extension will share the document model. Eventual package split, for orientation only, not to be created yet: `markdown-core` (parse with positions, block-preserving serializer, structural compare), `doc-model` (ProseMirror schema, Yjs bridge, comment anchors), `github` (App auth, refs, blobs, commits, webhooks, with recorded fixtures), `relay` (Hocuspocus server, draft flush, rebase), `web` (Tiptap editor app), `daemon` (file materialization, watcher, MCP), `vscode` (extension). A Rust or wasm parser such as comrak or markdown.mbt is an option if spike 1 shows remark's positions are insufficient.
 
+## D5 resolved after spike 5 (2026-09-27)
+
+Both candidate stacks were run end to end with a relay, two live editors and spike 1's schema, see [spike 5 findings](2026-09-27-spike-5-findings-collab-stack.md). The lead re-ran the gates for both.
+
+**Build on Yjs 13: Yjs 13.6, `@tiptap/y-tiptap` 3.0, Hocuspocus 4.7 with SQLite, Tiptap 3.** It passes every gate. Migrate to Yjs 14 when its ProseMirror binding is released stable with the bug below fixed, and Hocuspocus or Tiptap supports it.
+
+1. **Yjs 14 is not ready.** Its binding has a data-loss bug of its own: replacing an image with a new address and a new link keeps the old link, which failed 32 of 266 real files loaded through the editor. Its core class was renamed between two release candidates this summer, no Tiptap package supports it, Hocuspocus runs on it only with an install-time fix, and its official server is AGPL and needs Redis, Postgres and S3.
+2. **Yjs 13 needs two small workaround plugins,** 137 lines: root attributes kept in a sibling map, and marks on inline atoms kept in an attribute. The binding stays unpatched. They are small but have sharp edges: two ordering and timing bugs were found and fixed. Every inline atom type must declare the attribute, the plugin order is fixed, and a schema test enforces both.
+3. **The CRDT sits behind a five-point interface** so the migration stays cheap: seed from and read to a document, the editor plugin list, the relay's per-update hook, the rebase engine's fork, diff and apply, and comment anchors. No other module touches Yjs types.
+4. **Migration moves no stored data.** Drafts hold Markdown and a Yjs 13 document reads in 14. All clients and the relay of a document switch together; a mixed fleet is not possible. The code port is measured and mostly written in the spike.
+5. **Attribution:** the relay records user and time per update from the authenticated connection and stores the mapping inside the document, so it survives reconnects and restarts. A client identity claimed by a second user is flagged. It is not yet rejected, which needs filtering in the relay before an update is applied.
+6. **The relay is Hocuspocus 4.7 with SQLite,** which fits the single-binary self-host story under D2.
+
+Carried into integration: no real browser was used, so real typing, input methods and selection are untested; forged client identities must be rejected, not only flagged; block-level suggestions are unbuilt.
+
 ## Deferred
 
 - Mermaid graphical authoring and comments on diagram elements: anchor to node IDs in the Mermaid source; render as an interactive opaque block. After the core loop.

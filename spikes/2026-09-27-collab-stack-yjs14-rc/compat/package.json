@@ -1,0 +1,30 @@
+{
+  "name": "collab-stack-yjs14-rc-compat",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spike 5, brief 02, task 6: Yjs 13 / Yjs 14 update-bytes compatibility probe. Separate subpackage (own node_modules, no npm overrides) so real yjs@13.6.33 + y-prosemirror@1.3.7 can coexist with @y/y + @y/prosemirror without the parent package's yjs->@y/y alias getting in the way.",
+  "scripts": {
+    "compat": "tsx scripts/compat.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "yjs": "13.6.33",
+    "y-prosemirror": "1.3.7",
+    "y-protocols": "^1.0.6",
+    "@y/y": "14.0.0-rc.26",
+    "@y/prosemirror": "2.0.0-13",
+    "@y/protocols": "1.0.6-rc.1",
+    "prosemirror-model": "^1.23.0",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-transform": "^1.10.2",
+    "prosemirror-view": "^1.37.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.2",
+    "jsdom": "^25.0.1",
+    "global-jsdom": "^25.0.0",
+    "@types/node": "^22.9.0"
+  }
+}

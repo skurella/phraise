@@ -1,0 +1,10 @@
+node_modules/
+corpus/fetched/
+data/
+results/*.sqlite
+dist/
+*.log
+# Brief 06: gate F writes its own rebase: seed fixture(s) here at run time
+# (deterministic, derived from src/rebase/gates/scenario.ts's MD_A), so they
+# don't need to be committed (same as stack13's own gitignore entry).
+fixtures/rebase/

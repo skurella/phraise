@@ -1,0 +1,496 @@
+{
+  "generatedAt": "2026-09-27T13:18:20.453Z",
+  "quick": false,
+  "gateA_custom": {
+    "pass": true,
+    "medianLatencyMs": 23.201834000000076,
+    "latencies": [
+      22.343374999999924,
+      23.201834000000076,
+      23.277375000000006,
+      22.313041999999996,
+      23.079417000000035,
+      22.723167000000103,
+      23.03800000000001,
+      23.889333999999963,
+      23.803999999999974,
+      23.37820899999997,
+      22.271875000000023,
+      21.851916000000074,
+      23.000375000000076,
+      23.639957999999865,
+      23.935416999999916,
+      21.064582999999857,
+      23.608375000000024,
+      24.339708999999857,
+      24.82962499999985,
+      23.059582999999975
+    ],
+    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 23.2ms"
+  },
+  "gateA_hocuspocus": {
+    "pass": true,
+    "medianLatencyMs": 22.801042000000052,
+    "latencies": [
+      22.440207999999984,
+      22.442625000000135,
+      21.78158399999984,
+      21.864874999999984,
+      22.350792000000183,
+      23.612708999999995,
+      23.955040999999937,
+      24.043874999999844,
+      23.11624999999981,
+      23.213457999999946,
+      21.533374999999978,
+      23.361625000000004,
+      23.546749999999975,
+      22.801042000000052,
+      22.63449999999989,
+      21.7827920000002,
+      21.94704200000001,
+      22.3968339999999,
+      24.76537499999995,
+      23.450166999999965
+    ],
+    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 22.8ms"
+  },
+  "gateB": {
+    "pass": true,
+    "reasons": [],
+    "detail": "editor1, editor2 and the relay agree; every linked image kept its link mark; update count stable at 19",
+    "updateCounts": {
+      "afterConverge": 19,
+      "afterSettle": 19
+    }
+  },
+  "gateC": {
+    "pass": false,
+    "total": 266,
+    "pathAPassed": 266,
+    "pathBPassed": 234,
+    "failures": [
+      {
+        "file": "npm-axios-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-base64-js-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-bcryptjs-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-canvas-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-cesium-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-commitlint-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-compression-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-cors-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-eventemitter3-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-express-validator-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-fastify-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-gatsby-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-graphql-request-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-hexo-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-karma-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-ky-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 2 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-minimist-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-mobx-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 3 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-mqtt-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 0 (heading) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-multer-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 0 (heading) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-nanoclone-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-nock-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-node-cron-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-nodemailer-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-nodemon-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-nunjucks-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-oclif-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-pino-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-recharts-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-sequelize-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-ts-node-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-url-parse-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      }
+    ],
+    "elapsedMs": 238121,
+    "encodedStateBytesTotal": 19653563
+  },
+  "gateB3": {
+    "pass": false,
+    "cases": [
+      {
+        "name": "0. initial state",
+        "pass": true,
+        "detail": "editor1=https://old.example editor2=https://old.example"
+      },
+      {
+        "name": "1. change href of a linked image",
+        "pass": true,
+        "detail": "editor1=https://new.example editor2=https://new.example"
+      },
+      {
+        "name": "2. unlink it",
+        "pass": true,
+        "detail": "editor1=unlinked editor2=unlinked"
+      },
+      {
+        "name": "3. whole-document replace (url + href change)",
+        "pass": false,
+        "detail": "editor1=https://old.example editor2=https://old.example -- FAIL, expected per the brief: new url landed but the OLD mark/href was kept"
+      },
+      {
+        "name": "4. replace one image node (url + link differ)",
+        "pass": false,
+        "detail": "editor1=https://old.example editor2=https://old.example -- FAIL, expected per the brief: new url landed but the OLD mark/href was kept"
+      }
+    ],
+    "detail": "3. whole-document replace (url + href change): editor1=https://old.example editor2=https://old.example -- FAIL, expected per the brief: new url landed but the OLD mark/href was kept; 4. replace one image node (url + link differ): editor1=https://old.example editor2=https://old.example -- FAIL, expected per the brief: new url landed but the OLD mark/href was kept -- cases 3-4 are a known upstream @y/prosemirror mark-vs-attr co-change bug (see this file's header), not this spike's schema/binding code; cases 0-2 pass"
+  },
+  "gateD": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "Dedupe: exactly one resolved version of prosemirror-model and prosemirror-state",
+        "pass": true,
+        "detail": "single version each: prosemirror-state@1.4.4, prosemirror-model@1.25.12"
+      },
+      {
+        "name": "Schema: Tiptap-generated schema equivalent to src/schema.ts",
+        "pass": true,
+        "detail": "17 nodes, 9 marks, all fields match"
+      },
+      {
+        "name": "Tiptap 3.31.3 has no Yjs-14-compatible collaboration package (checked npm)",
+        "pass": true,
+        "detail": "npm view @tiptap/extension-collaboration peerDependencies -> yjs: '^13', @tiptap/y-tiptap: '^3.0.7' (hard-pinned); @y/tiptap, @tiptap/y-prosemirror, @y/y-tiptap all 404 on the registry -- custom extensions (src/tiptapClient.ts) are the only option"
+      },
+      {
+        "name": "Gate B's script run through two Tiptap editors: converge (editor1 = editor2 = relay)",
+        "pass": true,
+        "detail": "editor1, editor2 and the relay agree; every linked image kept its link mark"
+      },
+      {
+        "name": "Caret: awareness state present for both users",
+        "pass": true,
+        "detail": "alice awareness size=2 bob awareness size=2"
+      },
+      {
+        "name": "Caret: each editor renders the other's caret decoration in the DOM",
+        "pass": true,
+        "detail": "bob's DOM showed alice's caret=true; alice's DOM showed bob's caret=true"
+      },
+      {
+        "name": "Undo: alice's undo removes only her own change",
+        "pass": true,
+        "detail": "aliceEditGone=true bobEditUnaffectedOnBoth=true"
+      }
+    ],
+    "detail": "all 7 checks passed"
+  },
+  "gateE": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "Listing: seed + alice + bob ranges walked from Yjs items (IdMap)",
+        "pass": true,
+        "detail": "seed=true alice=true bob=true; 63 ranges total"
+      },
+      {
+        "name": "Collision: forged client ID flagged, not overwritten",
+        "pass": true,
+        "detail": "flagged=true groundTruthKept=true log=[{\"client\":7870628042906732,\"existingUser\":\"alice\",\"attemptedUser\":\"mallory\",\"at\":1790515087140}]; note: alice's OWN clientID self-reassigned=true (Yjs's client-side defense reacting to receiving her own forged ID back)"
+      },
+      {
+        "name": "Reconnect: same Y.Doc + same clientID, ranges accumulate under it",
+        "pass": true,
+        "detail": "clientID unchanged=true; still mapped to alice=true; her post-reconnect edit is visible and attributed=true; 1 alice-attributed range(s) total"
+      },
+      {
+        "name": "Reload: new Y.Doc + new clientID mapped to the same user, no conflict",
+        "pass": true,
+        "detail": "newClientID!=old=true oldEntryUser=alice:true newEntryUser=alice:true"
+      },
+      {
+        "name": "Restart: attribution IdMap survives a relay restart (same persistence as the document)",
+        "pass": true,
+        "detail": "alice's mapping (client 859822818235299) intact after restart"
+      }
+    ],
+    "sizeMeasurement": {
+      "totalBytes": 16162,
+      "withoutAttributionBytes": 5250,
+      "deltaBytes": 10912,
+      "deltaPct": 207.84761904761905
+    },
+    "suggestionMode": {
+      "pass": true,
+      "checks": [
+        {
+          "name": "Alice's view of the suggestion doc shows y-attributed-* marks with bob as author",
+          "pass": true,
+          "detail": "insert=[\"bob\"] delete=[\"bob\"] format(link)=[\"bob\"]"
+        },
+        {
+          "name": "Reject restores the suggested delete; accept keeps the suggested insert as real content",
+          "pass": true,
+          "detail": "text after accept/reject: \"A  badge and some words to delete here.SUGGESTED\""
+        },
+        {
+          "name": "Accepted insert reaches the live document; unresolved link suggestion stays pending (does not)",
+          "pass": true,
+          "detail": "live text=\"A  badge and some words to delete here.SUGGESTED\" live image href=https://old.example (unchanged = pending suggestion correctly did not propagate)"
+        },
+        {
+          "name": "Serialization leak check: can a doc with a pending suggestion be serialized as-is?",
+          "pass": true,
+          "detail": "serializeDoc THREW on a doc with an unresolved y-attributed-* mark: Cannot handle unknown node `y-attributed-format` -- spike 1's serializer (src/serialize.ts) has no notion of these marks at all and cannot skip them; a real integration MUST strip every y-attributed-* mark before calling serializeDoc, or resolve (accept/reject) every suggestion first"
+        }
+      ],
+      "detail": "suggestion mode works for this scenario: attribution shows bob as author, accept/reject behave correctly, pending suggestions stay pending -- but attribution marks must be stripped before serialization (see the leak check)"
+    },
+    "detail": "all 5 checks passed; attribution overhead 10912B (207.8%) of 5250B; suggestion mode: suggestion mode works for this scenario: attribution shows bob as author, accept/reject behave correctly, pending suggestions stay pending -- but attribution marks must be stripped before serialization (see the leak check)"
+  },
+  "gateG": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "G1. Restart (SIGTERM): both providers reconnect, content intact, new edit propagates",
+        "pass": true,
+        "detail": "contentIntact=true newEditPropagates=true"
+      },
+      {
+        "name": "G2. Hard kill (SIGKILL) before the store debounce",
+        "pass": true,
+        "detail": "sqlite bytes: 12288 -> 12288 (before/after kill); alice's own memory retained it=true; relay has it once alice's reconnect resynced it=true"
+      },
+      {
+        "name": "G2. Hard kill (SIGKILL) after the store debounce",
+        "pass": true,
+        "detail": "sqlite bytes: 16384 -> 16384 (before/after kill); alice's own memory retained it=true; relay has it once alice's reconnect resynced it=true"
+      },
+      {
+        "name": "G3. Edits made while the relay is down converge once it restarts",
+        "pass": true,
+        "detail": "editor1, editor2 and the relay converge (semantic + serializeDoc equality)"
+      },
+      {
+        "name": "G4. Offline editor reconnects and converges",
+        "pass": true,
+        "detail": "converge=true; both concurrent text insertions into the same paragraph survived (CRDT interleaves rather than drops): true; same-node link conflict (badge.svg, changed by both sides concurrently) resolved deterministically to one value, not corrupted or duplicated: https://from-alice.example (one of the two concurrent writes, as CRDT last-write-wins on a single attribute defines)"
+      }
+    ],
+    "detail": "all 5 scenario(s) passed"
+  },
+  "gateF": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "Rebase applied while alice online, bob offline",
+        "pass": true,
+        "detail": "{\"applied\":true,\"rebaseId\":\"B\"}"
+      },
+      {
+        "name": "Convergence: alice, bob and the relay have identical ProseMirror JSON",
+        "pass": true,
+        "detail": "identical"
+      },
+      {
+        "name": "Convergence: alice, bob and the relay have identical review state",
+        "pass": true,
+        "detail": "identical"
+      },
+      {
+        "name": "A: untouched-paragraph comment resolves via crdt on alice, bob and the relay",
+        "pass": true,
+        "detail": "{\"alice\":{\"method\":\"crdt\",\"text\":\"never touched by anyone\",\"start\":45,\"end\":68},\"bob\":{\"method\":\"crdt\",\"text\":\"never touched by anyone\",\"start\":45,\"end\":68},\"relay\":{\"method\":\"crdt\",\"text\":\"never touched by anyone\",\"start\":45,\"end\":68}}"
+      },
+      {
+        "name": "B: rewritten-paragraph comment survives (anchor or quote) on alice, bob and the relay",
+        "pass": true,
+        "detail": "{\"alice\":{\"method\":\"crdt\",\"text\":\"plan for the rollout\",\"start\":145,\"end\":165},\"bob\":{\"method\":\"crdt\",\"text\":\"plan for the rollout\",\"start\":145,\"end\":165},\"relay\":{\"method\":\"crdt\",\"text\":\"plan for the rollout\",\"start\":145,\"end\":165}}"
+      },
+      {
+        "name": "C: deleted-paragraph comment orphans, quote kept, negative control (harbor) not captured",
+        "pass": true,
+        "detail": "{\"alice\":{\"method\":\"orphaned\",\"quote\":{\"exact\":\"old lighthouse keeper\",\"prefix\":\"etail.\\nThis paragraph about the \",\"suffix\":\" will be removed entirely in the\"}},\"bob\":{\"method\":\"orphaned\",\"quote\":{\"exact\":\"old lighthouse keeper\",\"prefix\":\"etail.\\nThis paragraph about the \",\"suffix\":\" will be removed entirely in the\"}},\"relay\":{\"method\":\"orphaned\",\"quote\":{\"exact\":\"old lighthouse keeper\",\"prefix\":\"etail.\\nThis paragraph about the \",\"suffix\":\" will be removed entirely in the\"}}}"
+      },
+      {
+        "name": "D: P and Q flagged concurrent-edit; offline (bob) and online (alice) upstream-conflicting text both survive; no unexpected flags",
+        "pass": true,
+        "detail": "pFlagged=true qFlagged=true textOk=true unexpected=[]"
+      },
+      {
+        "name": "D2: P2 (deleted upstream, edited offline by bob) resurrected exactly once, flagged, converged",
+        "pass": true,
+        "detail": "p2Deleted=true resurrections=1 survivesEverywhere=true"
+      },
+      {
+        "name": "Every block nobody touched equals commit B, on alice, bob and the relay",
+        "pass": true,
+        "detail": "all present"
+      },
+      {
+        "name": "A retried rebase changes nothing",
+        "pass": true,
+        "detail": "{\"applied\":false,\"reason\":\"already at target\",\"rebaseId\":\"B\"}; pmUnchanged=true reviewUnchanged=true"
+      }
+    ],
+    "detail": "all checks passed"
+  },
+  "gateF_continuousTyping": {
+    "name": "Variant: alice types continuously while the rebase is applied; still converges",
+    "pass": true,
+    "detail": "typingDone=true rebaseApplied=true converged=true intactRunOf40Xs=true"
+  }
+}
