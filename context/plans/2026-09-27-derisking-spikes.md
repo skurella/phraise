@@ -5,7 +5,7 @@ Author: lead agent (Fable 5.1)
 Updated: 2026-09-27
 Serves: [architecture decisions](../docs/2026-09-27-architecture-decisions.md) D4, D5, D6, D7, D10
 
-Three timeboxed spikes, run sequentially, each by one builder agent (Sonnet 5; Opus 5.5 on escalation). Spike code lives in `spikes/<date>-<component>-<approach>/`, self-contained with its own README and tests. A second approach to the same spike gets its own directory; the findings doc compares them. Each spike ends with a findings doc in `context/docs/` and a log in `context/logs/`. If all three pass, nothing downstream requires a rewrite.
+Three timeboxed spikes, run sequentially, each owned by one Opus orchestrator that delegates to Sonnet and Haiku workers as it sees fit. The steps below are a starting point for the orchestrator, not a prescription; each spike gets its own charter file. Spike code lives in `spikes/<date>-<component>-<approach>/`, self-contained with its own README and tests. A second approach to the same spike gets its own directory; the findings doc compares them. Each spike ends with a findings doc in `context/docs/` and a log in `context/logs/`. If all three pass, nothing downstream requires a rewrite.
 
 ## Spike 1: block-preserving round trip
 

@@ -74,3 +74,19 @@ Checked the session's tooling: in-process subagents with worktree isolation and 
 ## 03:00 — Bootstrap PR
 
 Created `context/docs/2026-09-27-decision-register.md`, updated AGENTS.md and the workflow doc with git and orchestration policy. Committing to branch `context/2026-09-27-bootstrap` and opening the PR.
+
+## 03:02 — Owner raised Fable cost concern
+
+Proposed Opus orchestrators per spike and hub-and-spoke communication. Confirmed no cloud for now; session stays open on the laptop.
+
+## 03:04 — Nesting test
+
+Launched an Opus subagent that launched a Haiku subagent and a Sonnet subagent with worktree isolation. All worked: model override accepted at the nested level, worktree created under `.claude/worktrees/` and cleaned up when unchanged. Nested agents inherit the parent's working directory.
+
+## 03:10 — Decision P7 adopted
+
+Three-level hub and spoke. Workflow doc, AGENTS.md, decision register and spikes plan updated.
+
+## 03:10 — Finding: Bash sandbox now active
+
+`gh` fails inside the sandbox with a TLS verification error and `git fetch` over SSH fails. Network git and GitHub CLI commands need the sandbox disabled per command. Relevant to every orchestrator that pushes.

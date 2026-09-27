@@ -6,21 +6,41 @@ Updated: 2026-09-27
 
 Goals set by the owner: talk to a single lead agent, use cheaper models for everything else, optimize for autonomy, context hygiene and quality at reasonable cost. Parallelism is not a goal.
 
-## Roles
+## Roles and topology: hub and spoke, three levels
+
+Revised 2026-09-27 (decision P7) to protect the owner's Fable budget. Nesting was verified empirically: an Opus subagent launched Haiku and Sonnet subagents, with model override and worktree isolation working at the nested level.
+
+```
+owner ── lead (Fable) ── spike orchestrator (Opus) ─┬─ builder (Sonnet)
+                                                    ├─ grinder (Haiku)
+                                                    └─ reviewer (Sonnet, fresh context)
+```
+
+Communication follows the lines only. Workers talk to their orchestrator. Orchestrators talk to the lead. The lead talks to the owner. There is no lateral messaging; files in `context/` are the shared medium.
 
 | Role | Model | Owns | Never does |
 |---|---|---|---|
-| **Lead** | Fable 5.1 | Conversation with the owner, architecture, decomposition into briefs, integration, promoting findings to docs, final quality judgement | Long tool loops of implementation work, reading raw worker transcripts, reading the whole `context/` tree into one turn |
-| **Builder** | Sonnet 5 by default | One work package at a time from a brief; writes code and tests; keeps a log; returns a short handback | Design changes outside the brief, editing `context/docs/`, commits unless the brief says so |
-| **Grinder** | Haiku 4.5 | Mechanical, well-specified work: fixture and corpus collection, golden-file generation, lint and format fixes, dependency bumps, doc transcription | Anything requiring judgement about design |
-| **Escalation builder** | Opus 5.5 | A package a Sonnet builder failed twice, or a spike whose brief says it is algorithmically hard | Routine packages |
-| **Reviewer** | Sonnet 5, fresh context | Reviews a builder's diff against the brief and the decisions doc; runs the tests; reports findings ranked by severity | Fixing what it finds; that goes back to a builder |
+| **Lead** | Fable 5.1 | Conversation with the owner. Architecture and locked decisions. One **charter** per spike. Reading each spike's handback and findings doc. The decision register. PRs. | Talking to builders, grinders or reviewers. Writing task briefs. Reading logs unless a handback is surprising. Implementation. |
+| **Spike orchestrator** | Opus 5.5 | One spike end to end from its charter: detailed plan and task briefs, choosing when to hand off to Sonnet or Haiku and when to do a small thing itself, review, iteration, trying a second approach, the findings doc, its log, commits and pushes on the spike branch, the handback to the lead. | Changing a locked decision. Working outside its spike directory and its own context files. Merging. |
+| **Builder** | Sonnet 5 | One task from a brief: code and tests, a log, a short handback to the orchestrator. | Design changes outside the brief. Spawning further agents. |
+| **Grinder** | Haiku 4.5 | Mechanical, fully specified work: corpus and fixture collection, golden files, lint and format fixes, transcription. | Anything needing design judgement. Spawning further agents. |
+| **Reviewer** | Sonnet 5, fresh context | Reviews a diff against the brief and the decisions doc, runs the tests, reports findings by severity. | Fixing what it finds. |
 
-Codex rescue is available in this environment as a second opinion for diagnosis when a builder and the lead are both stuck. Use sparingly.
+Depth limit: three levels below the owner. Builders, grinders and reviewers have the agent-launching tool but must not use it.
 
-## The unit of work: a brief
+### What the lead spends per spike
 
-A brief is a file in `context/plans/` and is the only way work is handed to an agent. It contains:
+One dispatch, one handback read, one findings-doc read, one PR. Anything more is an escalation, and escalations are allowed only when: a locked decision needs to change, the charter's success gate looks unachievable, or the orchestrator has spent twice its budget.
+
+### Orchestrator authority
+
+Within its charter the orchestrator decides everything: approach, libraries, task split, which model does what, when to abandon an approach. It records each non-trivial decision as a row in the decision register with impact and difficulty, marked "made by: orchestrator, spike N". The lead reviews those rows at handback and may overrule.
+
+## The units of work: charter and brief
+
+A **charter** is written by the lead, one per spike, in `context/plans/`. It states the goal, the decisions served, the success gates, the budget, the branch, and the handback format. It does not prescribe how.
+
+A **brief** is written by the orchestrator, one per task, in `context/plans/`, and is the only way work is handed to a builder, grinder or reviewer. It contains:
 
 1. **Goal** in two sentences and the decision(s) in the architecture doc it serves.
 2. **Scope and non-scope**, explicit.
@@ -37,15 +57,15 @@ Branches are free; `main` is PR-only with squash merge and is merged by the owne
 
 ## How agents are run
 
-Decided 2026-09-27, see the decision register. Workers are in-process subagents launched by the lead with the Agent tool: `isolation: worktree` so each works in its own git worktree, a model override per role (Sonnet, Haiku, Opus), and `run_in_background` so the lead stays responsive. One worker at a time by default. Cloud routines and moving the lead session to the cloud are available as fallbacks for unattended long runs; the Workflow tool is not used because parallel fan-out is not a goal.
+Decided 2026-09-27, see the decision register. All agents are in-process subagents launched with the Agent tool and a model override per role. The lead launches each orchestrator with `isolation: worktree` and `run_in_background`. The orchestrator launches its workers without isolation so they share its worktree, one at a time. The session runs on the owner's laptop and stays open for extended periods. Cloud routines and moving the lead session to the cloud are available as fallbacks for unattended long runs; the Workflow tool is not used because parallel fan-out is not a goal.
 
 ## The loop
 
-1. Lead writes the brief and logs it.
-2. Builder runs in an isolated worktree, logs as it goes, hands back under 300 words.
-3. Reviewer runs against the diff with fresh context and hands back findings.
-4. Lead reads both handbacks, spot-checks the diff, opens the PR or sends back with a delta brief. The lead reads logs only when a handback is surprising.
-5. Lead promotes any design-affecting finding from logs into `context/docs/`, appends to the decision register, and updates plan status.
+1. Lead writes the charter, creates the spike branch, and dispatches one Opus orchestrator in the background in its own worktree.
+2. Orchestrator plans, writes briefs, dispatches builders, grinders and reviewers one at a time inside its worktree, iterates until the success gates pass or the approach is abandoned, and commits as it goes.
+3. Orchestrator writes the findings doc, appends its decisions to the register, pushes the branch, and hands back to the lead in under 400 words.
+4. Lead reads the handback and the findings doc, spot-checks, updates locked or default decisions, and opens the PR. The lead reads logs only when a handback is surprising.
+5. If an orchestrator session dies, a new one resumes from the charter, the plan files, the log and the branch. Nothing depends on a transcript.
 
 ## Context hygiene
 
@@ -56,7 +76,7 @@ Decided 2026-09-27, see the decision register. Workers are in-process subagents 
 
 ## Cost controls
 
-- Sonnet builds, Haiku grinds, Opus only on escalation, Fable only leads.
+- Fable leads and touches each spike a handful of times. Opus orchestrates and plans. Sonnet builds and reviews. Haiku grinds.
 - One agent per package, sequential. No fan-out unless the owner asks.
 - Briefs carry an effort budget; a builder that exceeds it stops, logs where it is, and hands back partial work with a clear state rather than thrashing.
 - Spikes are timeboxed and produce a findings doc, not production code. Until the owner opens a production tree, every package is a spike under `spikes/`, and competing approaches to one component are encouraged rather than a single blessed implementation. Sunk cost is not an argument; a findings doc that says "abandoned because X" is a successful outcome.

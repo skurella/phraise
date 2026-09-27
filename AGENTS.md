@@ -11,7 +11,11 @@ The project is FOSS (MIT, see `LICENSE`). Repo: `github.com/skurella/phraise`. O
 3. The plan file your brief points at in `context/plans/`.
 4. Any other doc your brief lists. Do **not** read the whole `context/` tree; that wastes context and the lead has already distilled it for you.
 
-If you are the lead agent, also keep `context/docs/2026-09-27-agent-workflow.md` in mind: it defines roles, briefs, handbacks and review.
+If you are the lead or a spike orchestrator, also read `context/docs/2026-09-27-agent-workflow.md`: it defines roles, charters, briefs, handbacks and review.
+
+## Who you are and who you talk to
+
+Hub and spoke, three levels: owner, lead (Fable), spike orchestrator (Opus), then builders and reviewers (Sonnet) and grinders (Haiku). You talk only to whoever launched you. Orchestrators may launch workers; workers must not launch further agents. Escalate upward only when blocked, when a locked decision needs to change, or when you have spent twice your budget.
 
 ## The `context/` directory
 
@@ -37,7 +41,7 @@ Rules that apply to every file in `context/`:
 
 ## Working agreements
 
-- Do not start a work package without a brief in `context/plans/`. If you are handed a task without one, write the brief first and log that you did.
+- Orchestrators work from a charter, workers from a brief, both in `context/plans/`. If you are handed work without one, write it first and log that you did.
 - Definition of done is executable: tests, fixtures, or a reproducible command. "Looks right" is not done.
 - Keep handbacks short: outcome, what was verified and how, what was left out and why, links to the log and any changed docs. Under 300 words.
 - **All code lives under `spikes/` for now.** There is no main source tree yet, by owner decision (2026-09-27). Each spike is `spikes/<date>-<component>-<approach>/` with its own README, dependencies and tests. Multiple approaches to the same component are welcome; throw away what does not work and say so in the findings doc. Integration into a production tree begins only when several spikes demonstrate feasibility and the key risks are resolved as far as practicable. Never import one spike from another by relative path; copy what you need and note the origin.
