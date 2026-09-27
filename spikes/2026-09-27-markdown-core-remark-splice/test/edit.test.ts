@@ -125,3 +125,70 @@ test('structural edit: toggling strong on a word in a list item re-parses to the
     `expected the changed byte range [${diffStart}, ${diffEnd}) to lie within a single original top-level block span; spans=${JSON.stringify(spans)}`
   );
 });
+
+test('textblock splice: bold toggle in a nested list item changes only that item line, via textblock-splice', () => {
+  const file = 'nested-mixed-markers.md';
+  const md = readFixture(file);
+  const { doc } = parseMarkdown(md);
+  doc.check();
+
+  const word = 'dash';
+  const { from, to } = findWordPMRange(doc, word);
+
+  const state = EditorState.create({ doc });
+  const tr = state.tr.addMark(from, to, schema.marks.strong.create());
+  const newDoc = tr.doc;
+  newDoc.check();
+
+  const traces: TraceInfo[] = [];
+  const out = serializeDoc(newDoc, { trace: (info) => traces.push(info) });
+
+  assert.ok(traces.some((t) => t.kind === 'textblock-splice'), `expected a textblock-splice trace, got [${traces.map((t) => t.kind).join(', ')}]`);
+
+  const { doc: reparsed } = parseMarkdown(out);
+  reparsed.check();
+  assert.ok(semanticEq(reparsed, newDoc), 'serialized output must re-parse to a semantically equal doc');
+
+  // Only the single source line containing "dash" should differ; every other
+  // line -- including sibling list items at every nesting depth -- stays
+  // byte-identical.
+  const mdLines = md.split('\n');
+  const outLines = out.split('\n');
+  assert.equal(outLines.length, mdLines.length, 'line count must be unchanged');
+  let changedLines = 0;
+  for (let i = 0; i < mdLines.length; i++) {
+    if (mdLines[i] !== outLines[i]) {
+      changedLines++;
+      assert.ok(mdLines[i].includes('dash'), `changed line ${i} should be the "dash" line, got: ${JSON.stringify(mdLines[i])}`);
+      assert.equal(outLines[i], mdLines[i].replace('dash', '**dash**'));
+    }
+  }
+  assert.equal(changedLines, 1, 'expected exactly one changed line');
+});
+
+test('textblock splice: bold toggle in a blockquote paragraph keeps the > prefixes on every line', () => {
+  const file = 'blockquotes.md';
+  const md = readFixture(file);
+  const { doc } = parseMarkdown(md);
+  doc.check();
+
+  const word = 'continuing';
+  const { from, to } = findWordPMRange(doc, word);
+
+  const state = EditorState.create({ doc });
+  const tr = state.tr.addMark(from, to, schema.marks.strong.create());
+  const newDoc = tr.doc;
+  newDoc.check();
+
+  const traces: TraceInfo[] = [];
+  const out = serializeDoc(newDoc, { trace: (info) => traces.push(info) });
+
+  assert.ok(traces.some((t) => t.kind === 'textblock-splice'), `expected a textblock-splice trace, got [${traces.map((t) => t.kind).join(', ')}]`);
+
+  const { doc: reparsed } = parseMarkdown(out);
+  reparsed.check();
+  assert.ok(semanticEq(reparsed, newDoc), 'serialized output must re-parse to a semantically equal doc');
+
+  const expected = md.replace('continuing', '**continuing**');
+  assert.equal(out, expected, 'only the word itself should change; every > prefix must be preserved');
+});

@@ -26,7 +26,7 @@ export interface BlockPos {
 }
 
 /** A node's own mdast position, recorded during mdast->PM conversion. */
-interface NodePosInfo {
+export interface NodePosInfo {
   startLine: number;
   endLine: number;
   startOffset: number;
@@ -34,7 +34,7 @@ interface NodePosInfo {
 }
 
 /** Per-doc-parse side table: PM node identity -> its own mdast position. */
-type BlockPosMap = WeakMap<PMNode, NodePosInfo>;
+export type BlockPosMap = WeakMap<PMNode, NodePosInfo>;
 
 function recordPos(posMap: BlockPosMap | undefined, pmNode: PMNode, mdastNode: any): void {
   if (!posMap || !mdastNode?.position) return;
@@ -537,6 +537,14 @@ export interface ParseBlockResult {
   map?: TextRun[];
   /** Link ranges with their source spans; undefined when they could not be matched one to one. */
   links?: LinkSpan[];
+  /**
+   * Per-node source-span side table (only present when `opts.map` is set):
+   * for every non-inline node built while parsing this block (at any depth --
+   * paragraphs, headings, table cells, list items, etc.), its own mdast
+   * source span within `ctx + src`. Used by serialize.ts's textblock splice
+   * to find a textblock's own span without re-deriving it from scratch.
+   */
+  positions?: BlockPosMap;
   /** Number of top-level blocks the source parsed into; anything but 1 means the block is not self-describing. */
   count: number;
 }
@@ -595,17 +603,18 @@ export function parseBlock(src: string, ctx: string, opts?: { map?: boolean }): 
   }
   const remaining = tree.children.slice(skip);
   const mapCollector: MapCollector | undefined = opts?.map ? { runs: [], links: [] } : undefined;
+  const posMap: BlockPosMap | undefined = opts?.map ? new WeakMap() : undefined;
 
   let node: PMNode;
   if (remaining.length === 0) {
     node = schema.node('paragraph', {}, []);
   } else if (remaining.length === 1) {
-    node = blockFromMdast(remaining[0], full, mapCollector);
+    node = blockFromMdast(remaining[0], full, mapCollector, posMap);
   } else {
     // Shouldn't normally happen for a single top-level block's src, but be
     // defensive: wrap as the first node type would be wrong, so just take
     // the first and note the rest are lost (isolation parse instability).
-    node = blockFromMdast(remaining[0], full, mapCollector);
+    node = blockFromMdast(remaining[0], full, mapCollector, posMap);
   }
 
   let map: TextRun[] | undefined;
@@ -673,7 +682,7 @@ export function parseBlock(src: string, ctx: string, opts?: { map?: boolean }): 
     }
   }
 
-  const result: ParseBlockResult = { node, map, links, count: remaining.length };
+  const result: ParseBlockResult = { node, map, links, positions: posMap, count: remaining.length };
   parseBlockCache.set(cacheKey, result);
   return result;
 }

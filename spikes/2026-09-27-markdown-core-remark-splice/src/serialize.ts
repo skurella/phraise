@@ -15,7 +15,7 @@ export interface TraceInfo {
   // emitted as its current text rather than the original bytes. Pre-existing
   // runtime value that the type union omitted (harmless in JS, but the gates
   // harness's path-distribution reporting needs it to type-check).
-  kind: 'verbatim' | 'splice' | 're-serialize' | 'unverified' | 'opaque-edit';
+  kind: 'verbatim' | 'splice' | 'textblock-splice' | 're-serialize' | 'unverified' | 'opaque-edit';
   type: string;
   /**
    * The exact text this block emitted. Added for the gates harness (gate E's
@@ -32,6 +32,14 @@ export interface SerializeOpts {
   useHints?: boolean;
   forceReserialize?: boolean;
   noSplice?: boolean;
+  /** Disable only the textblock-splice candidate (brief 04 measurement: "before" vs "after"); text/link splice still apply. */
+  noTextblockSplice?: boolean;
+  /**
+   * Reformat a re-serialized or textblock-spliced paragraph to one sentence
+   * per line (brief 04, task 4). Never applied to a verbatim or text-spliced
+   * paragraph.
+   */
+  semanticLineBreaks?: boolean;
   trace?: (info: TraceInfo) => void;
 }
 
@@ -182,6 +190,133 @@ function tryLinkSplice(block: PMNode, src: string, ctx: string, style: Style): s
   const candidate = src.slice(0, s0) + md + src.slice(e0);
   const r = parseBlock(candidate, ctx);
   return r.count === 1 && semanticEq(r.node, block) ? candidate : null;
+}
+
+/**
+ * Textblock splice. When the diff between the old and new top-level block
+ * lies entirely inside one textblock (paragraph, heading, or table cell) at
+ * any depth -- e.g. a list item's paragraph, or a blockquote's paragraph --
+ * re-serialize only that textblock's inline content and splice it over the
+ * textblock's own mdast source span, instead of re-serializing the whole
+ * top-level block. This is what lets a bold-toggle inside one list item, or
+ * one blockquote paragraph, leave every sibling item/paragraph byte-for-byte
+ * untouched.
+ *
+ * Unlike tryTextSplice (character-for-character literal reuse) this always
+ * regenerates the textblock's markdown from scratch, so it also covers edits
+ * that change marks (bold/italic/link) that a literal splice cannot express.
+ * Every candidate is still verified before being returned.
+ */
+function tryTextblockSplice(block: PMNode, src: string, ctx: string, style: Style): string | null {
+  const { node: old, positions } = parseBlock(src, ctx, { map: true });
+  if (!positions || old.type !== block.type) return null;
+
+  const start = old.content.findDiffStart(block.content);
+  if (start == null) return null;
+  const diffEnd = old.content.findDiffEnd(block.content);
+  if (diffEnd == null) return null;
+  const endOld = Math.max(diffEnd.a, start);
+  const endNew = Math.max(diffEnd.b, start);
+
+  let $sOld, $eOld, $sNew, $eNew;
+  try {
+    $sOld = old.resolve(start);
+    $eOld = old.resolve(endOld);
+    $sNew = block.resolve(start);
+    $eNew = block.resolve(endNew);
+  } catch {
+    return null;
+  }
+
+  if ($sOld.parent !== $eOld.parent || !$sOld.parent.isTextblock) return null;
+  if ($sNew.parent !== $eNew.parent || !$sNew.parent.isTextblock) return null;
+  const oldTextblock = $sOld.parent;
+  const newTextblock = $sNew.parent;
+  if (oldTextblock.type !== newTextblock.type) return null;
+  if (oldTextblock.type.spec.code) return null; // code/raw blocks: never this path
+
+  const span = positions.get(oldTextblock);
+  if (!span) return null;
+  const spanStart = span.startOffset - ctx.length;
+  const spanEnd = span.endOffset - ctx.length;
+  if (spanStart < 0 || spanEnd > src.length || spanEnd < spanStart) return null;
+
+  // Determine the inner splice range within [spanStart, spanEnd): for most
+  // textblocks (paragraphs, table cells) this is the whole span, since mdast
+  // positions for those already start at the first content character. ATX
+  // headings need the leading `#`s/space (and any trailing closing hashes)
+  // stripped; setext headings splice their text line(s) only, excluding the
+  // underline row.
+  let innerStart = spanStart;
+  let innerEnd = spanEnd;
+  const isTableCell = newTextblock.type.name === 'table_cell';
+
+  if (newTextblock.type.name === 'heading') {
+    const raw = src.slice(spanStart, spanEnd);
+    const lines = raw.split(/\r\n|\n/);
+    const firstLine = lines[0];
+    const isSetext = firstLine.length > 0 && firstLine[0] !== '#';
+    if (isSetext) {
+      // Splice the text lines only; drop the underline row (last line) if present.
+      const underlineRe = /^[ \t]*(=+|-+)[ \t]*$/;
+      let textLineCount = lines.length;
+      if (textLineCount > 1 && underlineRe.test(lines[textLineCount - 1])) textLineCount--;
+      const textLen = lines.slice(0, textLineCount).join('\n').length;
+      innerEnd = spanStart + textLen;
+    } else {
+      const m = /^#+ ?/.exec(firstLine);
+      if (!m) return null;
+      innerStart = spanStart + m[0].length;
+      const closeMatch = /[ \t]+#+[ \t]*$/.exec(firstLine);
+      innerEnd = closeMatch ? spanStart + closeMatch.index : spanStart + firstLine.length;
+      if (innerEnd < innerStart) innerEnd = innerStart;
+    }
+  }
+
+  // Serialize the new textblock's own inline content as a bare paragraph.
+  const nodes: PMNode[] = [];
+  newTextblock.forEach((n) => nodes.push(n));
+  const phrasing = pmInlineToMdast(nodes);
+  const options = optionsFor(block, style, true);
+  let newInline = toMarkdown({ type: 'paragraph', children: phrasing } as any, { extensions: toMarkdownExtensions, ...options } as any);
+  newInline = newInline.replace(/\n+$/, '');
+
+  if (isTableCell && (newInline.includes('\n') || /(?<!\\)\|/.test(newInline))) return null;
+
+  // If either the original span or the freshly serialized text spans more
+  // than one physical line, every continuation line needs the enclosing
+  // container's line prefix (blockquote `>` markers, list continuation
+  // indent) re-applied, since we are splicing into a source string that
+  // still carries those prefixes on its other lines.
+  const newLines = newInline.split('\n');
+  let replacedInner = newInline;
+  if (newLines.length > 1) {
+    const prefix = computeLinePrefix(src, spanStart, innerStart, innerEnd);
+    replacedInner = newLines[0] + newLines.slice(1).map((l) => '\n' + prefix + l).join('');
+  }
+
+  const candidate = src.slice(0, innerStart) + replacedInner + src.slice(innerEnd);
+  const r = parseBlock(candidate, ctx);
+  return r.count === 1 && semanticEq(r.node, block) ? candidate : null;
+}
+
+/**
+ * The container-line prefix (spaces and/or `>` markers) that every
+ * continuation line of a textblock's own source carries, per brief 04: taken
+ * from the textblock's own second physical source line when its span is
+ * already multi-line; otherwise derived from its first line's column, with
+ * list markers blanked out and `>` kept.
+ */
+function computeLinePrefix(src: string, spanStart: number, innerStart: number, innerEnd: number): string {
+  const lineStart = src.lastIndexOf('\n', spanStart - 1) + 1;
+  const raw = src.slice(lineStart, innerEnd);
+  const lines = raw.split(/\r\n|\n/);
+  if (lines.length > 1) {
+    const m = /^[ \t>]*/.exec(lines[1]);
+    return m ? m[0] : '';
+  }
+  const prefixRaw = src.slice(lineStart, innerStart);
+  return prefixRaw.replace(/[^\t>]/g, ' ');
 }
 
 function trySplice(block: PMNode, src: string, ctx: string, style: Style): string | null {
@@ -472,6 +607,18 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
           if (spliced != null) {
             trace?.({ kind: 'splice', type: block.type.name, text: spliced });
             return spliced;
+          }
+          let tbSpliced: string | null = null;
+          if (!opts.noTextblockSplice) {
+            try {
+              tbSpliced = tryTextblockSplice(block, src, ctx, style);
+            } catch {
+              tbSpliced = null;
+            }
+          }
+          if (tbSpliced != null) {
+            trace?.({ kind: 'textblock-splice', type: block.type.name, text: tbSpliced });
+            return tbSpliced;
           }
         }
       }

@@ -9,6 +9,7 @@ import { loadCorpus, corpusFetched, corpusFiles, specFiles, type CorpusFile, typ
 import { parseAll, type ParsedFile } from './lib/parsedFile.js';
 import { runGateA, type GateAFileResult } from './gateA.js';
 import { runGateB, SEEDS_PER_FILE, type FileWordResult, type EditCategory } from './gateB.js';
+import { runGateB2 } from './gateB2.js';
 import { runGateC } from './gateC.js';
 import { runGateD } from './gateD.js';
 import { runGateE } from './gateE.js';
@@ -58,6 +59,9 @@ async function main() {
   const gateBResults = runGateB(parsed);
   const gateBById = new Map(gateBResults.map((r) => [r.fileId, r]));
 
+  console.log(`Running gate B2 (structural edit: bold toggle, ${SEEDS_PER_FILE} seeds/file, informational)...`);
+  const gateB2Results = runGateB2(parsed);
+
   const corpusParsed = parsed.filter((p) => p.file.set === 'real' || p.file.set === 'handwritten');
 
   console.log('Running gate C (opaque/special constructs)...');
@@ -74,6 +78,7 @@ async function main() {
   // -------------------------------------------------------------------------
   const bySet = groupBy(gateAResults, (r) => (parsedById.get(r.id)!.file.set as CorpusSet));
   const bBySet = groupBy(gateBResults, (r) => r.set);
+  const b2BySet = groupBy(gateB2Results, (r) => r.set);
 
   function setACounts(set: CorpusSet) {
     const rs = bySet.get(set) ?? [];
@@ -84,8 +89,7 @@ async function main() {
     return !fw.na && fw.edits.length > 0 && fw.edits.every((e) => e.category === 'ok');
   }
 
-  function setBCounts(set: CorpusSet) {
-    const rs = bBySet.get(set) ?? [];
+  function wordEditCounts(rs: FileWordResult[]) {
     const withWords = rs.filter((r) => !r.na);
     const na = rs.length - withWords.length;
     const filesPass = withWords.filter(fileWordPass).length;
@@ -101,6 +105,14 @@ async function main() {
     return { totalFiles: rs.length, na, withWords: withWords.length, filesPass, allEdits, editsPass, singleLine, pathCounts, catCounts };
   }
 
+  function setBCounts(set: CorpusSet) {
+    return wordEditCounts(bBySet.get(set) ?? []);
+  }
+
+  function setB2Counts(set: CorpusSet) {
+    return wordEditCounts(b2BySet.get(set) ?? []);
+  }
+
   const corpusA = { total: setACounts('handwritten').total + setACounts('real').total, ok: setACounts('handwritten').ok + setACounts('real').ok };
   const corpusB_hw = setBCounts('handwritten');
   const corpusB_real = setBCounts('real');
@@ -108,6 +120,13 @@ async function main() {
   const corpusBFilesTotal = corpusB_hw.withWords + corpusB_real.withWords;
   const corpusBEditsPass = corpusB_hw.editsPass + corpusB_real.editsPass;
   const corpusBEditsTotal = corpusB_hw.allEdits.length + corpusB_real.allEdits.length;
+
+  const corpusB2_hw = setB2Counts('handwritten');
+  const corpusB2_real = setB2Counts('real');
+  const corpusB2FilesPass = corpusB2_hw.filesPass + corpusB2_real.filesPass;
+  const corpusB2FilesTotal = corpusB2_hw.withWords + corpusB2_real.withWords;
+  const corpusB2EditsPass = corpusB2_hw.editsPass + corpusB2_real.editsPass;
+  const corpusB2EditsTotal = corpusB2_hw.allEdits.length + corpusB2_real.allEdits.length;
 
   // -------------------------------------------------------------------------
   // Results table
@@ -141,6 +160,13 @@ async function main() {
     threshold: '98%',
     result: `${pct(corpusBFilesPass, corpusBFilesTotal)} files, ${pct(corpusBEditsPass, corpusBEditsTotal)} edits`,
     pass: gateBPass,
+  });
+
+  rows.push({
+    gate: 'B2. Structural edit (bold toggle), corpus files (file pass rate; finding)',
+    threshold: 'none, measured',
+    result: `${pct(corpusB2FilesPass, corpusB2FilesTotal)} files, ${pct(corpusB2EditsPass, corpusB2EditsTotal)} edits`,
+    pass: 'n/a',
   });
 
   const gateCPass = gateC.stats.every((s) => s.filesContaining === 0 || (s.aPassFiles === s.filesContaining && s.crossCheckChecked === s.crossCheckPreserved));
@@ -240,6 +266,43 @@ async function main() {
   }
   md.push('');
 
+  md.push('## Gate B2 detail (structural edit: bold toggle, per set, informational)');
+  md.push('');
+  md.push('| Set | Files (n/a) | File pass rate | Edit pass rate | Single-line rate |');
+  md.push('|---|---|---|---|---|');
+  const failureExamplesB2 = new Map<EditCategory, { fileId: string; seed: number; word: string; path: string; excerpt?: string }>();
+  for (const set of ['handwritten', 'real', 'commonmark', 'gfm'] as CorpusSet[]) {
+    const c = setB2Counts(set);
+    md.push(
+      `| ${set} | ${c.totalFiles} (${c.na} n/a) | ${pct(c.filesPass, c.withWords)} | ${pct(c.editsPass, c.allEdits.length)} | ${pct(c.singleLine, c.allEdits.length)} |`
+    );
+    for (const e of c.allEdits) {
+      if (e.category !== 'ok' && !failureExamplesB2.has(e.category)) {
+        failureExamplesB2.set(e.category, { fileId: e.fileId, seed: e.seed, word: e.word, path: e.path, excerpt: e.excerpt });
+      }
+    }
+  }
+  md.push('');
+  md.push('### Path distribution (all sets, all edits)');
+  md.push('');
+  const allEditsGlobalB2 = gateB2Results.flatMap((r) => r.edits);
+  const globalPathCountsB2 = new Map<string, number>();
+  const globalCatCountsB2 = new Map<string, number>();
+  for (const e of allEditsGlobalB2) {
+    globalPathCountsB2.set(e.path, (globalPathCountsB2.get(e.path) ?? 0) + 1);
+    globalCatCountsB2.set(e.category, (globalCatCountsB2.get(e.category) ?? 0) + 1);
+  }
+  for (const [k, v] of globalPathCountsB2) md.push(`- ${k}: ${v}`);
+  md.push('');
+  md.push('### Failure categories (all sets, with one example each)');
+  md.push('');
+  for (const [cat, count] of globalCatCountsB2) {
+    if (cat === 'ok') continue;
+    const ex = failureExamplesB2.get(cat as EditCategory);
+    md.push(`- **${cat}**: ${count}${ex ? ` -- e.g. ${ex.fileId} seed ${ex.seed}, word "${ex.word}", path ${ex.path}${ex.excerpt ? `: \`${ex.excerpt.replace(/\n/g, '\\n')}\`` : ''}` : ''}`);
+  }
+  md.push('');
+
   md.push('## Gate C detail (opaque/special constructs, real + handwritten)');
   md.push('');
   md.push('| Construct | Files containing | Block count | A pass | B file pass rate | Cross-check preserved |');
@@ -301,6 +364,25 @@ async function main() {
     setBCounts: Object.fromEntries(
       (['handwritten', 'real', 'commonmark', 'gfm'] as CorpusSet[]).map((s) => {
         const c = setBCounts(s);
+        return [
+          s,
+          {
+            totalFiles: c.totalFiles,
+            na: c.na,
+            withWords: c.withWords,
+            filesPass: c.filesPass,
+            editsTotal: c.allEdits.length,
+            editsPass: c.editsPass,
+            singleLine: c.singleLine,
+            pathCounts: Object.fromEntries(c.pathCounts),
+            catCounts: Object.fromEntries(c.catCounts),
+          },
+        ];
+      })
+    ),
+    setB2Counts: Object.fromEntries(
+      (['handwritten', 'real', 'commonmark', 'gfm'] as CorpusSet[]).map((s) => {
+        const c = setB2Counts(s);
         return [
           s,
           {
