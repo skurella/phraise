@@ -1,6 +1,6 @@
 // PM doc -> markdown. See brief 02 design: verbatim, splice, re-serialize.
 import { Node as PMNode, Mark } from 'prosemirror-model';
-import { toMarkdown } from 'mdast-util-to-markdown';
+import { toMarkdown, defaultHandlers } from 'mdast-util-to-markdown';
 import { gfmToMarkdown } from 'mdast-util-gfm';
 import { frontmatterToMarkdown } from 'mdast-util-frontmatter';
 import { mathToMarkdown } from 'mdast-util-math';
@@ -181,7 +181,8 @@ function tryLinkSplice(block: PMNode, src: string, ctx: string, style: Style): s
   const top = phrasing[0];
   if (top.type === 'linkReference' && top.referenceType !== 'full') top.referenceType = 'full';
   const options = optionsFor(block, style, true);
-  let md = toMarkdown({ type: 'paragraph', children: phrasing } as any, { extensions: toMarkdownExtensions, ...options } as any);
+  const linkExtensions = [...toMarkdownExtensions, { handlers: { break: makeBreakHandler(true) } }];
+  let md = toMarkdown({ type: 'paragraph', children: phrasing.map(simplifyLiteralLinks) } as any, { extensions: linkExtensions, ...options } as any);
   md = md.replace(/\n+$/, '');
   if (md.includes('\n')) return null;
   const s0 = link.sourceStart - ctx.length;
@@ -278,7 +279,11 @@ function tryTextblockSplice(block: PMNode, src: string, ctx: string, style: Styl
   newTextblock.forEach((n) => nodes.push(n));
   const phrasing = pmInlineToMdast(nodes);
   const options = optionsFor(block, style, true);
-  let newInline = toMarkdown({ type: 'paragraph', children: phrasing } as any, { extensions: toMarkdownExtensions, ...options } as any);
+  const tbExtensions = [...toMarkdownExtensions, { handlers: { break: makeBreakHandler(true) } }];
+  let newInline = toMarkdown(
+    { type: 'paragraph', children: phrasing.map(simplifyLiteralLinks) } as any,
+    { extensions: tbExtensions, ...options } as any
+  );
   newInline = newInline.replace(/\n+$/, '');
 
   if (isTableCell && (newInline.includes('\n') || /(?<!\\)\|/.test(newInline))) return null;
@@ -361,7 +366,7 @@ function mdastWrapperFor(mark: Mark): any {
           children: [],
         };
       }
-      return { type: 'link', url: mark.attrs.href ?? '', title: mark.attrs.title ?? null, children: [] };
+      return { type: 'link', url: mark.attrs.href ?? '', title: mark.attrs.title ?? null, kindHint: mark.attrs.kindHint, children: [] };
     default:
       return { type: mark.type.name, children: [] };
   }
@@ -376,7 +381,7 @@ function pmLeafToMdast(node: PMNode): any | null {
   }
   switch (node.type.name) {
     case 'hard_break':
-      return { type: 'break' };
+      return { type: 'break', breakHint: node.attrs.breakHint ?? null };
     case 'image':
       if (node.attrs.refType) {
         return {
@@ -547,10 +552,61 @@ function optionsFor(block: PMNode, style: Style, useHints: boolean): Record<stri
 
 const toMarkdownExtensions = [gfmToMarkdown(), frontmatterToMarkdown(['yaml', 'toml']), mathToMarkdown()];
 
+/**
+ * Re-serializer fidelity (brief 04, task 3): a hard break's own `breakHint`
+ * (recorded at parse time from the raw source: two-or-more spaces, or a
+ * backslash, before the newline) picks which CommonMark spelling to emit,
+ * instead of `mdast-util-to-markdown`'s default of always a backslash. Falls
+ * back to the library default first, so a hard break inside an "unsafe"
+ * construct (setext heading text, table cell) still gets the safe
+ * space/empty spelling that construct requires.
+ */
+function makeBreakHandler(useHints: boolean) {
+  return (node: any, parent: any, state: any, info: any): string => {
+    const def = defaultHandlers.break(node, parent, state, info);
+    if (!useHints || def !== '\\\n') return def;
+    const hint = node.breakHint as string | null;
+    return typeof hint === 'string' && hint[0] !== '\\' ? '  \n' : def;
+  };
+}
+
+/**
+ * Re-serializer fidelity (brief 04, task 3): a link mark's `kindHint`
+ * ('literal', the GFM bare-URL/bare-email autolink form with no surrounding
+ * markup at all) whose text is exactly its own URL (allowing for the
+ * `http://`/`https://`/`mailto:` prefix GFM's literal-autolink parsing adds)
+ * is spliced back out to plain text instead of `[text](url)`, so it survives
+ * as the same bare literal on re-parse. ('autolink', the `<url>` form,
+ * already round-trips correctly through mdast-util-to-markdown's own
+ * built-in `formatLinkAsAutolink` shortcut and needs no help here.) Left
+ * alone -- kept as `[text](url)` -- whenever the text was edited to differ
+ * from the URL.
+ */
+function simplifyLiteralLinks(node: any): any {
+  if (node && typeof node === 'object') {
+    if (Array.isArray(node.children)) {
+      for (let i = 0; i < node.children.length; i++) node.children[i] = simplifyLiteralLinks(node.children[i]);
+    }
+    if (node.type === 'link' && node.kindHint === 'literal' && node.children?.length === 1 && node.children[0].type === 'text') {
+      const text = node.children[0].value as string;
+      const href = (node.url as string) ?? '';
+      const matches = text === href || 'http://' + text === href || 'https://' + text === href || 'mailto:' + text === href;
+      // Emitted as raw `html` (verbatim, unescaped), not `text`: the literal
+      // form is written as-is with no markdown escaping in the source (a URL
+      // routinely contains `_`/`*`/etc.), and GFM's literal-autolink parser
+      // recognizes it as a single token regardless of those characters, so
+      // escaping them here would only add backslashes the original never had.
+      if (matches) return { type: 'html', value: text };
+    }
+  }
+  return node;
+}
+
 function reserializeBlock(block: PMNode, style: Style, useHints: boolean, eol: '\n' | '\r\n'): string {
-  const mdastNode = pmBlockToMdast(block);
+  const mdastNode = useHints ? simplifyLiteralLinks(pmBlockToMdast(block)) : pmBlockToMdast(block);
   const options = optionsFor(block, style, useHints);
-  let out = toMarkdown(mdastNode, { extensions: toMarkdownExtensions, ...options } as any);
+  const reserializeExtensions = [...toMarkdownExtensions, { handlers: { break: makeBreakHandler(useHints) } }];
+  let out = toMarkdown(mdastNode, { extensions: reserializeExtensions, ...options } as any);
   out = out.replace(/\n+$/, '');
   if (eol === '\r\n') out = out.replace(/\n/g, '\r\n');
   return out;

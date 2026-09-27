@@ -152,3 +152,102 @@ the final `npm run gates` run and `results/gates.md`/`.json` (see later entry).
 
 Committed checkpoint next (tasks 1+2 with tests green), then moving to task 3
 (re-serializer fidelity) before a final full gates run.
+
+## 05:11 -- checkpoint commit (tasks 1+2)
+
+Committed src/parse.ts, src/serialize.ts, src/index.ts, gates/gateB2.ts,
+gates/index.ts, test/edit.test.ts, tools/b2-before-after.ts. `results/gates.*`
+reverted before commit (only the final full run's results should be
+committed, per the brief) -- SHA noted in the final handback.
+
+## 05:15 -- task 3: re-serializer fidelity
+
+Baseline (recorded before touching reserializeBlock further, quick subset,
+matches README's stated full-corpus 94.2%): gate E informational rate, hints
+on/off: byte-identical 95.9%/95.8%, verification (not `unverified`)
+100.0%/100.0% (n=4481 blocks, --quick subset).
+
+Wrote `tools/top-diffs.ts` (kept as a small permanent tool, per task 5's ask
+to document tools/): for every top-level block whose forced reserialize
+(hints on) differs from its own `src`, computes the minimal (removed->added)
+span (common prefix/suffix trimmed) and groups occurrences by
+`(block type, removed, added)` so a repeated pattern counts once, printing
+the top 20 by frequency with one example file each. Ran on the full corpus
+first (`--full`) to find real targets, since the quick subset is too small
+to see patterns reliably.
+
+Implemented the two required items:
+- **hard_break hint**: `pmLeafToMdast`'s `'hard_break'` case now carries
+  `node.attrs.breakHint` onto the mdast `break` node. A new
+  `makeBreakHandler(useHints)` wraps `mdast-util-to-markdown`'s own
+  `defaultHandlers.break` -- calls it first and only overrides its answer
+  (choosing `'  \n'` over `'\\\n'`) when the default's answer was the
+  unconditional backslash *and* the hint says the original was
+  space-style; this means an "unsafe" context (setext heading text, table
+  cell) still gets the library's own safe fallback untouched. Wired into
+  the `extensions` array passed to `toMarkdown()` at all three call sites
+  (`reserializeBlock`, `tryTextblockSplice`, `tryLinkSplice`).
+- **Literal/autolink link kindHint**: `mdastWrapperFor` now carries
+  `mark.attrs.kindHint` onto the mdast `link` node. A new
+  `simplifyLiteralLinks(node)` walks the assembled mdast tree right before
+  `toMarkdown()` and replaces a `kindHint === 'literal'` link whose single
+  text child equals its own `url` (allowing the `http://`/`https://`/
+  `mailto:` prefix GFM's literal-autolink parsing adds) with a bare node --
+  **first attempt used `{type:'text', value:text}`, which was wrong**: the
+  default `text` handler still escapes markdown-special characters
+  (`_`, `*`, ...) inside the value, and most real-world URLs contain them,
+  so this *added* backslashes mdast-util-to-markdown wouldn't otherwise have
+  needed (measured: made the full-corpus byte-identical rate *worse*,
+  94.2% -> not shown as improved). Fixed by emitting `{type:'html',
+  value:text}` instead -- `mdast-util-to-markdown`'s `html` handler returns
+  `node.value` completely verbatim, no escaping, which is exactly right
+  for something that was already bare, unescaped source text. (The
+  `kindHint === 'autolink'` `<url>` form needed no code at all:
+  `mdast-util-to-markdown`'s own built-in `formatLinkAsAutolink` shortcut
+  already reproduces it unconditionally whenever text equals a
+  protocol-prefixed url with no title.)
+
+Full-corpus `tools/top-diffs.ts --full` result: byte-identical 29703/31547
+(94.2%) at the true starting point -> 29819/31547 (**94.5%**) after both
+fixes. Isolated hard_break check (a separate scratch script, removed after):
+of 90 top-level blocks in the real+handwritten corpus containing at least
+one `hard_break`, 81/90 (90%) now round-trip byte-for-byte (up from a
+minority before); the remaining 9 are edge cases not worth chasing under
+"stop when returns diminish" (a hard break as the very last line of a block
+with nothing following it, where the parser already treats the trailing
+spaces as insignificant and doesn't reproduce them; one leading-space
+oddity next to a break at a heading/paragraph boundary). Documented as a
+residual, understood limitation rather than silently left unexplained.
+
+Also inspected the *other* large diff buckets top-diffs.ts surfaced (to
+decide what else was "cheap" per task 3's closing instruction) and decided
+**not** to touch them, each for a specific reason:
+- A literal `[` (checkbox `- [ ]`, `[optional]` annotations, bracketed
+  citations like `[CVE-2014-...]`) gets escaped to `\[` by
+  `mdast-util-to-markdown` even with no real link forming -- this is its
+  own conservative, context-blind safety check (a `[` earlier in a
+  paragraph could combine with an unrelated `]text](url)` far later);
+  disabling it correctly would mean reimplementing that lookahead, which is
+  not cheap and risks correctness regressions for genuine ambiguous cases.
+  This was the single largest remaining bucket (order ~85-90 blocks between
+  headings/paragraphs/blockquotes/lists).
+- GFM table cell padding/alignment (`mdast-util-gfm`'s default
+  `tableCellPadding`/`alignDelimiters` behavior) reformats whitespace
+  around `|` even when content is unchanged -- rare in this corpus (7
+  blocks) and would need per-file column-width detection to match
+  arbitrary original spacing; not attempted.
+- Ordered/bullet list indentation width mismatches (`listItemIndent`
+  style detection assuming a uniform width that a real file doesn't
+  actually use throughout) -- structural, not a one-line fix.
+- A decoded HTML entity (`&nbsp;`) coming back as a literal Unicode
+  character instead of being re-encoded as the entity -- 9 instances, would
+  need an entity round-trip table; skipped as diminishing-returns.
+
+Added `test/fidelity.test.ts` (6 new tests): two-space break round-trips as
+two spaces, backslash break round-trips as backslash, a break inside a table
+cell still uses the library's safe fallback and re-parses correctly, a bare
+literal URL round-trips as bare text (not `<url>` or `[url](url)`), a bare
+URL containing `_`/`&`/`?` is not escaped, and a link whose text was edited
+away from its href correctly falls back to `[text](url)`. `npm test`: 19/19
+pass (was 13/13; +6 new). `npx tsc --noEmit`: clean. `npm run gates --quick`:
+all gates still pass, no regression.
