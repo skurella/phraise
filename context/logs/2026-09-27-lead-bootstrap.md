@@ -104,3 +104,13 @@ The owner turned off the Bash sandbox. Network git and `gh` commands work normal
 ## 03:48 — Owner asked whether delegation is working
 
 Owner saw the Sonnet builder's pane showing only its prompt and a spinner. Checked disk: files under the spike directory changed continuously from 03:26 to 03:47 (schema, a 22 KB parser, a dozen diagnostic scripts) while the orchestrator's log and commits were silent, which is consistent with Opus blocked on the builder call. Conclusion: delegation works; the app does not render live activity for agents nested two levels deep. Builder had not updated its log since 03:26, so AGENTS.md now requires log entries at milestones and at least every 15 minutes.
+
+## 03:57 — Searched the Claude Code tracker for the blank nested pane
+
+No exact duplicate found in `anthropics/claude-code`. Related open issues:
+- 93724: resumed background subagent shows no activity until completion (desktop, Windows). Same class of problem, different trigger.
+- 75043: nested subagents may run detached and never return results to the parent, mainly in non-interactive sessions. **Risk to our orchestration.** Not reproduced here: the grinder handback reached the orchestrator at 03:28 and the builder's at about 03:54, followed by an orchestrator commit at 03:55. Documented workaround if stalls appear: the child writes its report to an agreed path and the parent polls for it in the same turn.
+- 82617: the desktop Stop button can kill background subagents from earlier turns. The owner should avoid pressing Stop while an orchestrator is running.
+- 93786: work in `.claude/worktrees/` is invisible to the desktop diff pane.
+
+Drafted a bug report for the owner; not filed, awaiting the owner's go-ahead because it posts publicly under their account.
