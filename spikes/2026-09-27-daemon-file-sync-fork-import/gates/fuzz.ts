@@ -77,6 +77,7 @@ export interface TrialOutcome {
   degradedFinal: boolean;
   degradedExports: number;
   duplicated: number;
+  entityEscapesAdded: number;
   messages: string[];
 }
 
@@ -192,9 +193,12 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
         if (present.length > 0) {
           const token = pick(rng, present);
           const { text, deleted } = localDeleteTokenIfPresent(editorBuffer, token);
+          if (process.env.FUZZ_DEBUG) console.error(`  editor deletes ${token} (known: ${tokens.has(token)}) context ${JSON.stringify(editorBuffer.slice(Math.max(0, editorBuffer.indexOf(token) - 20), editorBuffer.indexOf(token) + token.length + 20))}`);
           if (deleted) {
             editorBuffer = text;
-            const rec = tokens.get(token);
+            // The file may show a token with its last character entity-escaped
+            // (`&#x38;`), so the editor sees and deletes a prefix of it.
+            const rec = tokens.get(token) ?? [...tokens.values()].find((r) => r.token.startsWith(token) && r.token.length - token.length <= 1);
             if (rec && rec.deletedAtStep === undefined) {
               rec.deletedBy = 'local';
               rec.deletedAtStep = step;
@@ -362,6 +366,7 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
   let ambiguousDelete = 0;
   let degradedFinal = false;
   let duplicated = 0;
+  let entityEscapesAdded = 0;
 
   if (exceptions.length === 0) {
     try {
@@ -400,6 +405,11 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
       const fileText = readFileSync(fx.repo.file, 'utf8');
       if (fileText !== daemonRender) fileNotRender = true;
       const fileSemanticText = parseMarkdown(fileText).doc.textContent;
+      // Serializer output quality: numeric character references the file did
+      // not have at the start (mdast-util-to-markdown escapes a character next
+      // to emphasis that starts or ends mid-word, which concurrent formatting
+      // merges produce).
+      entityEscapesAdded = Math.max(0, (fileText.match(/&#x[0-9A-Fa-f]+;/g) ?? []).length - (base.text.match(/&#x[0-9A-Fa-f]+;/g) ?? []).length);
 
       for (const rec of tokens.values()) {
         // Semantic presence: the serializer may escape a character of a token
@@ -421,12 +431,10 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
             rec.deletedBy === 'local' &&
             rec.insertedBy === 'remote' &&
             importedPairs.some((p) => !p.baseText.includes(rec.token) && !p.savedText.includes(rec.token));
-          // Copies in the Y document too: a duplicate the editor later deleted
-          // one copy of looks like a resurrection in the file.
-          const copies = Math.max(
-            fileText.split(core).length - 1,
-            locateToken(daemon.docSync.doc.getXmlFragment('prosemirror'), core, true).copies,
-          );
+          // Visible copies only. (Counting copies in the Y document, deleted
+          // ones included, was tried and removed: a block deleted and
+          // re-inserted by a restructuring save leaves a deleted copy.)
+          const copies = fileText.split(core).length - 1;
           if (copies > 1) {
             // A save judged against too old a base re-inserts text the editor
             // already had (plan 3.2: the chosen failure mode under ambiguity).
@@ -503,6 +511,7 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
     degradedFinal,
     degradedExports: stats.degradedExports,
     duplicated,
+    entityEscapesAdded,
     messages: [...exceptions, ...echoes, ...detaches, ...messages],
   };
 }
@@ -528,6 +537,7 @@ export interface FuzzRunSummary {
     duplicated: number;
   };
   degradedExports: number;
+  entityEscapeTrials: number;
   baseMisjudged: number;
   forks: number;
   coarse: number;
@@ -553,6 +563,7 @@ export async function runFuzz(trials: number, seedBase: number): Promise<FuzzRun
     duplicated: 0,
   };
   let degradedExports = 0;
+  let entityEscapeTrials = 0;
   let baseMisjudged = 0;
   let forks = 0;
   let coarse = 0;
@@ -575,6 +586,7 @@ export async function runFuzz(trials: number, seedBase: number): Promise<FuzzRun
     // Serializer refusals written as best effort: a spike 1 limit, reported, not a sync failure.
     if (outcome.degradedFinal) categories.degradedFinal++;
     degradedExports += outcome.degradedExports;
+    if (outcome.entityEscapesAdded > 0) entityEscapeTrials++;
     baseMisjudged += outcome.baseMisjudged; // a measurement of base choice, not a failure by itself
 
     const failing: string[] = [];
@@ -619,7 +631,7 @@ export async function runFuzz(trials: number, seedBase: number): Promise<FuzzRun
     else failingSeeds.push({ seed, categories: failing });
   }
 
-  return { trials, seedBase, passed, categories, degradedExports, baseMisjudged, forks, coarse, repairs, noops, failingSeeds, outcomes };
+  return { trials, seedBase, passed, categories, degradedExports, entityEscapeTrials, baseMisjudged, forks, coarse, repairs, noops, failingSeeds, outcomes };
 }
 
 export function printSummary(summary: FuzzRunSummary): void {
@@ -627,6 +639,7 @@ export function printSummary(summary: FuzzRunSummary): void {
   console.log(`passed: ${summary.passed}/${summary.trials}`);
   console.log('categories:');
   for (const [k, v] of Object.entries(summary.categories)) console.log(`  ${k}: ${v}`);
+  console.log(`trials whose final file gained numeric character references: ${summary.entityEscapeTrials}`);
   console.log(`degraded exports (serializer refusal written as best effort): ${summary.degradedExports}`);
   console.log(`base choice: ${summary.baseMisjudged} imports chose a base other than the editor's true base`);
   console.log(`import counters: forks=${summary.forks} coarseTextblocks=${summary.coarse} repairs=${summary.repairs} noops=${summary.noops}`);
@@ -674,6 +687,7 @@ async function main(): Promise<void> {
         categories: summary.categories,
         baseMisjudged: summary.baseMisjudged,
         degradedExports: summary.degradedExports,
+        entityEscapeTrials: summary.entityEscapeTrials,
         forks: summary.forks,
         coarse: summary.coarse,
         repairs: summary.repairs,

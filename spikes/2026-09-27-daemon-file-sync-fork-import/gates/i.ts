@@ -31,6 +31,7 @@ export async function runGateI(opts: GateOpts = {}): Promise<GateResult> {
       degradedFinal: summary.categories.degradedFinal,
       duplicated: summary.categories.duplicated,
       degradedExports: summary.degradedExports,
+      entityEscapeTrials: summary.entityEscapeTrials,
       baseMisjudged: summary.baseMisjudged,
       forks: summary.forks,
       coarseTextblocks: summary.coarse,
