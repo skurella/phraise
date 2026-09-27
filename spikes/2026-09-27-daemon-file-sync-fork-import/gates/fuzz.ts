@@ -68,6 +68,7 @@ export interface TrialOutcome {
   echo: number;
   detach: number;
   forks: number;
+  imports: number;
   coarse: number;
   repairs: number;
   noops: number;
@@ -91,7 +92,7 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
   const echoes: string[] = [];
   const detaches: string[] = [];
   const messages: string[] = [];
-  const stats = { forks: 0, coarse: 0, repairs: 0, noops: 0, baseMisjudged: 0, degradedExports: 0, boundaryRepairs: 0 };
+  const stats = { forks: 0, coarse: 0, repairs: 0, noops: 0, baseMisjudged: 0, imports: 0, degradedExports: 0, boundaryRepairs: 0 };
   const exportedHashes = new Set<string>();
   const harnessWrittenHashes = new Set<string>([hashText(base.text)]);
   const tokens = new Map<string, TokenRecord>();
@@ -150,6 +151,7 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
             `expected ${String(expected).slice(0, 8)} ${baseRight ? 'ok' : 'MISJUDGED'} forked=${e.forked}`,
         );
       }
+      stats.imports++;
       if (e.forked) stats.forks++;
       if (e.repair) stats.repairs++;
       stats.coarse += e.coarse ?? 0;
@@ -514,6 +516,7 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
     echo: echoes.length,
     detach: detaches.length,
     forks: stats.forks,
+    imports: stats.imports,
     coarse: stats.coarse,
     repairs: stats.repairs,
     noops: stats.noops,
@@ -552,6 +555,7 @@ export interface FuzzRunSummary {
   entityEscapeTrials: number;
   baseMisjudged: number;
   forks: number;
+  imports: number;
   coarse: number;
   repairs: number;
   noops: number;
@@ -578,6 +582,7 @@ export async function runFuzz(trials: number, seedBase: number): Promise<FuzzRun
   let entityEscapeTrials = 0;
   let baseMisjudged = 0;
   let forks = 0;
+  let imports = 0;
   let coarse = 0;
   let repairs = 0;
   let noops = 0;
@@ -590,6 +595,7 @@ export async function runFuzz(trials: number, seedBase: number): Promise<FuzzRun
     const outcome = await runFuzzTrial(seed);
     outcomes.push(outcome);
     forks += outcome.forks;
+    imports += outcome.imports;
     coarse += outcome.coarse;
     repairs += outcome.repairs;
     noops += outcome.noops;
@@ -643,7 +649,7 @@ export async function runFuzz(trials: number, seedBase: number): Promise<FuzzRun
     else failingSeeds.push({ seed, categories: failing });
   }
 
-  return { trials, seedBase, passed, categories, degradedExports, entityEscapeTrials, baseMisjudged, forks, coarse, repairs, noops, failingSeeds, outcomes };
+  return { trials, seedBase, passed, categories, degradedExports, entityEscapeTrials, baseMisjudged, forks, imports, coarse, repairs, noops, failingSeeds, outcomes };
 }
 
 export function printSummary(summary: FuzzRunSummary): void {
@@ -654,7 +660,7 @@ export function printSummary(summary: FuzzRunSummary): void {
   console.log(`trials whose final file gained numeric character references: ${summary.entityEscapeTrials}`);
   console.log(`degraded exports (serializer refusal written as best effort): ${summary.degradedExports}`);
   console.log(`base choice: ${summary.baseMisjudged} imports chose a base other than the editor's true base`);
-  console.log(`import counters: forks=${summary.forks} coarseTextblocks=${summary.coarse} repairs=${summary.repairs} noops=${summary.noops}`);
+  console.log(`import counters: imports=${summary.imports} forks=${summary.forks} coarseTextblocks=${summary.coarse} repairs=${summary.repairs} noops=${summary.noops}`);
   if (summary.failingSeeds.length > 0) {
     console.log(`failing trial seeds (replay with --trials 1 --seed <seed>):`);
     for (const f of summary.failingSeeds.slice(0, 50)) console.log(`  seed ${f.seed}: ${f.categories.join(', ')}`);
