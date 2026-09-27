@@ -35,8 +35,9 @@ Rules that apply to every file in `context/`:
 ## Logging protocol (mandatory for every agent, lead included)
 
 - One log file per agent session: `context/logs/<date>-<role>-<short-task>.md`, e.g. `2026-09-28-worker-markdown-core.md`.
-- Entries are timestamped lines or short sections: `## 14:32 — <event>`. Use the local time zone of the machine and state it once at the top.
+- Entries are timestamped sections: `## 14:32 — <event>`. **Every timestamp comes from the output of `date` at the moment you write the entry**, for example `echo "## $(date '+%H:%M') — title" >> <logfile>`. Never estimate or reconstruct a time; agents cannot perceive elapsed time and estimates have been wrong by more than an hour. State the time zone once at the top.
 - Log: task received (link the brief), material findings, decisions you took and why, anything that contradicts a doc, blockers, tests run and their result, and the final handback summary.
+- Log as you go, not at the end: add an entry at every milestone and at least every 15 minutes of work. The app does not show the live activity of nested agents, so your log is the only way the owner and the lead can see progress.
 - A finding that changes a design belongs in the log first, then the lead promotes it into a doc. Workers do not edit `context/docs/` unless their brief says so.
 
 ## Working agreements
@@ -45,6 +46,10 @@ Rules that apply to every file in `context/`:
 - Definition of done is executable: tests, fixtures, or a reproducible command. "Looks right" is not done.
 - Keep handbacks short: outcome, what was verified and how, what was left out and why, links to the log and any changed docs. Under 300 words.
 - **All code lives under `spikes/` for now.** There is no main source tree yet, by owner decision (2026-09-27). Each spike is `spikes/<date>-<component>-<approach>/` with its own README, dependencies and tests. Multiple approaches to the same component are welcome; throw away what does not work and say so in the findings doc. Integration into a production tree begins only when several spikes demonstrate feasibility and the key risks are resolved as far as practicable. Never import one spike from another by relative path; copy what you need and note the origin.
+- Spikes may run in parallel. Inside a spike, only add new files; never edit shared files such as this one, the decision register or another spike's files. Put your decisions in a table in your findings doc and the lead will transfer them.
+- Commit incrementally: commit working code and partial results as you go, and make long runs write partial results to disk.
+- You cannot perceive elapsed time. Never stop, skip or cut scope because you believe time has run out. Stop when your task list is done, when you are blocked, or when your brief's stopping point is reached.
+- Verify claims that have consequences, such as licences, test results and cleanup, by checking them yourself before passing them on.
 - Stage paths explicitly. Do not use `git add -A` or `git add .`; agent worktrees live under `.claude/worktrees/` and must never be committed.
 - Never commit secrets or tokens. GitHub App credentials are read from the environment.
 - Git policy, set by the owner on 2026-09-27: agents commit and push freely to branches. `main` is protected and accepts only PRs with squash merge, so **every PR must read as one good commit on `main`**: one purpose, a title that works as a commit subject, a body that stands alone. Nobody merges to `main`; the owner does. Workers commit to their branch when their brief says so; the lead opens PRs.

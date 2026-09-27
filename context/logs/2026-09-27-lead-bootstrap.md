@@ -100,3 +100,62 @@ Awaiting the orchestrator's handback. Next lead actions: read handback and findi
 ## 03:08 — Sandbox disabled by owner
 
 The owner turned off the Bash sandbox. Network git and `gh` commands work normally again. The earlier finding about per-command sandbox bypass no longer applies. Spike 1 orchestrator informed. Also fixed earlier in this session: a blanket `git add` had committed the orchestrator's worktree as an embedded repo reference; removed from the index and `.claude/worktrees/` added to `.gitignore`. Lesson for all agents: stage paths explicitly.
+
+## 03:48 — Owner asked whether delegation is working
+
+Owner saw the Sonnet builder's pane showing only its prompt and a spinner. Checked disk: files under the spike directory changed continuously from 03:26 to 03:47 (schema, a 22 KB parser, a dozen diagnostic scripts) while the orchestrator's log and commits were silent, which is consistent with Opus blocked on the builder call. Conclusion: delegation works; the app does not render live activity for agents nested two levels deep. Builder had not updated its log since 03:26, so AGENTS.md now requires log entries at milestones and at least every 15 minutes.
+
+## 03:57 — Searched the Claude Code tracker for the blank nested pane
+
+No exact duplicate found in `anthropics/claude-code`. Related open issues:
+- 93724: resumed background subagent shows no activity until completion (desktop, Windows). Same class of problem, different trigger.
+- 75043: nested subagents may run detached and never return results to the parent, mainly in non-interactive sessions. **Risk to our orchestration.** Not reproduced here: the grinder handback reached the orchestrator at 03:28 and the builder's at about 03:54, followed by an orchestrator commit at 03:55. Documented workaround if stalls appear: the child writes its report to an agreed path and the parent polls for it in the same turn.
+- 82617: the desktop Stop button can kill background subagents from earlier turns. The owner should avoid pressing Stop while an orchestrator is running.
+- 93786: work in `.claude/worktrees/` is invisible to the desktop diff pane.
+
+Drafted a bug report for the owner; not filed, awaiting the owner's go-ahead because it posts publicly under their account.
+
+## 04:03 — Owner: no bug report; watch spike 1; parallel spikes allowed if independent
+
+Spike 1 status from its log: core builder handed back at 03:50 and was verified, orchestrator made small fixes itself, gates-harness builder dispatched at about 04:02 (dispatch 3 of about 8). Decisions P9 to P12 recorded. Chartering spike 2 (CRDT rebase, independent variant, Yjs and Loro) and spike 4 (GitHub storage mechanics) on their own branches from `main`.
+
+## 04:05 — Spikes 2 and 4 dispatched in parallel
+
+Charters pushed on `spike/2026-09-27-crdt-rebase` and `spike/2026-09-27-github-storage`, both based on `main`. One Opus orchestrator each, background, own worktree. Three orchestrators now running: spikes 1, 2 and 4. Spike 3 (daemon) waits for spikes 1 and 2. Both new prompts include a guard against the nested-agent stall described in claude-code issue 75043: do not end a turn waiting on a worker; check its log and files instead.
+
+Pending lead actions at each handback: read handback and findings, transfer decisions to the register, rebase spike 1 onto `main`, open one PR per spike.
+
+## 06:37 — Spikes 4 and 1 accepted
+
+Spike 4 merged by the owner as PR 3. Spike 1 verified by the lead, rebased onto `main`, and opened as PR 4. Details in the lead's handback logs for each spike. Two rules added to AGENTS.md from spike 1's lessons: commit incrementally, and verify claims that have consequences. Spike 2 still running; spike 3 waits for its recommendation on D5.
+
+## 06:47 — Correction: why spike 1 builders stopped early
+
+The owner relayed an analysis from a side chat. Verified against the evidence:
+- **Correct:** the spike 1 builders did not run out of context or usage. Brief 03 said "one session of up to about two and a half hours". The gates builder's log claims 05:40 for a harness that git shows committed at 04:34; it stopped believing its time was used up. The lead had repeated the orchestrator's phrase "ran out of session" without checking. No work was lost; only the final full gate run was missing.
+- **Incorrect:** the claim that the app process exited and killed the spike 2 orchestrator and the lead's gate re-run. The lead's re-run completed with exit 0 in 374 s. At 06:47 the agent list shows the spike 2 orchestrator and its Loro builder both running, and files in the Loro spike directory were modified within the last minute.
+- **Also found:** the spike 2 orchestrator's log has entries stamped 06:40 and 06:45 written before 06:34. The lead's own handback logs for spikes 4 and 1 contain estimated times as well (entries 04:45, 04:50, 06:40, 06:45). Those are approximate; entries in this file written with `date` are exact.
+
+Procedures changed, decision P13: no wall-clock budgets, timestamps only from `date`, long verification runs belong to the orchestrator. Spike 2 orchestrator informed.
+
+## 07:50 — Spike 2 accepted; spikes 3 and 5 dispatched
+
+Spike 2 verified and opened as PR 5. Spikes 3 (daemon file sync) and 5 (collaboration stack, Yjs 13 or 14) chartered on their own branches and dispatched in parallel, one Opus orchestrator each. Their charters carry the P13 rules inline because PR 2 is not merged yet. Details in the lead's spike 2 handback log on the spike 2 branch.
+
+## 16:04 — All five spikes accepted; integration dispatched
+
+- Spike 3 accepted as PR 6 with two gates formally failing at threshold and no data lost; recorded as D7g. The lead's first summary to the owner omitted that the gate command fails, and the next message corrected it.
+- Spike 5 accepted as PR 7. D5 resolved: build on Yjs 13, migrate to 14 later. The spike has no unit tests.
+- D1 amended by the lead after spike 3: re-seeding becomes compaction with generations. Untested; assigned to spike 6.
+- Spikes 6 (integration, headless engine) and 7 (web editor in a real browser) chartered on their own branches and dispatched in parallel, one Opus orchestrator each. Decisions P16 and P17.
+- Held for the owner: reporting the Yjs 14 binding bug upstream, P15.
+- Open PRs: 2, 4, 5, 6, 7. A trial squash-merge of all five in sequence had no conflicts.
+- Planned once those merge: a consolidation pass over the architecture decisions doc and the register, which have grown by amendment.
+
+Details of each acceptance are in the lead's handback logs on the respective spike branches.
+
+## 2026-09-28 00:29 — Spike 7 accepted; spike 6 liveness checked
+
+Spike 7 verified by the lead and opened as PR 8. Decisions D11a to D11g and P18 recorded on its branch. A trial squash-merge of the six open PRs in sequence had no conflicts.
+
+Spike 6 has closed milestones 1 and 2 per its log and is in milestone 3. Its current builder had written no files in the worktree for over two hours, so the lead checked liveness without reading transcripts: no sleep gap on the machine, and the builder's transcript file was modified seconds before the check. It is working in a temporary copy of spike 3 outside the worktree to reproduce the tie case. No intervention. Technique for future checks: compare the modification time of the agent's transcript file, not only the worktree.
