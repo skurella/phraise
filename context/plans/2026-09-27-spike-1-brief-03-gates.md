@@ -1,6 +1,6 @@
 # Brief 03: gates harness, one command for gates A to E
 
-Status: dispatched
+Status: done
 Author: spike orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Plan: [spike 1 plan](2026-09-27-spike-1-plan-markdown-round-trip.md)

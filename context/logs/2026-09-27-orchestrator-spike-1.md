@@ -41,4 +41,19 @@ Decision: nested blocks carry only style hints, not `src`; only top-level blocks
 Quick full check: gate A 28/28 handwritten, 266/266 real, 655/655 CommonMark, 672/672 GFM. 76 s for all 1621 files. `npm test` 9/9. Committed 473a978, pushed.
 Found in reading: the positions side table records the top-level span for nested nodes; brief 03 asks for per-node spans.
 
-## 04:02 — brief 03 (gates harness) written
+## 04:02 — brief 03 (gates harness) written, builder dispatched (dispatch 3)
+
+## 04:38 — gates builder handback, verified
+The builder ran out of session before the full run finished; harness and quick results committed (565050e, bfda9b4), README edit uncommitted. Its `src/` changes: ctx skip-count caching and skipping ctx for blocks without `[` (82 s to 20 s on the real set), per-node positions side table. Quick run: B at 67 percent of files. I ran the full gates myself: A 100 percent, B 94.5 percent of corpus files, A3 (Yjs) 90.9 percent.
+
+## 04:40 to 04:58 — my diagnosis and fixes (done myself: small, and needed judgement)
+1. **Splice bug, nested blocks**: `trySplice` cut the top-level block's fragment at nested positions and got the wrapping list item back, so every edit inside a list or blockquote fell through to full re-serialization. Fixed by resolving both ends to the same textblock.
+2. **Splice bug, run alignment**: text-run records were matched to PM text nodes by index, but adjacent mdast text leaves with equal marks merge into one PM node, and code-block text was never recorded. Runs were silently misattributed (wrong marks). Fixed by concatenating runs until they add up to the PM node's text, and skipping code text.
+3. **End offset**: splice end now sits one past the last replaced character's source offset, so an escaping backslash of the following character is kept.
+4. **Harness diff ambiguity**: the LCS line diff attributed a correct one-line change in a list of three identical lines to a neighbouring line. Containment now uses the prefix/suffix envelope, which is stricter and unambiguous.
+5. **Link-level splice**: edits inside link text that is also syntax (shortcut references `[label]`, bare URLs) re-serialize just that link and splice it over the link's source span; shortcut and collapsed references become full references. Decision: `refType` is a syntax attr (meta), the identifier is the semantic target.
+6. **Yjs**: plain y-prosemirror 1.3.7 (and `@tiptap/y-tiptap` 3.0.9, checked) drops root-node attrs and marks on inline leaf nodes; linked badge images lose their link in 140 of 1621 files. Added `src/yjs.ts`: root attrs in a Y.Map, leaf marks encoded in a meta attr `leafMarks`. A3b (codec plus binary update into a second Y.Doc) is 100 percent. The live ySyncPlugin path is not covered; flagged for spike 2.
+Result, full run: A 294/294, A3b 1621/1621, B 293/293 files and 1465/1465 edits, C and D pass, E 149 files. Spec sets: B edits 99.8 percent. Committed ff237f9, pushed.
+
+## 05:05 — brief 04 (structural edits) written
+Word replacement is solved; structural edits (bold a word) still re-serialize whole top-level blocks. Brief 04 adds a B2 measurement, a textblock-level splice, re-serializer fidelity from hints, and semantic line breaks if time allows.
