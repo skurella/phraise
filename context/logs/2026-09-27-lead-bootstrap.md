@@ -114,3 +114,7 @@ No exact duplicate found in `anthropics/claude-code`. Related open issues:
 - 93786: work in `.claude/worktrees/` is invisible to the desktop diff pane.
 
 Drafted a bug report for the owner; not filed, awaiting the owner's go-ahead because it posts publicly under their account.
+
+## 04:03 — Owner: no bug report; watch spike 1; parallel spikes allowed if independent
+
+Spike 1 status from its log: core builder handed back at 03:50 and was verified, orchestrator made small fixes itself, gates-harness builder dispatched at about 04:02 (dispatch 3 of about 8). Decisions P9 to P12 recorded. Chartering spike 2 (CRDT rebase, independent variant, Yjs and Loro) and spike 4 (GitHub storage mechanics) on their own branches from `main`.

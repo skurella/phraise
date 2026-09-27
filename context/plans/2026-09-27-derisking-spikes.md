@@ -58,6 +58,10 @@ Definition of done: a scripted demo with the four exercises above and timing num
 
 Effort budget: two builder sessions.
 
+## Update 2026-09-27, 04:05
+
+Spike 2 has been reframed to run independently of spike 1 and in parallel, see decision P10 and its own charter. A fourth spike on GitHub storage mechanics was added, see P11 and its charter. Spike 3, the daemon, still depends on the results of spikes 1 and 2 and will be chartered after they hand back. The charters are authoritative where they differ from the text above.
+
 ## Order and gates
 
 Spike 1 gates spike 2 gates spike 3. After each spike the lead reads the findings doc and the reviewer handback, updates the decisions doc (default to locked, or revised), and writes the next brief. The owner is consulted only if a default decision needs revising.
