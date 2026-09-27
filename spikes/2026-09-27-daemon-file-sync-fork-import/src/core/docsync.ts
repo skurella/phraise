@@ -171,12 +171,19 @@ export class DocSync {
 
     let counters!: DiffCounters;
     target.transact(() => {
+      // Only write map entries that change, so a save that touches one block
+      // produces operations only inside that block (gate B).
       const authors = target.getMap(AUTHORS_MAP_NAME);
-      authors.set(String(clientId), { name: opts.author.name, kind: opts.author.kind, at: Date.now() });
+      const known = authors.get(String(clientId)) as AuthorRecord | undefined;
+      if (!known || known.name !== opts.author.name || known.kind !== opts.author.kind) {
+        authors.set(String(clientId), { name: opts.author.name, kind: opts.author.kind, at: Date.now() });
+      }
 
       const meta = target.getMap(META_MAP_NAME);
-      meta.set('lead', newDocEncoded.attrs.lead ?? '');
-      meta.set('eol', newDocEncoded.attrs.eol ?? '\n');
+      const lead = newDocEncoded.attrs.lead ?? '';
+      const eol = newDocEncoded.attrs.eol ?? '\n';
+      if (meta.get('lead') !== lead) meta.set('lead', lead);
+      if (meta.get('eol') !== eol) meta.set('eol', eol);
 
       const fragment = target.getXmlFragment(FRAGMENT_NAME);
       const aChildren = nodeChildren(currentEncoded(target));
