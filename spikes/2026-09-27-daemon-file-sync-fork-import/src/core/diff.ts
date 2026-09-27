@@ -333,6 +333,36 @@ function updateAttrs(yNode: Y.XmlElement, bNode: PMNode): boolean {
 function syncMatchedPair(yNode: Y.XmlElement | Y.XmlText, bNode: PMNode, counters: DiffCounters): void {
   if (yNode instanceof Y.XmlText) return;
   if (updateAttrs(yNode, bNode)) counters.attrOnly++;
+
+  if (isTextblockName(bNode.type.name)) {
+    // A textblock's Y children are NOT index-parallel to its PM children:
+    // y-prosemirror merges consecutive text PM nodes (one per distinct
+    // mark-run) into a single Y.XmlText, while inline leaves (image,
+    // hard_break, raw_inline) stay their own Y.XmlElement. Naively zipping
+    // `yNode.toArray()` against `nodeChildren(bNode)` by index pairs a
+    // merged XmlText against a lone PM text/mark-run node, and later pairs
+    // a leaf element against the WRONG PM node entirely -- silently
+    // stripping that leaf's own attrs (e.g. a hard_break's `breakHint`)
+    // because the wrongly-paired node has no such attr. Classify B's
+    // children the same way Y groups them instead, and only sync leaf
+    // elements' own attrs (text runs are covered by "never touch text").
+    const groups = classifyChildren(nodeChildren(bNode));
+    let gi = 0;
+    for (const yChild of yNode.toArray()) {
+      if (isXmlText(yChild)) {
+        if (groups[gi]?.kind === 'text') gi++;
+        continue;
+      }
+      while (groups[gi] && groups[gi].kind !== 'leaf') gi++;
+      const group = groups[gi];
+      gi++;
+      if (group && group.kind === 'leaf') {
+        syncMatchedPair(yChild as Y.XmlElement, group.node, counters);
+      }
+    }
+    return;
+  }
+
   const yChildren = yNode.toArray();
   const bChildren = nodeChildren(bNode);
   const n = Math.min(yChildren.length, bChildren.length);
