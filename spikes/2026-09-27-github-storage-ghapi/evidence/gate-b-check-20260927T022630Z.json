@@ -1,0 +1,241 @@
+{
+  "label": "check-20260927T022630Z",
+  "at": "2026-09-27T02:26:35Z",
+  "events_total": 30,
+  "events_latest": [
+    {
+      "id": "22270948239",
+      "type": "DeleteEvent",
+      "created_at": "2026-09-27T02:26:15Z",
+      "ref": "spike-scratch/github-storage-e",
+      "ref_type": "branch"
+    },
+    {
+      "id": "22270946529",
+      "type": "DeleteEvent",
+      "created_at": "2026-09-27T02:26:13Z",
+      "ref": "spike-scratch/github-storage-d",
+      "ref_type": "branch"
+    },
+    {
+      "id": "22270771116",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:22:20Z",
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "ref_type": null
+    },
+    {
+      "id": "22270764101",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:22:11Z",
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "ref_type": null
+    },
+    {
+      "id": "22270758922",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:22:04Z",
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "ref_type": null
+    }
+  ],
+  "events_mentioning_spike": [
+    {
+      "id": "22270948239",
+      "type": "DeleteEvent",
+      "created_at": "2026-09-27T02:26:15Z",
+      "ref": "spike-scratch/github-storage-e"
+    },
+    {
+      "id": "22270946529",
+      "type": "DeleteEvent",
+      "created_at": "2026-09-27T02:26:13Z",
+      "ref": "spike-scratch/github-storage-d"
+    },
+    {
+      "id": "22270771116",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:22:20Z",
+      "ref": "refs/heads/spike-scratch/github-storage-e"
+    },
+    {
+      "id": "22270764101",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:22:11Z",
+      "ref": "refs/heads/spike-scratch/github-storage-e"
+    },
+    {
+      "id": "22270758922",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:22:04Z",
+      "ref": "refs/heads/spike-scratch/github-storage-e"
+    },
+    {
+      "id": "22270750832",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:21:54Z",
+      "ref": "refs/heads/spike-scratch/github-storage-e"
+    },
+    {
+      "id": "22270745789",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:21:47Z",
+      "ref": "refs/heads/spike-scratch/github-storage-e"
+    },
+    {
+      "id": "22270738385",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:21:37Z",
+      "ref": "refs/heads/spike-scratch/github-storage-e"
+    },
+    {
+      "id": "22270694976",
+      "type": "CreateEvent",
+      "created_at": "2026-09-27T02:20:40Z",
+      "ref": "spike-scratch/github-storage-e"
+    },
+    {
+      "id": "22270588841",
+      "type": "CreateEvent",
+      "created_at": "2026-09-27T02:18:19Z",
+      "ref": "spike-scratch/github-storage-d"
+    },
+    {
+      "id": "22270562607",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:17:44Z",
+      "ref": "refs/heads/spike-scratch/github-storage-c"
+    },
+    {
+      "id": "22270560562",
+      "type": "PushEvent",
+      "created_at": "2026-09-27T02:17:41Z",
+      "ref": "refs/heads/spike-scratch/github-storage-c"
+    }
+  ],
+  "activity_status": "200",
+  "activity_mentioning_spike": [
+    {
+      "id": 44689953585,
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "activity_type": "branch_deletion",
+      "timestamp": "2026-09-27T02:26:14Z"
+    },
+    {
+      "id": 44689952165,
+      "ref": "refs/heads/spike-scratch/github-storage-d",
+      "activity_type": "branch_deletion",
+      "timestamp": "2026-09-27T02:26:12Z"
+    },
+    {
+      "id": 44689950931,
+      "ref": "refs/heads/spike-scratch/github-storage-c",
+      "activity_type": "branch_deletion",
+      "timestamp": "2026-09-27T02:26:10Z"
+    },
+    {
+      "id": 44689783166,
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "activity_type": "push",
+      "timestamp": "2026-09-27T02:22:20Z"
+    },
+    {
+      "id": 44689776525,
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "activity_type": "push",
+      "timestamp": "2026-09-27T02:22:10Z"
+    },
+    {
+      "id": 44689771621,
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "activity_type": "push",
+      "timestamp": "2026-09-27T02:22:04Z"
+    },
+    {
+      "id": 44689763906,
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "activity_type": "push",
+      "timestamp": "2026-09-27T02:21:53Z"
+    },
+    {
+      "id": 44689759137,
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "activity_type": "push",
+      "timestamp": "2026-09-27T02:21:46Z"
+    },
+    {
+      "id": 44689751833,
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "activity_type": "push",
+      "timestamp": "2026-09-27T02:21:36Z"
+    },
+    {
+      "id": 44689709156,
+      "ref": "refs/heads/spike-scratch/github-storage-e",
+      "activity_type": "branch_creation",
+      "timestamp": "2026-09-27T02:20:39Z"
+    },
+    {
+      "id": 44689607457,
+      "ref": "refs/heads/spike-scratch/github-storage-d",
+      "activity_type": "push",
+      "timestamp": "2026-09-27T02:18:21Z"
+    },
+    {
+      "id": 44689605840,
+      "ref": "refs/heads/spike-scratch/github-storage-d",
+      "activity_type": "branch_creation",
+      "timestamp": "2026-09-27T02:18:18Z"
+    },
+    {
+      "id": 44689580408,
+      "ref": "refs/heads/spike-scratch/github-storage-c",
+      "activity_type": "push",
+      "timestamp": "2026-09-27T02:17:43Z"
+    },
+    {
+      "id": 44689578394,
+      "ref": "refs/heads/spike-scratch/github-storage-c",
+      "activity_type": "push",
+      "timestamp": "2026-09-27T02:17:41Z"
+    },
+    {
+      "id": 44689574482,
+      "ref": "refs/heads/spike-scratch/github-storage-c",
+      "activity_type": "branch_creation",
+      "timestamp": "2026-09-27T02:17:35Z"
+    }
+  ],
+  "activity_refs": [
+    "refs/heads/context/2026-09-27-bootstrap",
+    "refs/heads/context/2026-09-27-incremental-logging",
+    "refs/heads/main",
+    "refs/heads/spike-scratch/github-storage-c",
+    "refs/heads/spike-scratch/github-storage-d",
+    "refs/heads/spike-scratch/github-storage-e",
+    "refs/heads/spike/2026-09-27-crdt-rebase",
+    "refs/heads/spike/2026-09-27-github-storage",
+    "refs/heads/spike/2026-09-27-markdown-round-trip"
+  ],
+  "actions_runs_status": "200",
+  "actions_runs_total": 0,
+  "actions_recent": [],
+  "workflows": 0,
+  "notifications_status": "200",
+  "notifications_total": 1,
+  "notifications_repo": [],
+  "hooks": 0,
+  "rulesets": [
+    {
+      "name": "main",
+      "target": "branch",
+      "enforcement": "active"
+    }
+  ],
+  "main_rules": [
+    "deletion",
+    "non_fast_forward",
+    "required_linear_history",
+    "pull_request"
+  ]
+}
