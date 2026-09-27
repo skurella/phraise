@@ -217,30 +217,52 @@ export async function runFuzzTrial(seed: number): Promise<TrialOutcome> {
     await daemon.start();
     daemonRunning = true;
     await client.synced();
+    // `client.synced()` only means the CLIENT's own handshake with the relay finished; it
+    // does not guarantee the DAEMON's `adopt()` update (sent to the relay slightly earlier,
+    // over its own separate websocket) has already arrived and been broadcast back out by
+    // the time this second, brand-new connection's sync completes. Losing that race leaves
+    // the client's Y.Doc fragment genuinely empty for a moment -- schema-invalid for `doc`'s
+    // `block+` content model, so the very first `currentDoc()` call throws. `quiesce()`
+    // (state-vector equality, not just "handshake done") closes that gap before any step runs.
+    await quiesce({ daemon, client, filePath: fx.repo.file, timeoutMs: 5000 });
 
     totalSteps = 15 + randInt(rng, 16);
     for (step = 0; step < totalSteps; step++) {
       const r = rng();
+      let kind = '?';
       if (r < 0.3) {
+        kind = 'editor-edit-save';
         await doEditorEditAndSave();
       } else if (r < 0.6) {
+        kind = 'remote-edit';
         await doRemoteEdit();
       } else if (r < 0.75) {
+        kind = 'delay';
         await new Promise((resolve) => setTimeout(resolve, randInt(rng, 101)));
       } else if (r < 0.85) {
+        kind = 'reload';
         try {
           editorBuffer = readFileSync(fx.repo.file, 'utf8');
         } catch {
           // transient (mid-rename save): keep the previous buffer, a real editor would retry.
         }
       } else if (r < 0.95) {
+        kind = 'restart';
         await doRestart();
       } else {
+        kind = 'quiesce';
         try {
           await quiesce({ daemon, client, filePath: fx.repo.file, timeoutMs: 4000 });
         } catch (err) {
           exceptions.push(`step ${step}: mid-trial quiesce() timed out: ${String((err as Error)?.message ?? err)}`);
         }
+      }
+      if (process.env.FUZZ_DEBUG) {
+        const FRAGMENT_NAME = 'prosemirror';
+        console.error(
+          `step ${step}: ${kind} | client frag len=${client.ydoc.getXmlFragment(FRAGMENT_NAME).length} ` +
+            `daemon frag len=${daemon.docSync.doc.getXmlFragment(FRAGMENT_NAME).length}`,
+        );
       }
     }
 

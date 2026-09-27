@@ -27,6 +27,13 @@ export async function runGateA(opts: GateOpts = {}): Promise<GateResult> {
     await client.synced();
 
     let previous = readFileSync(fx.repo.file, 'utf8');
+    // `replaceWord`'s first argument indexes PARAGRAPH nodes only (any depth), while
+    // `topLevelBlocks` indexes every top-level block including the heading -- paragraph
+    // index 0 is therefore top-level block index 1 here (block 0 is "# Corpus doc"). Every
+    // round edits the same paragraph, so the touched top-level index should be the same
+    // one every round; that index is learned from round 0 rather than assumed, so this
+    // gate doesn't hardcode a mapping between the two index spaces.
+    let expectedTouchedIndex: number | undefined;
 
     for (let i = 0; i < N; i++) {
       const token = makeToken('remoteA');
@@ -42,12 +49,20 @@ export async function runGateA(opts: GateOpts = {}): Promise<GateResult> {
 
       const onDisk = readFileSync(fx.repo.file, 'utf8');
       const touched = diffingTopLevelBlocks(previous, onDisk);
-      const unexpected = touched.filter((idx) => idx !== 0);
-      if (unexpected.length > 0) {
-        failures.push(`round ${i}: unexpected block(s) changed: ${JSON.stringify(unexpected)}`);
-      }
-      if (!touched.includes(0)) {
-        failures.push(`round ${i}: block 0 (the edited one) did not change`);
+      if (expectedTouchedIndex === undefined) {
+        if (touched.length !== 1) {
+          failures.push(`round ${i}: expected exactly one top-level block to change, got ${JSON.stringify(touched)}`);
+        } else {
+          expectedTouchedIndex = touched[0];
+        }
+      } else {
+        const unexpected = touched.filter((idx) => idx !== expectedTouchedIndex);
+        if (unexpected.length > 0) {
+          failures.push(`round ${i}: unexpected block(s) changed: ${JSON.stringify(unexpected)}`);
+        }
+        if (!touched.includes(expectedTouchedIndex)) {
+          failures.push(`round ${i}: block ${expectedTouchedIndex} (the edited one) did not change`);
+        }
       }
       previous = onDisk;
     }

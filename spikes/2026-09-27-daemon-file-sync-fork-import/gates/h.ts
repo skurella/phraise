@@ -120,9 +120,34 @@ function spawnDaemonCli(fx: Fixture, userName: string): ChildProcessByStdio<null
   const proc = spawn(
     TSX_BIN,
     [CLI_PATH, '--relay', fx.relay.url, '--repo', fx.repo.repoDir, '--file', fx.repo.file, '--doc', fx.docName, '--user', userName],
-    { cwd: SPIKE_ROOT, stdio: ['ignore', 'pipe', 'pipe'] },
+    // `detached: true` makes this process the leader of its own process group (its pid
+    // becomes its pgid); `TSX_BIN` (node_modules/.bin/tsx) is itself a wrapper that spawns
+    // a SEPARATE node process (with the actual `--require`/`--import` loader flags) to run
+    // `cli.ts` -- confirmed by inspection, that grandchild is a distinct pid, not this
+    // process re-exec'd. A plain `SIGTERM` to the wrapper is forwarded to that grandchild by
+    // tsx itself, so it dies too, but `SIGKILL` gives the wrapper no chance to forward
+    // anything: the kernel kills it instantly, and the grandchild -- the actual daemon
+    // process gate H's "crash" case exists to kill -- is orphaned. `killTree` below signals
+    // the whole group (`-pid`) instead of just this one process, which reaches the
+    // grandchild too regardless of which signal is used.
+    { cwd: SPIKE_ROOT, stdio: ['ignore', 'pipe', 'pipe'], detached: true },
   );
   return proc;
+}
+
+/** Signals `proc`'s whole process group (see `spawnDaemonCli`), not just `proc` itself, so a `tsx` wrapper's grandchild can't be orphaned by a signal (`SIGKILL` above all) that the wrapper has no chance to forward. */
+function killTree(proc: ChildProcessByStdio<null, Readable, Readable>, signal: NodeJS.Signals): void {
+  if (proc.exitCode !== null || proc.signalCode !== null) return;
+  if (proc.pid === undefined) return;
+  try {
+    process.kill(-proc.pid, signal);
+  } catch {
+    try {
+      proc.kill(signal);
+    } catch {
+      // already gone
+    }
+  }
 }
 
 function waitForCliEvent(proc: ChildProcessByStdio<null, Readable, Readable>, eventName: string, timeoutMs = 15000): Promise<any> {
@@ -174,7 +199,7 @@ async function caseCliSigkill(fx: Fixture): Promise<string[]> {
     client = fx.makeClient();
     await client.synced();
 
-    cli1.kill('SIGKILL');
+    killTree(cli1, 'SIGKILL');
     await waitForExit(cli1);
 
     const remoteToken = makeToken('remoteHcli');
@@ -195,9 +220,9 @@ async function caseCliSigkill(fx: Fixture): Promise<string[]> {
     failures.push(`cli-sigkill: ${String((err as Error)?.message ?? err)}`);
   } finally {
     client?.destroy();
-    if (cli1.exitCode === null && cli1.signalCode === null) cli1.kill('SIGKILL');
-    if (cli2 && cli2.exitCode === null && cli2.signalCode === null) {
-      cli2.kill('SIGTERM');
+    killTree(cli1, 'SIGKILL');
+    if (cli2) {
+      killTree(cli2, 'SIGTERM');
       await waitForExit(cli2);
     }
   }
