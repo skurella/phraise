@@ -14,6 +14,17 @@ Supporting research: [landscape](2026-09-27-landscape.md), [GitHub constraints](
 
 The CRDT document is never the only durable copy of anything. After each commit or rebase, a fresh CRDT doc is re-seeded from the committed Markdown, and old CRDT history is discarded. Consequences: Yjs's unbounded tombstone growth stops mattering; a lost server costs at most the unflushed edits; version history in the product UI is git history plus the current session's attributed edits.
 
+### D1 amendment after spike 3 (2026-09-27)
+
+Git stays canonical and the CRDT stays a session layer. What changes is **when the CRDT is re-seeded**. D1 said after each commit. Spike 3 showed that a re-seed invalidates everything a long-lived replica holds: a daemon's persisted snapshots, and by the same reasoning the unsynced edits of someone who is offline. Re-seeding on every commit would turn every commit into a conflict for them.
+
+1. **Re-seeding is compaction, not a commit step.** A commit records the new base in the live document and leaves its history alone. The relay re-seeds at quiet points, when history has grown and no replica is connected.
+2. **Documents have generations.** A re-seed starts a new generation, and the change is a signalled event, never a silent replacement.
+3. **The relay keeps the last state of the previous generation for a grace period.** A replica that returns with edits from an older generation syncs against that retained state, and its edits are then imported into the new generation by fork, diff, merge, the same mechanism as a rebase or a stale file save.
+4. **Past the grace period** the replica's edits cannot be merged. It keeps them as a conflict copy and nothing is overwritten.
+
+This is the lead's design and is **not yet tested**. The integration spike must cover it: an offline editor and a stopped daemon each returning across a re-seed.
+
 ## D2. A recoverable relay, not a stateless one — default
 
 Real-time collaboration needs a server even for WebRTC signaling, so "no server" is not an option. The relay holds live docs in memory with a small update log in its own storage, and flushes each active draft to a hidden ref `refs/phraise/drafts/<branch>/<path-hash>` on a debounce, once per minute of activity at most, one ref per document and branch, overwritten not accumulated, deleted after the commit that consumes it.
@@ -58,6 +69,22 @@ Commit is: rebase if the head moved, serialize, write blob, tree and commit via 
 ## D7. The local daemon is the integration surface — locked
 
 A CLI daemon materializes a live draft into the checked-out file in a working tree, watches it, and diffs changes back into attributed CRDT operations. This gives VS Code, Typora, Claude Code, Cursor and every other file-based tool full integration for free. The MCP server sits on the daemon and adds what files cannot express: list, reply to and resolve comments; presence; commit. The VS Code extension adds only presence cursors via decorations and comment threads via the Comments API. Irrecoverable divergence between disk and CRDT writes a conflict copy and never overwrites.
+
+### D7 amendments after spike 3 (2026-09-27)
+
+Confirmed by measurement, see [spike 3 findings](2026-09-27-spike-3-findings-daemon-file-sync.md). A headless daemon keeps a real file in a git working tree in step with a live document, with no echo, no reverted edits in the scripted cases, and safe behaviour under git operations and restarts. The lead re-ran the gates independently and got the same numbers. Two gates miss their strict thresholds and the gate command therefore exits with a failure: reproducing saved bytes, 3348 of 3350, from one parser bug inherited from spike 1; and the fuzz, 298 of 300, from text that reappears when the base guess hits an exact tie. No text was lost in either. Both are defects to fix in integration.
+
+1. **A file save is imported by fork, diff, merge,** the same mechanism as the rebase: fork the document at the version the editor had loaded, diff to the saved bytes, merge. Changes stay inside the edited blocks and are attributed to the local user.
+2. **The daemon has to infer which version the editor had loaded,** because a file cannot say. It compares the saved bytes with the versions it recently wrote and, when unsure, assumes the older one. The failure this risks is a duplicated phrase, never silently lost text. In a hostile fuzz where most saves were stale, 22 imports in 300 trials guessed wrong.
+3. **The editor extension is core, not polish.** This replaces D7's sentence that the VS Code extension adds only presence and comments. The extension applies remote edits to the open buffer, so the buffer never goes stale and the editor never shows its "file is newer" dialog, and it tells the daemon the exact version each save is based on, which removes the guess. The plain file path remains for every other tool, with the inference.
+4. **AI agents are the easy case.** Tools that re-read a file before writing, as Claude Code does, always save against the latest version.
+5. **Echo detection is by content,** never by timing. Writes are a temporary file renamed over the original, with checks before and after.
+6. **Git underneath:** a commit is harmless. A fast-forward on the same branch is imported as the git author's edit. A branch switch, a non-fast-forward move, a stash, or a file change while git holds its lock makes the daemon detach from that document and say so. It reattaches when the branch and file return.
+7. **Daemon state lives under `.git/phraise/daemon/`,** never in the working tree. If the state is lost and the file differs from the document, the daemon writes a conflict copy beside the file, leaves the file alone, and detaches.
+8. **The relay keeps tombstones** for live documents, since forks need them. Growth is bounded by re-seeding as amended under D1.
+9. **Without a person to ask, the serializer writes its best effort and flags the block.** This is the daemon's form of the rule under D4 that a save never fails and never silently changes meaning. The serializer must also check that blocks still separate correctly when written together.
+
+Measured: remote edit to file 44 ms median, file save to remote 110 ms median, a 240 KB document 540 ms per save after caching. Carried into integration: memory of about 730 MB on that document, Windows untested, a restore by shell redirect is imported as the user's edit, and the MCP server, which was not built because it needs the comment store.
 
 ## D8. No "log in with your AI subscription" — locked
 

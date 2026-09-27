@@ -8,6 +8,22 @@ Every decision made on the owner's behalf is listed here so it can be reviewed a
 
 Detailed rationale lives in the linked docs; this register is the index.
 
+## Amendments from spike 3, local daemon
+
+Source: [spike 3 findings](2026-09-27-spike-3-findings-daemon-file-sync.md). Rows marked S3 were made by the spike 3 orchestrator; its full Decisions table, S3-1 to S3-12, is in the findings.
+
+| ID | Date | Decision | Impact | Difficulty | Made by | Where |
+|---|---|---|---|---|---|---|
+| D1a | 2026-09-27 | Re-seeding the CRDT is compaction at quiet points, not a step after every commit. Documents have generations; the relay keeps the previous generation's last state for a grace period so that returning daemons and offline editors can be merged in. | high | **hard**: re-seeding on every commit is simple and bounds history, but it would make every commit a conflict for any replica that was away; the replacement is more machinery and is untested until the integration spike | lead | [architecture](2026-09-27-architecture-decisions.md) |
+| D7a | 2026-09-27 | A file save is imported by fork at the editor's base, diff, merge (S3-1) | high | easy: reuses the rebase mechanism, measured | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D7b | 2026-09-27 | The daemon infers a save's base and leans toward the older version when unsure, preferring duplicated text to lost text (S3-2) | high | **hard**: no byte-level rule can always be right; 22 wrong guesses in 300 hostile fuzz trials | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D7c | 2026-09-27 | The editor extension is core: it applies remote edits to open buffers and reports each save's base. Replaces the view that it only adds presence and comments. | high | moderate: more to build, but it removes both the conflict dialogs and the guess | lead, on the orchestrator's recommendation | [architecture](2026-09-27-architecture-decisions.md) |
+| D7d | 2026-09-27 | Git handling: commit harmless, same-branch fast-forward imported as the git author, anything else that changes the file detaches the document (S3-7) | high | moderate | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D7e | 2026-09-27 | With nobody to ask, the serializer writes its best effort and flags the block; composition across blocks is checked (S3-9). The daemon's form of D4b. | medium | easy | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D7f | 2026-09-27 | The relay keeps tombstones; daemon state lives under `.git/phraise/daemon/`; lost state leads to a conflict copy, never an overwrite (S3-6, S3-8) | high | easy | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D7g | 2026-09-27 | Spike 3 accepted although its gate command exits with a failure: gates F and I miss their strict thresholds at 3348 of 3350 and 298 of 300. The misses are one parser bug inherited from spike 1 and text that reappears when the base guess hits an exact tie. No text was lost, nothing diverged, nothing echoed. Both are carried into integration as defects to fix, not waived. | medium | moderate: accepting a spike with two formally failing gates sets a precedent; judged acceptable because the failures are understood, reproducible by seed, and neither loses data | lead | findings |
+| S3-10 | 2026-09-27 | Block alignment uses unique-block anchors and a weighted alignment, replacing spike 2's greedy pairing, which could turn an edit into delete plus insert and lose a peer's concurrent typing. The rebase should adopt it. | medium | easy | orchestrator, accepted | findings |
+
 ## Product and architecture
 
 | ID | Date | Decision | Impact | Difficulty | Made by | Where |
