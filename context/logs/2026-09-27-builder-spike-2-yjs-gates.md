@@ -131,3 +131,10 @@ tests across 7 files including the 9 gate tests; `npm run gates` prints the
 Markdown table and exits 0), `npx tsc --noEmit` clean (added `scripts/` to
 `tsconfig.json`'s `include` so the gates script itself is checked too).
 Updating the README next, then committing.
+
+## 05:05 — committed, handback
+
+README updated (gates command, per-gate proof descriptions, design decisions,
+bugs found). Staged explicitly (no `git add -A`), committed as `eda25af` on
+`spike/2026-09-27-crdt-rebase` (not pushed). Handing back to spike
+orchestrator now.
