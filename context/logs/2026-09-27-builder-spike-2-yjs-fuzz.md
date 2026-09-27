@@ -265,8 +265,7 @@ All four gates H's OTHER categories (`exception`, `diverged`,
 four granularities (word/char/block/yprosemirror, 500+200+200+200 trials).
 Full per-granularity numbers in the README.
 
-Commit: see `git log` on this branch (spike/2026-09-27-crdt-rebase) for the
-hash — logged after committing below.
+Commit: `3d2eb72` on branch `spike/2026-09-27-crdt-rebase`.
 
 ## 05:47 — cleaned up missing-flag/spurious-flag ground truth (harness bugs, not core bugs)
 
