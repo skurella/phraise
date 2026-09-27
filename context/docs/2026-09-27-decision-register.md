@@ -25,6 +25,24 @@ Detailed rationale lives in the linked docs; this register is the index.
 | D10a | 2026-09-27 | No main source tree; all code in `spikes/`, multiple approaches encouraged, integrate only after feasibility is shown | medium | easy | owner | [architecture](2026-09-27-architecture-decisions.md) |
 | D10b | 2026-09-27 | TypeScript as the default language, Rust or wasm parser optional pending spike 1 | medium | moderate | lead | [architecture](2026-09-27-architecture-decisions.md) |
 
+## Amendments from spike 2, CRDT rebase
+
+Source: [spike 2 findings](2026-09-27-spike-2-findings-crdt-rebase.md). All gates passed and were re-run independently by the lead. Rows marked S2 were made by the spike 2 orchestrator; its full Decisions table is in the findings.
+
+| ID | Date | Decision | Impact | Difficulty | Made by | Where |
+|---|---|---|---|---|---|---|
+| D5b | 2026-09-27 | Yjs confirmed over Loro. Closes the library question that was rated hard at the start. | high | moderate: now backed by both implemented side by side; Loro's better attribution was the counter-argument | lead, on the orchestrator's recommendation | [architecture](2026-09-27-architecture-decisions.md) |
+| D5c | 2026-09-27 | Which Yjs version to build on is open and assigned to spike 5: 13 with workarounds, or the 14 release candidate | high | **hard**: 13 is stable but loses data without workarounds; 14 fixes that and adds attribution but is a moving release candidate with unknown relay and Tiptap support | lead | [spike 5 charter](../plans/2026-09-27-spike-5-charter-collab-stack.md) |
+| D6a | 2026-09-27 | Rebase is fork at base, two-way diff, CRDT merge, with deterministic peer identity so it is idempotent (S2-1, S2-2) | high | easy: simpler than planned and measured | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D6b | 2026-09-27 | Rebases serialized per document on the relay; blended sibling rebases are detected and recovered by re-seeding; records keyed by hash of base and target (S2-3, fixes S2-11) | medium | easy | orchestrator, accepted with the key fix | [architecture](2026-09-27-architecture-decisions.md) |
+| D6c | 2026-09-27 | Needs-review is the intersection of upstream and local change; a block deleted upstream but edited locally is resurrected once by its editor (S2-6, S2-7) | medium | moderate | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D6d | 2026-09-27 | Transport forwards whole updates in causal order; no re-encoding relays (S2-8) | high | easy: violating it lost text in fuzzing | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D6e | 2026-09-27 | Accept that an edit is lost when another person deletes the block being edited (S2-10). Gate H is accepted under the reading "no text lost because of the rebase". | medium | **hard**: it is user-visible loss, but it is how collaborative editors behave, it is independent of the rebase, and fixing it needs delete-intent metadata or a restore-from-history feature | lead | [architecture](2026-09-27-architecture-decisions.md) |
+| D3a | 2026-09-27 | Comment anchor record and acceptance rule fixed; mis-anchoring is worse than orphaning (S2-9) | medium | easy | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| S2-4 | 2026-09-27 | Session documents keep tombstones (`gc: false`); re-seeding bounds growth | medium | easy | orchestrator, accepted | findings |
+| S2-5 | 2026-09-27 | Word-level diff inside block alignment; character level adds nothing measurable | medium | easy | orchestrator, accepted | findings |
+| P14 | 2026-09-27 | Spikes 3 (daemon) and 5 (collaboration stack, Yjs 13 or 14) chartered and run in parallel. Both may copy code from spikes 1 and 2. The daemon is headless and uses Yjs 13 with spike 1's codec, so it does not depend on spike 5's outcome. | medium | moderate | lead | charters |
+
 ## Amendments from spike 4, GitHub storage
 
 Source: [spike 4 findings](2026-09-27-spike-4-findings-github-storage.md). Rows marked S4 were made by the spike 4 orchestrator and accepted by the lead unless stated.

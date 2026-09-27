@@ -55,6 +55,26 @@ An external commit is another peer's edits. Compute a block-level diff from the 
 
 Commit is: rebase if the head moved, serialize, write blob, tree and commit via the user's GitHub token so GitHub attributes it to them, and add `Co-authored-by` trailers for everyone who edited since the last commit.
 
+### D5, D6 and D3 amendments after spike 2 (2026-09-27)
+
+Measured headless on Yjs and on Loro, see [spike 2 findings](2026-09-27-spike-2-findings-crdt-rebase.md). All gates pass and the lead re-ran tests, gates and fuzz independently.
+
+**D5: Yjs is confirmed over Loro.** The rebase is not simpler on Loro, correctness is the same, and Loro's ProseMirror binding is less mature: its live plugin loses root attributes and then deletes them from the document. Loro is better at attribution and history, which does not outweigh the binding and the missing relay. Which Yjs version to build on is the remaining question and belongs to spike 5: Yjs 13 with workarounds for the binding's two losses, or the Yjs 14 release candidate, whose binding keeps both.
+
+**D6: confirmed, with a simpler mechanism than planned.**
+
+1. **The rebase is fork, diff, merge.** Fork the CRDT at the base commit's version, apply a plain two-way diff from the base to the new commit on the fork, merge the fork back. There is no three-way merge code; the CRDT merge does that work. Diff is aligned by block, then by word inside paired blocks.
+2. **Rebases are idempotent.** The rebase's peer identity is a hash of document, base and target, so any two replicas that run the same rebase produce identical bytes. Any replica may retry.
+3. **Rebases are serialized per document on the relay.** Two rebases from the same base to different commits blend both targets. This is detected, and recovered by re-seeding from the branch head. Records are keyed by the hash of base and target, not by commit alone.
+4. **"Needs review" is an intersection:** a block that changed upstream and also changed locally, where a change includes marks and attributes. Every replica computes it when it integrates a rebase and stores it as a flag in shared state.
+5. **A block deleted upstream but edited locally is brought back** by the replica of the person who edited it, once, and flagged.
+6. **Transport requirement:** updates are forwarded whole and delivered in causal order, as the standard Yjs protocol over one ordered connection does. A relay must not re-encode or reorder them. Violating this lost text in 8 of 500 fuzz trials before it was fixed.
+7. **Accepted limitation:** when one person deletes a block while another is editing it, the edit is lost. This is ordinary behaviour for collaborative editors and is not caused by the rebase. The remedy is product-level, such as restoring deleted blocks from history, not a change to the CRDT.
+
+**D3: the comment anchor record is fixed.** A CRDT position pair, the exact quote, 32 characters of prefix and suffix, and character offsets. A fuzzy match is accepted only with supporting context or a long unique quote, and rejected when a second location scores nearly as well. Mis-anchoring is treated as worse than orphaning. After a re-seed with unchanged text, 50 of 50 comments re-anchor; with three edits aimed at each comment, 2.5 percent mis-anchor.
+
+Carried into integration: clearing review flags, comments spanning two blocks, tables, running the rebase on a real relay with live editors, and the cost of integration on large documents.
+
 ## D7. The local daemon is the integration surface — locked
 
 A CLI daemon materializes a live draft into the checked-out file in a working tree, watches it, and diffs changes back into attributed CRDT operations. This gives VS Code, Typora, Claude Code, Cursor and every other file-based tool full integration for free. The MCP server sits on the daemon and adds what files cannot express: list, reply to and resolve comments; presence; commit. The VS Code extension adds only presence cursors via decorations and comment threads via the Comments API. Irrecoverable divergence between disk and CRDT writes a conflict copy and never overwrites.
