@@ -294,3 +294,20 @@ README's "Running" section).
 
 Definition of done met: gates:quick passes F; tsc clean; no relay running.
 Brief's stopping point ("task 5 done") reached. Preparing handback.
+## 15:13 — committed, handback
+
+Committed d390072 "Spike 5 brief 06: stack 14 gate F, spike 2's rebase
+ported to Yjs 14" -- 31 files, explicit paths (no `git add -A`, no
+node_modules). Left `results/gates.json`/`results/gates.md` uncommitted
+(they were last committed from a FULL (`quick:false`) run; my own
+verification run was `--quick`, and committing it would replace the
+full-corpus artifact with a sampled one -- the plan's own task list makes
+full runs from a clean checkout the orchestrator's job (step 8), so I left
+that regeneration to them rather than overwrite good data with a
+degraded snapshot).
+
+No relay running (`lsof -nP -iTCP:4240-4269 -sTCP:LISTEN` empty). Not
+pushed, per this session's own instruction (overrides the charter's
+"push at milestones" for this dispatch).
+
+Status: done, brief's stopping point reached (task 5 complete).
