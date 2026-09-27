@@ -153,3 +153,9 @@ Spike 2 verified and opened as PR 5. Spikes 3 (daemon file sync) and 5 (collabor
 - Planned once those merge: a consolidation pass over the architecture decisions doc and the register, which have grown by amendment.
 
 Details of each acceptance are in the lead's handback logs on the respective spike branches.
+
+## 2026-09-28 00:29 — Spike 7 accepted; spike 6 liveness checked
+
+Spike 7 verified by the lead and opened as PR 8. Decisions D11a to D11g and P18 recorded on its branch. A trial squash-merge of the six open PRs in sequence had no conflicts.
+
+Spike 6 has closed milestones 1 and 2 per its log and is in milestone 3. Its current builder had written no files in the worktree for over two hours, so the lead checked liveness without reading transcripts: no sleep gap on the machine, and the builder's transcript file was modified seconds before the check. It is working in a temporary copy of spike 3 outside the worktree to reproduce the tie case. No intervention. Technique for future checks: compare the modification time of the agent's transcript file, not only the worktree.
