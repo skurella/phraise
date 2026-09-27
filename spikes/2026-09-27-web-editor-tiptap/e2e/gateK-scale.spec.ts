@@ -350,7 +350,7 @@ test('[K] key press to paint: 200 characters with concurrent remote edits, Markd
   const markerCount = await markerCountOf();
   await bobContext.close();
 
-  results.keyToPaintPanelClosed = { rafMs: raf, eventTimingAbove16ms: events.length, firstInputMs: firstInput, bobEditsConfirmed: markerCount };
+  results.keyToPaintPanelClosed = { rafMs: raf, eventTiming: eventTimingSummary(events, 200), eventTimingAbove16ms: events.length, firstInputMs: firstInput, bobEditsConfirmed: markerCount };
   console.log(`[K] key-to-paint (panel closed): RAF p50=${raf.p50.toFixed(1)}ms p95=${raf.p95.toFixed(1)}ms max=${raf.max.toFixed(1)}ms (n=${raf.n}); Event Timing entries >=16ms: ${events.length}; first-input: ${firstInput ?? 'n/a'}ms; Bob's concurrent edits confirmed synced: ${markerCount}`);
 
   // The gate's own pass criterion: p95 under 50ms, panel closed.
@@ -399,7 +399,7 @@ test('[K] key press to paint: 200 characters with concurrent remote edits, Markd
   const markerCount = await markerCountOf();
   await bobContext.close();
 
-  results.keyToPaintPanelOpen = { rafMs: raf, eventTimingAbove16ms: events.length, firstInputMs: firstInput, bobEditsConfirmed: markerCount };
+  results.keyToPaintPanelOpen = { rafMs: raf, eventTiming: eventTimingSummary(events, 200), eventTimingAbove16ms: events.length, firstInputMs: firstInput, bobEditsConfirmed: markerCount };
   console.log(`[K] key-to-paint (panel open): RAF p50=${raf.p50.toFixed(1)}ms p95=${raf.p95.toFixed(1)}ms max=${raf.max.toFixed(1)}ms (n=${raf.n}); Event Timing entries >=16ms: ${events.length}; first-input: ${firstInput ?? 'n/a'}ms; Bob's concurrent edits confirmed synced: ${markerCount}`);
   // Not gated (only the panel-CLOSED number is the pass criterion), but
   // still reported and printed above.
@@ -420,9 +420,26 @@ test('[K] key press to paint: 200 characters on a small README, for comparison (
   const alice = await findParagraphNear(page, 0.5);
   const { raf, events, firstInput } = await measureKeyToPaint(page, alice.from, 200);
 
-  results.keyToPaintSmallReadme = { rafMs: raf, eventTimingAbove16ms: events.length, firstInputMs: firstInput, bytes: SMALL_SOURCE.length };
+  results.keyToPaintSmallReadme = { rafMs: raf, eventTiming: eventTimingSummary(events, 200), eventTimingAbove16ms: events.length, firstInputMs: firstInput, bytes: SMALL_SOURCE.length };
   console.log(`[K] key-to-paint (small README, solo): RAF p50=${raf.p50.toFixed(1)}ms p95=${raf.p95.toFixed(1)}ms max=${raf.max.toFixed(1)}ms (n=${raf.n})`);
 });
+
+/** Event Timing summary per event type (added by the orchestrator). The
+ * browser reports an entry only when its duration is at least 16 ms, and
+ * `duration` runs from the input's hardware timestamp to the next paint
+ * after its handlers, rounded to 8 ms: the closest thing to key-press-to-
+ * paint a page can observe. For each type, with `keys` presses, the p95
+ * is the ceil(5%)-th largest reported duration if at least that many were
+ * reported, otherwise under 16 ms. */
+function eventTimingSummary(events: { name: string; duration: number }[], keys: number): Record<string, { reported: number; p95Ms: number | '<16'; maxMs: number | null }> {
+  const out: Record<string, { reported: number; p95Ms: number | '<16'; maxMs: number | null }> = {};
+  const k = Math.ceil(keys * 0.05);
+  for (const name of ['keydown', 'keypress', 'beforeinput', 'input', 'keyup']) {
+    const d = events.filter((e) => e.name === name).map((e) => e.duration).sort((a, b) => b - a);
+    out[name] = { reported: d.length, p95Ms: d.length >= k ? d[k - 1]! : '<16', maxMs: d.length ? d[0]! : null };
+  }
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 // In-page costs.
