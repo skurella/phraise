@@ -141,3 +141,15 @@ Procedures changed, decision P13: no wall-clock budgets, timestamps only from `d
 ## 07:50 — Spike 2 accepted; spikes 3 and 5 dispatched
 
 Spike 2 verified and opened as PR 5. Spikes 3 (daemon file sync) and 5 (collaboration stack, Yjs 13 or 14) chartered on their own branches and dispatched in parallel, one Opus orchestrator each. Their charters carry the P13 rules inline because PR 2 is not merged yet. Details in the lead's spike 2 handback log on the spike 2 branch.
+
+## 16:04 — All five spikes accepted; integration dispatched
+
+- Spike 3 accepted as PR 6 with two gates formally failing at threshold and no data lost; recorded as D7g. The lead's first summary to the owner omitted that the gate command fails, and the next message corrected it.
+- Spike 5 accepted as PR 7. D5 resolved: build on Yjs 13, migrate to 14 later. The spike has no unit tests.
+- D1 amended by the lead after spike 3: re-seeding becomes compaction with generations. Untested; assigned to spike 6.
+- Spikes 6 (integration, headless engine) and 7 (web editor in a real browser) chartered on their own branches and dispatched in parallel, one Opus orchestrator each. Decisions P16 and P17.
+- Held for the owner: reporting the Yjs 14 binding bug upstream, P15.
+- Open PRs: 2, 4, 5, 6, 7. A trial squash-merge of all five in sequence had no conflicts.
+- Planned once those merge: a consolidation pass over the architecture decisions doc and the register, which have grown by amendment.
+
+Details of each acceptance are in the lead's handback logs on the respective spike branches.

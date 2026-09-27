@@ -51,7 +51,8 @@ A **brief** is written by the orchestrator, one per task, in `context/plans/`, a
 3. **Inputs to read**, as links: AGENTS.md, the decisions doc, and at most two or three other docs or code paths. Nothing else.
 4. **Definition of done**, executable: commands to run, tests that must pass, fixtures that must round-trip, a demo script.
 5. **Constraints**: model, whether commits are allowed, whether a worktree is used. **Budgets are never wall-clock time.** A brief budgets by an ordered task list with a stated stopping point; a charter budgets by number of worker dispatches.
-6. **Handback format**: outcome, verification, omissions, links.
+6. **Handback format**: outcome, verification, omissions, links. The first line states whether the gate or test command passes. A command that exits with a failure is reported as failing, whatever the reason.
+7. **Tests**: unit tests are required in addition to gate scripts; `npm test` must find and pass real tests.
 
 Briefs are small. A package that needs more than a day of builder effort is split.
 
