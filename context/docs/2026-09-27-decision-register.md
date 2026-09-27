@@ -25,6 +25,22 @@ Detailed rationale lives in the linked docs; this register is the index.
 | D10a | 2026-09-27 | No main source tree; all code in `spikes/`, multiple approaches encouraged, integrate only after feasibility is shown | medium | easy | owner | [architecture](2026-09-27-architecture-decisions.md) |
 | D10b | 2026-09-27 | TypeScript as the default language, Rust or wasm parser optional pending spike 1 | medium | moderate | lead | [architecture](2026-09-27-architecture-decisions.md) |
 
+## Amendments from spike 4, GitHub storage
+
+Source: [spike 4 findings](2026-09-27-spike-4-findings-github-storage.md). Rows marked S4 were made by the spike 4 orchestrator and accepted by the lead unless stated.
+
+| ID | Date | Decision | Impact | Difficulty | Made by | Where |
+|---|---|---|---|---|---|---|
+| D2a | 2026-09-27 | Every draft ref write is a compare-and-swap; never REST PATCH on hidden refs, which silently overwrites (S4-2) | high | easy: measured | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D2b | 2026-09-27 | `git push --force-with-lease` is the draft flush transport; REST inline tree is the fallback (S4-3) | high | moderate: not yet confirmed over HTTPS with an App token | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D2c | 2026-09-27 | One draft ref per branch with a repo-mirroring tree, draft commit parented on its base commit and overwritten. Overrules S4-4, which kept draft commits parentless. | high | moderate: gains plain-git readability and a recorded base, untested until the integration spike | lead | [architecture](2026-09-27-architecture-decisions.md) |
+| D2d | 2026-09-27 | On public repos, draft flushing to git is off by default and drafts live only in relay storage; on private repos it is on (S4-8) | high | **hard**: drafts in public repos are readable by anyone, but turning the flush off weakens the promise that everything is recoverable from the repo; encryption was the alternative and adds key management | lead | [architecture](2026-09-27-architecture-decisions.md) |
+| D9a | 2026-09-27 | Commit through GraphQL `createCommitOnBranch` with the user's token (S4-5) | medium | easy | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D9b | 2026-09-27 | Flush drafts with the App installation token, not the user's | medium | easy | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| D9c | 2026-09-27 | Detect external commits by polling the branch ref with ETag; a 304 is free (S4-6). Budgets are read from response headers (S4-7). | medium | easy: measured | orchestrator, accepted | [architecture](2026-09-27-architecture-decisions.md) |
+| S4-1 | 2026-09-27 | Spike 4 was built as shell over `gh api` with one allow-list wrapper, not TypeScript | low | easy | orchestrator | findings |
+| S4-9 | 2026-09-27 | Leave `refs/phraise-spike/retention-probe` on the real repo to observe retention over weeks | low | easy | orchestrator, accepted | findings |
+
 ## Process and tooling
 
 | ID | Date | Decision | Impact | Difficulty | Made by | Where |

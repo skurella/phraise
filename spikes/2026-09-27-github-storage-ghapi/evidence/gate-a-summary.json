@@ -1,0 +1,19 @@
+{
+  "ref": "refs/phraise-spike/drafts/main/5652fe4d85af6b61",
+  "last_commit": "a328da7c90eb85b29ed200bcf1ca4a986f44b7cd",
+  "branches_api_matches": 0,
+  "matching_refs": [
+    "refs/phraise-spike/drafts/main/5652fe4d85af6b61",
+    "refs/phraise-spike/retention-probe"
+  ],
+  "default_clone_refs_matching": "0",
+  "default_clone_has_draft_commit": "no",
+  "ls_remote_advertises_ref": "1",
+  "refspec_fetch_sha": "a328da7c90eb85b29ed200bcf1ca4a986f44b7cd",
+  "refspec_fetch_content_matches": "yes",
+  "api_readback_matches": "yes",
+  "delete_status": "204",
+  "ref_get_after_delete": "404",
+  "commit_get_by_sha_after_delete": "200",
+  "ls_remote_after_delete": "0"
+}

@@ -1,0 +1,131 @@
+{
+  "branch": "spike-scratch/github-storage-c",
+  "base": "a13e92cc5fc0bebdafe91b6738ecbd89d4928975",
+  "rest": {
+    "writes": 3,
+    "ms": 5723,
+    "view": {
+      "sha": "77da55b0ad1dbba717ac029cc9321432331b1750",
+      "rest": {
+        "author": {
+          "name": "Seb Kurella",
+          "email": "sebastian.kurella@gmail.com",
+          "date": "2026-09-27T02:17:39Z"
+        },
+        "committer": {
+          "name": "Seb Kurella",
+          "email": "sebastian.kurella@gmail.com",
+          "date": "2026-09-27T02:17:39Z"
+        },
+        "author_login": "skurella",
+        "committer_login": "skurella",
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "graphql": {
+        "authors": [
+          {
+            "name": "Seb Kurella",
+            "email": "sebastian.kurella@gmail.com",
+            "login": "skurella"
+          },
+          {
+            "name": "The Octocat",
+            "email": "583231+octocat@users.noreply.github.com",
+            "login": "octocat"
+          },
+          {
+            "name": "Phraise Example",
+            "email": "phraise-example@example.com",
+            "login": null
+          }
+        ],
+        "committer": {
+          "name": "Seb Kurella",
+          "email": "sebastian.kurella@gmail.com",
+          "user": {
+            "login": "skurella"
+          }
+        },
+        "signature": null
+      }
+    },
+    "html": {
+      "octocat_mentions": 10,
+      "example_mentions": 7,
+      "coauthored_mentions": 10,
+      "verified_hint": ""
+    }
+  },
+  "graphql": {
+    "writes": 1,
+    "ms": 2782,
+    "view": {
+      "sha": "33df2c795637fc03e0577db7890b4b37d2ffebc9",
+      "rest": {
+        "author": {
+          "name": "Seb Kurella",
+          "email": "sebastian.kurella@gmail.com",
+          "date": "2026-09-27T02:17:43Z"
+        },
+        "committer": {
+          "name": "GitHub",
+          "email": "noreply@github.com",
+          "date": "2026-09-27T02:17:43Z"
+        },
+        "author_login": "skurella",
+        "committer_login": "web-flow",
+        "verification": {
+          "verified": true,
+          "reason": "valid",
+          "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJquHzHCRC1aQ7uu5UhlAAAGL4QACnUoQbIx98lj4yC6rVD0hef\nT0Zx0GVnuFNyORRQOTjhR/MIKHRqXC8MZI41AGinIOsVxOf2dsD7S/7v0sTdwgQ6\n2aIiyvyi82+zPI6O7PU7ivPIoK8jZqh2nId8H+z4f0DOV/vz7HPhNd9Bv29csO2x\nsHnihuR1J2MXydA3e/pe8I4Qv+2gM38O3pWyzCDyNyIUZnyxobtPBuQbsXVf6GWX\nghOcZ5EmDiJ0ERd5DwnRToNoT3qCQSPHXsRKA7UniUgoWCVKdOZAR1vOEDbzW2Rg\nxwGB5vS2jhzyBdnHztJ3R3onn8uUXtFCLyt3LtX1mtFxviS6pTcMVErxfYsPNZdN\npZdwv59YUQzMnoScqC17+BzYoM1getAFXmK4Y+Kj9pkyZqyxGScGs6JyfzTYRgJx\nrFSVEowDG0zQcpygqQieyE7JDYNHg2no8YB50Ei8EL1wMC6MYzCb3cCBEzQBrTJO\nwaMRB8QlVtuZ/XVSkph0KPH0k3+FwpNWxY+4QObxLUs3FXgckjQbbNc2NHgxhqZo\nsjJZW9cudQUylzqcn2oYBthpOwxrr16UzrzrHne93+/xMjto9nkuGT/szcOPjHbC\njis/02UcZHmp7c88kN3ytbjlvF2/NU/4/6ThYpDxtsoFJnkFRJT79NjPLtkQAqes\nwYfJ9y7WPXbiQfMO5bUX\n=5g3p\n-----END PGP SIGNATURE-----\n",
+          "payload": "tree dd90a8cf43ace620001ff0afde0f1c31673a0436\nparent 77da55b0ad1dbba717ac029cc9321432331b1750\nauthor Seb Kurella <sebastian.kurella@gmail.com> 1790475463 +0200\ncommitter GitHub <noreply@github.com> 1790475463 +0200\n\nSpike 4: commit through GraphQL createCommitOnBranch\n\nBody line for the commit message.\n\nCo-authored-by: The Octocat <583231+octocat@users.noreply.github.com>\nCo-authored-by: Phraise Example <phraise-example@example.com>",
+          "verified_at": "2026-09-27T02:17:44Z"
+        }
+      },
+      "graphql": {
+        "authors": [
+          {
+            "name": "Seb Kurella",
+            "email": "sebastian.kurella@gmail.com",
+            "login": "skurella"
+          },
+          {
+            "name": "The Octocat",
+            "email": "583231+octocat@users.noreply.github.com",
+            "login": "octocat"
+          },
+          {
+            "name": "Phraise Example",
+            "email": "phraise-example@example.com",
+            "login": null
+          }
+        ],
+        "committer": {
+          "name": "GitHub",
+          "email": "noreply@github.com",
+          "user": null
+        },
+        "signature": {
+          "isValid": true,
+          "state": "VALID",
+          "wasSignedByGitHub": true,
+          "signer": {
+            "login": "web-flow"
+          }
+        }
+      }
+    },
+    "html": {
+      "octocat_mentions": 10,
+      "example_mentions": 7,
+      "coauthored_mentions": 10,
+      "verified_hint": ""
+    }
+  }
+}

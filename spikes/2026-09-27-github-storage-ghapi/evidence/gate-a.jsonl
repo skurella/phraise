@@ -1,0 +1,14 @@
+{"flush":0,"variant":"create","writes":5,"ms":8094,"commit":"0dcd34975ea6e179d452ec4a017e1a9b1f4f5943"}
+{"flush":1,"variant":"full","writes":5,"ms":8625,"commit":"a481beb71c929a9b25712bb6ad9c7b5bb51b9e41"}
+{"flush":2,"variant":"full","writes":5,"ms":8558,"commit":"65beec45945cddc8af754d6d82b592b72f8c8cd1"}
+{"flush":3,"variant":"full","writes":5,"ms":8805,"commit":"f63c5b487ad0407be6b6fb9baaac26b63fa38486"}
+{"flush":4,"variant":"full","writes":5,"ms":8657,"commit":"866139b107a50a171ff794cad700fd4ec4f8eaab"}
+{"flush":5,"variant":"full","writes":5,"ms":8621,"commit":"13df553ca8b25b5603ec8ec4c989095cc24af98f"}
+{"flush":6,"variant":"full","writes":5,"ms":8618,"commit":"1c008d49b99eadfdc9c27999caaf5605019ecb96"}
+{"flush":7,"variant":"full","writes":5,"ms":8558,"commit":"9e523d9ddb946c5c6d6d4a39efc8d038d339a2e0"}
+{"flush":8,"variant":"full","writes":5,"ms":8375,"commit":"f6fda23c1a4207741756c950b39944d836a287ba"}
+{"flush":9,"variant":"full","writes":5,"ms":9026,"commit":"fe5bae916ef3b1c81c0a3a09a0c833c54a6db4ad"}
+{"flush":10,"variant":"full","writes":5,"ms":9424,"commit":"72089b95f3c0a9ed88f71c4bf90313b26d36e441"}
+{"flush":11,"variant":"inline","writes":3,"ms":6196,"commit":"f0bc88eb36dc952d28d7a13824600b6bb7d9199b"}
+{"flush":12,"variant":"inline","writes":3,"ms":5293,"commit":"3b146a3f07db9e012a8e7b8077d637d07d1d5a64"}
+{"flush":13,"variant":"inline","writes":3,"ms":5148,"commit":"a328da7c90eb85b29ed200bcf1ca4a986f44b7cd"}
