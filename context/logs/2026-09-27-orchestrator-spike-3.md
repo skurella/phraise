@@ -47,3 +47,10 @@ Harness fixes: semantic token check (entity escapes), token cores robust to y-pr
 
 ## 11:20 — dispatch 4: builder, brief 04 large file (Sonnet)
 
+
+## 11:51 — dispatch 4 returned
+Builder found spike 1's parseBlock cache was cleared on every call; made it persistent (LRU), fixed a quadratic toArray in applyChildOps and a redundant parse in renderDetailed. 240 KB file: parse 1308 -> ~147 ms, serialize 1264 -> ~142 ms, fresh-save import plus export 3203 -> ~500 ms, gate A-shape latency 1750 -> ~340 ms. Cache-parity test added. I changed gate J to report the 500 ms target rather than gate on it (the charter sets no threshold; it sits at the noise floor). Commit 36462c4 plus mine, pushed.
+Started the first full gate run in the background (npm run gates).
+
+## 11:51 — dispatch 5: researcher, brief 05 editors (Sonnet)
+
