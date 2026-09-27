@@ -330,6 +330,37 @@ async function main() {
                 granularity: req.granularity ?? 'word',
               });
               Y.applyUpdate(document, update, REBASE_TX_ORIGIN);
+              // Immediately ack this record under the relay's OWN clientID
+              // (a separate, adjacent, still-synchronous transaction -- see
+              // this file's top comment for why this must happen right
+              // here). Without this, the relay's own attachIntegrationHook
+              // (installed in onLoadDocument, same as any replica) would
+              // eventually run integrate() for record `rebaseId` under
+              // the relay's own clientID on whatever LATER incoming
+              // connection-sourced transaction happens to arrive next (e.g.
+              // a client's routine ack-write syncing back) -- by which
+              // point the relay's live document has *already* moved past
+              // the rebase, so the snapshot P taken just before that later,
+              // unrelated transaction no longer reflects "before this
+              // rebase" at all; it reflects "after this rebase". Every
+              // upstream-changed block would then look "locally changed"
+              // too (aContent, from the base snapshot, would differ from
+              // pContent, already showing the rebase's own result), and
+              // integrate() would flag it `concurrent-edit` -- a false
+              // positive, for every block the rebase touched, not just
+              // genuinely human-conflicting ones, replicated to every
+              // client since `review` is an ordinary shared Y.Map. Found by
+              // reproducing it directly (two live clients, no conflicting
+              // edits at all, still saw the untouched heading flagged) and
+              // tracing the relay's own hook, not assumed. The relay itself
+              // never has a genuine "local edit" of its own to compare
+              // against (all of its writes are tagged with the seed/rebase
+              // peers' own deterministic clientIDs, never the Document's),
+              // so acking immediately, atomically with applying the
+              // rebase, is simply correct, not a workaround.
+              document.transact(() => {
+                phraise.set(`ack:${rebaseId}:${document.clientID}`, true);
+              }, REBASE_TX_ORIGIN);
               sendJSON(200, { applied: true, rebaseId });
             } catch (err) {
               sendJSON(500, { error: err instanceof Error ? err.message : String(err) });

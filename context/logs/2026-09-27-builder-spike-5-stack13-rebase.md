@@ -105,3 +105,85 @@ idempotence end-to-end, not just by reading the code. lsof -nP
 `npx tsc --noEmit`: clean.
 
 Task 2 done. Moving to task 3 (live clients for spike 2's schema).
+
+## 13:05 — task 3: live clients built; found and fixed a real relay-side integrate() bug
+
+Added src/rebase/liveClient.ts (createRebaseLiveClient): a Y.Doc(gc:false),
+HocuspocusProvider over `ws`, real ProseMirror EditorView with ySyncPlugin
+on spike 2's PM_FRAGMENT ("pm") and schema -- no workaround plugins, since
+spike 2's schema has neither of stack 13's two known losses (no root
+`doc` attrs at all, no inline atom leaf nodes -- only `text` is inline, so
+marks are plain Y.XmlText formatting, never lost). The integration hook
+attaches to `ydoc` *before* awaiting the provider's first sync, so a client
+that connects after a rebase already happened still runs integrate() over
+the very first batch it receives.
+
+Also changed src/rebase/schema.ts (a copied file, changed only where the
+live setting requires it, per the brief): added toDOM/parseDOM to every
+node and mark. Spike 2 never rendered a real EditorView (headless only), so
+this was missing entirely; a real EditorView threw
+`node.type.spec.toDOM is not a function` immediately without it. Standard
+prosemirror-schema-basic/-list-shaped rules; no change to content model,
+attrs, or marks. Confirmed the headless baseline (scripts/rebase-baseline.ts)
+still passes unchanged after this.
+
+Smoke-tested two live editors (alice, bob) typing into different
+paragraphs on a `rebase:` doc, converging, then a rebase applied via POST
+while both stayed connected (deleted the throwaway scripts after, per this
+package's convention, except smoke-live-client.ts kept a little longer for
+task 4 reference then removed).
+
+**Real bug found and fixed** (not from reading the code -- from running it):
+the very first live run showed the rebase's *untouched* heading block
+flagged `concurrent-edit` in `needsReview()` on both alice's and bob's
+docs, even though neither of them (nor anyone) had touched it. Traced with
+five throwaway instrumented variants (temporary env-gated console.error in
+integrate.ts/liveIntegration.ts, reverted after) to the relay's own copy of
+the integration hook, not the clients':
+
+The relay applies a rebase to itself directly (`computeRebaseUpdate` +
+`Y.applyUpdate`, tagged origin `'rebase'`, deliberately excluded from
+triggering the relay's own `attachIntegrationHook` since `isConnectionOrigin`
+requires a connection-shaped origin -- correct, the relay authored this
+change, there's nothing to integrate against for itself *at that moment*).
+But the relay's own clientID was then left un-acked for that record. The
+relay's hook next fires on whatever *unrelated* connection-sourced
+transaction happens to arrive afterward (observed case: a client's own
+`ack:<id>:<theirClientId>` write syncing back to the relay) -- by which
+time the relay's live document has *already* moved past the rebase, so the
+snapshot P taken just before that unrelated transaction reflects
+post-rebase state, not pre-rebase state. Every upstream-changed block then
+looks "locally changed" too (aContent, from the base snapshot, differs from
+this stale pContent), so integrate() flags it `concurrent-edit` -- a false
+positive for every block the rebase touched, not just genuinely
+human-conflicting ones, and replicated to every client since `review` is an
+ordinary shared Y.Map entry once set.
+
+Fix (src/relay.ts's `/rebase` route): immediately ack the record under the
+relay's own clientID, in a separate but immediately-following (still
+synchronous, nothing can interleave) transaction right after applying the
+rebase. This is not a workaround: the relay Document's own clientID never
+authors anything inside a block's content (seed/rebase peers use their own
+deterministic clientIDs; the relay's own clientID only ever appears on
+metadata like the attribution map), so it never has a genuine "local edit"
+to compare against for any record, and marking it acked immediately is
+simply correct. Re-ran the smoke scenario after the fix: review map is
+correctly empty (this scenario's alice/bob edits don't touch the rebased
+heading, so nothing should be flagged) -- confirms the fix, not just the
+absence of the old symptom. Gate F (next) verifies genuine P/Q conflicts
+(spike 2's own scenario, where alice/bob's edits *do* land on blocks the
+rebase also changes) still get flagged correctly by alice's and bob's own,
+unaffected, per-client integrate() calls.
+
+This is exactly the kind of thing brief 05 asked to report ("whether the
+needs-review writes and resurrections then flow back through the relay
+correctly") -- logged here in full since it changes a design assumption
+(that the relay's copy of attachIntegrationHook needed no special handling
+beyond the origin filter) that the "Decisions" table in the findings doc
+should carry forward.
+
+`npx tsc --noEmit`: clean. No relay left running after any smoke test
+(checked with `lsof -nP -iTCP:4210-4239 -sTCP:LISTEN`).
+
+Task 3 done (live clients + the relay-side integration fix). Moving to
+task 4 (gate F proper).
