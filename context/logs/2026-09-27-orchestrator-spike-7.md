@@ -1,6 +1,6 @@
 # Log: spike 7 orchestrator, web editor in a real browser
 
-Status: active
+Status: done
 Author: spike 7 orchestrator (Opus 5.5)
 Updated: 2026-09-27
 Charter: [spike 7 charter](../plans/2026-09-27-spike-7-charter-web-editor.md)
@@ -100,3 +100,15 @@ Review (dispatch 8, Sonnet, fresh clone from the pushed branch) found a blocker:
 After the fix: `npm run gates` exit 0, Chromium A to K all PASS; WebKit A 22/22, B 19/21 (2 skipped for clipboard), C 6/6, D 5/6. Chromium suite `--repeat-each=3`: 285/285, 2 logged caret-placement retries.
 
 Gate K reported only the rAF measure. Added an Event Timing summary per event type to the test and `results/scale.json`: keydown p95 16 ms, max 24 ms (8 ms granularity) with a second user typing, matching rAF p95 13.7 ms. But the gate K typing never pauses, so the 250 ms debounced work never runs during it. Measured myself in the page on the 245,936-byte file (probe server 4490, stopped): full `serializeDoc` in the browser 900 to 970 ms (express README about 20 ms); with typing paused, the first edit triggers one 972 ms long task (the cold gate H check over all 1,619 blocks), later edits none; with the Markdown panel open, every pause costs a 930 ms long task. The page freezes for about a second at those moments on this file. This belongs in the findings: the per-edit path is fine in the page, whole-document serialize is not.
+
+## 00:25 — findings written; fresh-clone check passed; handback
+
+Wrote the findings doc (`context/docs/2026-09-27-spike-7-findings-web-editor.md`) and a "Final state" section at the top of the spike README (commands, and corrections to the builders' sections: the U+00A0 cause, line keys, visible retries, the origin of `serialize.ts`). Pushed `23d736e`.
+
+Fresh-clone check of the pushed branch into `$TMPDIR` (script in my scratchpad): `npm ci` 0, `npm run setup` 0, `npm test` 187 passed, `tsc` 0, `npm run gates` exit 0 with Chromium A to K all PASS (WebKit informational: 5 failed, 3 skipped of 58, caret placement as before), `npm start` printed `http://127.0.0.1:4480/?doc=hello.md&user=Alice`, `curl` 200, SIGINT stopped it, nothing listening on 4400 to 4499 afterwards, no leftover server, Playwright or Vite process; clone removed.
+
+Budget: 8 worker dispatches (7 Sonnet builders, 1 Sonnet reviewer) against about 14. Brief 07's builder handed back early; I finished its remaining tasks myself.
+
+## Handback summary
+
+Gate command passes (Chromium, A to K). Verdict: the vision's editing experience is within reach on this stack; shortfalls are product surface (toolbar, table rows and columns, image insertion) and whole-document serialization on large files, not architecture. Decisions S7-1 to S7-13 in the findings doc; the lead should look first at S7-2 (third Yjs workaround, upstream regression in `@tiptap/y-tiptap` 3.0.6 and later), S7-1, S7-7 and S7-11. Not verified: Firefox (does not launch here), real input methods and real displays (headless only), a lost keystroke during a remote composition seen once in 360 runs, a Chromium Cmd+Right anomaly in one scenario.
