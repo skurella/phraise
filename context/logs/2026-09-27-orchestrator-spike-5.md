@@ -54,3 +54,5 @@ Path B compared editor 2 as soon as its text length matched editor 1, but the ro
 Also probed yjs/y-prosemirror#241 (swap bold for code in one transaction): syncs correctly on both stacks (case 6 in both probe scripts).
 
 ## 14:37 — Brief 06 dispatched (gate F, stack 14)
+
+## 15:14 — Brief 06 handback: gate F passes on stack 14 (d390072), diff via lib0 delta.diff (same diff as the B3 bug path, so a commit that changes an image's url and link together would hit it; spike 2's schema has no images, so untested). Running both full gate suites.
