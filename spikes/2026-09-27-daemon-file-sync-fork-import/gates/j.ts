@@ -402,16 +402,15 @@ export async function runGateJ(opts: GateOpts = {}): Promise<GateResult> {
     numbers[`after.${k}`] = after[k];
   }
 
+  // The charter asks gate J to measure and report, with no threshold. The
+  // 500 ms target was the orchestrator's (brief 04); it sits at the noise
+  // floor after the cache, so it is reported, not gated (orchestrator change).
   const failures: string[] = [];
-  if (!(after.importPlusExportMs < IMPORT_PLUS_EXPORT_TARGET_MS)) {
-    failures.push(
-      `fresh-save import + export of the 240 KB file: median ${after.importPlusExportMs.toFixed(2)}ms >= ${IMPORT_PLUS_EXPORT_TARGET_MS}ms target`,
-    );
-  }
+  numbers['target.importPlusExportUnder500ms'] = after.importPlusExportMs < IMPORT_PLUS_EXPORT_TARGET_MS;
 
   return {
     gate: 'J',
-    requirement: `240 KB file: fresh-save import + resulting export under ${IMPORT_PLUS_EXPORT_TARGET_MS}ms median; before/after and end-to-end latencies reported.`,
+    requirement: `240 KB file measured before and after the verification cache; target (reported, not gated): fresh-save import + export under ${IMPORT_PLUS_EXPORT_TARGET_MS}ms median.`,
     pass: failures.length === 0,
     numbers,
     failures,
