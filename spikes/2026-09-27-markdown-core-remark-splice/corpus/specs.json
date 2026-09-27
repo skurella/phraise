@@ -1,0 +1,22 @@
+[
+  {
+    "id": "commonmark-spec",
+    "repo": "commonmark/commonmark-spec",
+    "sha": "0.30",
+    "path": "spec.txt",
+    "license": "CC-BY-SA-4.0",
+    "url": "https://raw.githubusercontent.com/commonmark/commonmark-spec/master/spec.txt",
+    "bytes": 206108,
+    "sha256": "43fad3e0ac5190a3b0bc6a41f7b1a853201a26ec2e6b74871f5d96239a8c34cf"
+  },
+  {
+    "id": "gfm-spec",
+    "repo": "github/cmark-gfm",
+    "sha": "499789b49373bfa045d0e7547e5ee63444c77bca",
+    "path": "test/spec.txt",
+    "license": "BSD-2-Clause",
+    "url": "https://raw.githubusercontent.com/github/cmark-gfm/499789b49373bfa045d0e7547e5ee63444c77bca/test/spec.txt",
+    "bytes": 216680,
+    "sha256": "7d8e5814befec287ac116786d81ff14e0adc9b13295b4494649e995408fd871c"
+  }
+]
