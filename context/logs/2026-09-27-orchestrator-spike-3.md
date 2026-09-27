@@ -61,3 +61,9 @@ Full run 1 (npm run gates): A B C D E G H J pass; F 3348/3350 (the 2 spike 1 foo
 
 ## 12:00 — dispatch 6: reviewer, brief 06 (Sonnet, fresh context)
 
+
+## 12:18 — dispatch 6 returned; review fixes
+Reviewer (log committed) found: HIGH ring FIFO evicted the anchor after 32 writes, a stale save then reverted all remote edits (reproduced: 40 edits, 0 survived); HIGH ambiguous-delete classifier matched any import in the trial; MEDIUM content-only restore via shell (git show HEAD:f > f) is imported as a local edit; known: raced-rename recovery path skips the git check.
+Fixed the two HIGHs (anchor pinned, thinning eviction, ring 48; classifier uses the carrying import), added core.ring tests and 60-extra-edit cases to gate D. While doing so found gates compared the file with render() while the daemon writes renderDetailed() (boundary repairs): render() now returns what the daemon writes. The MEDIUM and the raced-rename path are documented as limits, not fixed: from the file system a shell redirect is indistinguishable from typing.
+40-trial fuzz after fixes: 40/40.
+
