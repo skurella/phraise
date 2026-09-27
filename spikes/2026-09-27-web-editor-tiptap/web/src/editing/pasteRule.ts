@@ -12,6 +12,18 @@
 // `view.pasteHTML` ... has parse rules to build a paste Slice from") -- and
 // falls back to plain text otherwise. No custom HTML handling is written
 // here at all.
+//
+// Brief 03, task 3: "Pasting into a source block inserts plain text only."
+// A `code: true` textblock (`raw_block`, `code_block`/Mermaid) only allows
+// `text*` content with no marks, so ProseMirror's own default paste-fitting
+// would already reduce any richer content down to bare text once it hits
+// this guard's `return false` -- but `buildMarkdownPasteContent`'s Markdown
+// branch below builds real BLOCK nodes (headings, lists, ...) to
+// `replaceSelection` with, which does not fit inside inline-only content at
+// all. Bail out before that ever runs when the caret is inside a source
+// block, for both reasons: plain text is exactly what the brief asks for,
+// and it avoids handing ProseMirror a slice its own content model would
+// have to reject or mangle.
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Slice } from '@tiptap/pm/model';
@@ -26,6 +38,7 @@ export const MarkdownPasteRule = Extension.create({
         key: new PluginKey('markdownPasteRule'),
         props: {
           handlePaste(view: EditorView, event: ClipboardEvent): boolean {
+            if (view.state.selection.$from.parent.type.spec.code) return false;
             const text = event.clipboardData?.getData('text/plain') ?? '';
             if (!text || !looksLikeMarkdown(text)) return false;
 

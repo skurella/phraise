@@ -1,9 +1,21 @@
-/* Minimal plain styling. Later briefs polish this. */
+/* Brief 03, task 6: plain and clean document styling, no design system.
+   A centred ~720px column, a readable serif-free body font from the system
+   stack, comfortable line height, thin-bordered tables with header shading,
+   code/source blocks as light grey cards, blockquotes with a left rule,
+   underlined coloured links, images constrained to the column, and a slim
+   top bar with the document name, the user's name, and the Markdown
+   toggle. Nothing here shows raw Markdown syntax in rendered text -- that
+   is a property of the schema's toDOM/the node views (brief 02/03), not of
+   this stylesheet; this file only concerns itself with how those already-
+   rendered elements look. */
+
 html,
 body {
   height: 100%;
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  color: #1f2328;
+  background: #ffffff;
 }
 
 #app {
@@ -16,9 +28,44 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
-  border-bottom: 1px solid #ddd;
+  gap: 16px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #e2e2e2;
   font-size: 14px;
+  background: #fafafa;
+}
+
+#toolbar-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#doc-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#user-name {
+  color: #6e7781;
+  white-space: nowrap;
+}
+
+#markdown-toggle {
+  font: inherit;
+  padding: 4px 12px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+#markdown-toggle:hover {
+  background: #f3f4f6;
 }
 
 #panes {
@@ -30,21 +77,359 @@ body {
 #editor {
   flex: 1;
   overflow: auto;
-  padding: 24px;
+  padding: 40px 24px;
+  background: #ffffff;
 }
 
 #editor .ProseMirror {
   outline: none;
-  max-width: 760px;
+  max-width: 720px;
   margin: 0 auto;
+  line-height: 1.65;
+  font-size: 16px;
+}
+
+#editor .ProseMirror > * + * {
+  margin-top: 0.9em;
+}
+
+#editor .ProseMirror h1,
+#editor .ProseMirror h2,
+#editor .ProseMirror h3,
+#editor .ProseMirror h4,
+#editor .ProseMirror h5,
+#editor .ProseMirror h6 {
+  line-height: 1.3;
+  font-weight: 600;
+  margin-top: 1.4em;
+  margin-bottom: 0.4em;
+}
+
+#editor .ProseMirror h1 {
+  font-size: 1.9em;
+}
+#editor .ProseMirror h2 {
+  font-size: 1.55em;
+}
+#editor .ProseMirror h3 {
+  font-size: 1.3em;
+}
+#editor .ProseMirror h4 {
+  font-size: 1.12em;
+}
+#editor .ProseMirror h5 {
+  font-size: 1em;
+}
+#editor .ProseMirror h6 {
+  font-size: 0.9em;
+  color: #57606a;
+}
+
+#editor .ProseMirror p {
+  margin: 0;
+}
+
+#editor .ProseMirror a {
+  color: #0969da;
+  text-decoration: underline;
+}
+
+#editor .ProseMirror ul,
+#editor .ProseMirror ol {
+  padding-left: 1.6em;
+  margin: 0;
+}
+
+#editor .ProseMirror li {
+  margin: 0.2em 0;
+}
+
+#editor .ProseMirror li > p {
+  margin: 0;
+}
+
+#editor .ProseMirror blockquote {
+  margin: 0;
+  padding: 0.1em 1em;
+  border-left: 3px solid #d0d7de;
+  color: #57606a;
+}
+
+#editor .ProseMirror img {
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+#editor .ProseMirror hr {
+  border: none;
+  border-top: 1px solid #d8dee4;
+  margin: 1.6em 0;
+}
+
+#editor .ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95em;
+}
+
+#editor .ProseMirror th,
+#editor .ProseMirror td {
+  border: 1px solid #d8dee4;
+  padding: 6px 12px;
+  text-align: left;
+}
+
+#editor .ProseMirror th {
+  background: #f6f8fa;
+  font-weight: 600;
+}
+
+/* Plain code blocks (brief 02) and the source-block/Mermaid chrome (brief 03)
+   share the same "light grey card" look. */
+#editor .ProseMirror pre {
+  margin: 0;
+  padding: 12px 14px;
+  background: #f6f8fa;
+  border: 1px solid #e2e2e2;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
   line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#editor .ProseMirror code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #f6f8fa;
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+#editor .ProseMirror pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.phraise-code-block {
+  border: 1px solid #e2e2e2;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.phraise-code-block .phraise-code-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6e7781;
+  background: #eceef1;
+  padding: 4px 10px;
+}
+
+.phraise-code-block pre {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+}
+
+/* Source blocks (raw_block: HTML, front matter, math, footnotes, link refs,
+   unrecognized constructs) and the Mermaid variant of a code_block. */
+.phraise-source-block {
+  border: 1px solid #e2e2e2;
+  border-radius: 6px;
+  background: #f6f8fa;
+  overflow: hidden;
+}
+
+.phraise-source-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6e7781;
+  background: #eceef1;
+  padding: 4px 10px;
+}
+
+.phraise-edit-source-button {
+  font: inherit;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  background: #fff;
+  color: #24292f;
+  padding: 1px 8px;
+  cursor: pointer;
+}
+
+.phraise-edit-source-button:hover {
+  background: #f3f4f6;
+}
+
+.phraise-source-preview {
+  padding: 12px 14px;
+}
+
+.phraise-source-editor {
+  display: none;
+  margin: 0;
+  padding: 12px 14px;
+  background: #fbfbfc;
+  border: none;
+  border-radius: 0;
+  /* Explicit (not just inherited from the generic `pre` rule above): a
+     ProseMirror contentDOM must report `pre-wrap` on ITS OWN computed style
+     for the view's own text measurement to work correctly, regardless of
+     cascade/specificity elsewhere. */
+  white-space: pre-wrap;
+  border-top: 1px solid #e2e2e2;
+}
+
+.phraise-source-block.phraise-editing .phraise-source-preview {
+  display: none;
+}
+
+.phraise-source-block.phraise-editing .phraise-source-editor {
+  display: block;
+  border-top: none;
+}
+
+.phraise-source-block.phraise-block-selected {
+  outline: 2px solid #0969da;
+  outline-offset: 1px;
+}
+
+.phraise-raw-text-preview {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #24292f;
+}
+
+.phraise-html-preview {
+  font-size: 0.95em;
+}
+
+.phraise-frontmatter-preview {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  font-size: 0.92em;
+}
+
+.phraise-frontmatter-preview dt {
+  font-weight: 600;
+  color: #57606a;
+}
+
+.phraise-frontmatter-preview dd {
+  margin: 0;
+}
+
+.phraise-math-preview {
+  text-align: center;
+  padding: 4px 0;
+}
+
+.phraise-render-error {
+  color: #cf222e;
+}
+
+.phraise-render-error-message {
+  font-size: 0.85em;
+  margin-bottom: 6px;
+}
+
+.phraise-mermaid-preview svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Inline atoms (brief 03, task 2): unobtrusive chips and rendered math. */
+.phraise-inline-chip {
+  display: inline-block;
+  font-size: 0.78em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #57606a;
+  background: #eceef1;
+  border: 1px solid #d8dee4;
+  border-radius: 4px;
+  padding: 0 5px;
+  cursor: default;
+}
+
+.phraise-inline-math.phraise-render-error {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+
+/* Gate H (brief 03, task 5): the unverified-block banner. Its wrapper
+   always carries `.phraise-editing` (set once in the node view and never
+   toggled off), so the shared `.phraise-editing .phraise-source-editor`
+   rule above already keeps the source visible here. */
+.phraise-source-label.phraise-unverified-banner {
+  display: block;
+  text-transform: none;
+  letter-spacing: normal;
+  background: #fff8ea;
+  border-bottom: 1px solid #f2d675;
+  padding: 10px 14px;
+}
+
+.phraise-unverified-message {
+  color: #7d4e00;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.phraise-unverified-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.phraise-unverified-buttons button {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.phraise-unverified-buttons button:first-child {
+  border: 1px solid #0969da;
+  background: #0969da;
+  color: #fff;
+}
+
+.phraise-unverified-buttons button:last-child {
+  border: 1px solid #d0d7de;
+  background: #fff;
+  color: #24292f;
 }
 
 #markdown-panel {
   width: 40%;
   max-width: 480px;
-  border-left: 1px solid #ddd;
+  border-left: 1px solid #e2e2e2;
   overflow: auto;
+  background: #fafafa;
 }
 
 #markdown-panel[hidden] {

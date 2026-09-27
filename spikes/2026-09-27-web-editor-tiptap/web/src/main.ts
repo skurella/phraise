@@ -6,7 +6,7 @@
 // CollaborationCaret, and shows the serialized Markdown in a side panel.
 import * as Y from 'yjs';
 import { Node as PMNode } from 'prosemirror-model';
-import { Editor, type AnyExtension } from '@tiptap/core';
+import { Editor, Node as TiptapNode, type AnyExtension } from '@tiptap/core';
 import { Collaboration } from '@tiptap/extension-collaboration';
 import { CollaborationCaret } from '@tiptap/extension-collaboration-caret';
 import { HocuspocusProvider } from '@hocuspocus/provider';
@@ -16,6 +16,7 @@ import { FRAGMENT_NAME } from '../../src/model/yjs.js';
 import { schema } from '../../src/model/schema.js';
 import { serializeDoc } from '../../src/model/serialize.js';
 import { FreshSrc } from '../../src/editing/freshSrc.js';
+import { stripEmptyTopLevelParagraphs } from '../../src/editing/stripEmptyParagraphs.js';
 import { MarkdownInputRules } from './editing/inputRulesExtension.js';
 import { EnterConversions } from './editing/enterConversions.js';
 import { MarkShortcuts } from './editing/markShortcuts.js';
@@ -24,12 +25,20 @@ import { ListKeymap } from './editing/listKeymap.js';
 import { TableKeymap } from './editing/tableKeymap.js';
 import { MarkdownPasteRule } from './editing/pasteRule.js';
 import { MarkdownCopyRule } from './editing/copyRule.js';
+import { SourceBlockKeymap } from './editing/sourceBlockKeymap.js';
+import { UnverifiedCheck, debugStats as unverifiedCheckDebugStats } from './editing/unverifiedCheck.js';
+import { rawBlockNodeView } from './nodeviews/rawBlockView.js';
+import { rawInlineNodeView } from './nodeviews/rawInlineView.js';
+import { codeBlockNodeView } from './nodeviews/codeBlockView.js';
+import 'katex/dist/katex.min.css';
 
 interface PhraiseWindowHook {
   editor: Editor;
   markdown(): string;
   ydoc: Y.Doc;
   provider: HocuspocusProvider;
+  /** Test-only (gate H): see `unverifiedCheck.ts`'s `debugStats` comment. */
+  debugUnverifiedCheckRuns(): number;
 }
 
 declare global {
@@ -77,12 +86,17 @@ async function waitForProviderSynced(provider: HocuspocusProvider): Promise<void
 async function main(): Promise<void> {
   const { docName, userName } = readParams();
   const docNameEl = document.getElementById('doc-name')!;
+  const userNameEl = document.getElementById('user-name')!;
   const editorEl = document.getElementById('editor')!;
   const markdownToggle = document.getElementById('markdown-toggle')! as HTMLButtonElement;
   const markdownPanel = document.getElementById('markdown-panel')!;
   const markdownOutput = document.getElementById('markdown-output')!;
 
-  docNameEl.textContent = docName ? `${docName} — ${userName}` : '(no ?doc= given)';
+  // Brief 03, task 6: the top bar shows the document name and the user's
+  // name as two separate elements (rather than one combined string), so
+  // each can be styled and located independently.
+  docNameEl.textContent = docName || '(no ?doc= given)';
+  userNameEl.textContent = docName ? userName : '';
 
   if (!docName) {
     editorEl.textContent = 'Open this page with ?doc=<relpath>&user=<name>. See GET /api/files for available files.';
@@ -128,8 +142,24 @@ async function main(): Promise<void> {
   // `MarkdownPasteRule`, or `MarkdownCopyRule`: the first is an
   // `appendTransaction` plugin (runs regardless of position), and the other
   // three bind no keys that anything else here also binds.
+  // Brief 03, task 2/4: node views are added by `.extend()`-ing the
+  // specific generically-converted extensions by name, never by hand-
+  // writing a new Node/Mark (that would risk `checkSchemaEquivalence`
+  // drifting from `src/model/schema.ts`). `.extend()` only adds config
+  // (here, `addNodeView`); it changes no compared field
+  // (content/group/inline/atom/marks/code/attrs), so schema equivalence is
+  // unaffected -- confirmed by re-running `test/schemaEquivalence.spec.ts`
+  // after this change.
+  const baseExtensions = buildTiptapExtensions().map((ext) => {
+    if (!(ext instanceof TiptapNode)) return ext;
+    if (ext.name === 'raw_block') return ext.extend({ addNodeView: rawBlockNodeView });
+    if (ext.name === 'raw_inline') return ext.extend({ addNodeView: rawInlineNodeView });
+    if (ext.name === 'code_block') return ext.extend({ addNodeView: codeBlockNodeView });
+    return ext;
+  });
+
   const extensions: AnyExtension[] = [
-    ...buildTiptapExtensions(),
+    ...baseExtensions,
     Collaboration.configure({ document: ydoc, field: FRAGMENT_NAME }),
     CollaborationCaret.configure({
       provider,
@@ -152,12 +182,14 @@ async function main(): Promise<void> {
       stats: { rootAttrs: { mapWrites: 0, docWrites: 0 }, leafMarks: { attrWrites: 0, restores: 0 } },
     }),
     FreshSrc,
+    UnverifiedCheck,
     MarkdownInputRules,
     MarkShortcuts,
     LinkShortcut,
     EnterConversions,
     ListKeymap,
     TableKeymap,
+    SourceBlockKeymap,
     MarkdownPasteRule,
     MarkdownCopyRule,
   ];
@@ -174,10 +206,19 @@ async function main(): Promise<void> {
    * (Tiptap builds its own Schema object from the same NodeSpec/MarkSpecs). */
   function markdown(): string {
     const doc = PMNode.fromJSON(schema, editor.state.doc.toJSON());
-    return serializeDoc(doc);
+    // Brief 03, task 1: an empty top-level paragraph (Enter pressed twice)
+    // has no Markdown form; strip it before handing the doc to
+    // `serializeDoc` rather than let it throw.
+    return serializeDoc(stripEmptyTopLevelParagraphs(doc));
   }
 
-  window.phraise = { editor, markdown, ydoc, provider };
+  window.phraise = {
+    editor,
+    markdown,
+    ydoc,
+    provider,
+    debugUnverifiedCheckRuns: () => unverifiedCheckDebugStats.checkRuns,
+  };
 
   const refreshMarkdown = debounce(() => {
     if (markdownPanel.hidden) return;

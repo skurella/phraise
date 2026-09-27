@@ -710,95 +710,140 @@ function reserializeBlock(block: PMNode, style: Style, useHints: boolean, eol: '
 // Top-level serialize
 // ---------------------------------------------------------------------------
 
-export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
+// ---------------------------------------------------------------------------
+// Per-block check context (brief 03, gate H): the pieces of serializeDoc's
+// state that are shared across every block in one document (definitions
+// context, detected style, eol) but that a caller checking only a handful of
+// changed top-level blocks -- rather than the whole document -- can compute
+// once and reuse. `buildBlockCheckContext` and `serializeBlock` below are
+// exactly `serializeDoc`'s own per-block logic, factored out so the gate H
+// unverified-block check (`src/editing/unverifiedCheck.ts`) never has to
+// call `serializeDoc` on a full 240 KB document just to learn about the one
+// paragraph that just changed. `serializeDoc` itself now calls
+// `serializeBlock` too, so there is exactly one copy of the verification
+// ladder.
+export interface BlockCheckContext {
+  ctx: string;
+  style: Style;
+  eol: '\n' | '\r\n';
+}
+
+/** Compute once per document (or per debounce cycle): the definitions
+ * context and detected style every block's re-serialization needs. This is
+ * the expensive part of `serializeDoc` (a full reconstruction and re-parse
+ * of the document's own bytes for style detection) -- see gate H's measured
+ * cost in the builder log. A caller that wants to check only a few changed
+ * blocks should compute this once and pass it to `serializeBlock` for each
+ * changed block, rather than calling `serializeDoc` (which recomputes this
+ * AND re-verifies every block) on every edit. */
+export function buildBlockCheckContext(doc: PMNode): BlockCheckContext {
+  return {
+    ctx: buildDefsContextFromDoc(doc),
+    style: detectDocStyle(doc),
+    eol: doc.attrs.eol === '\r\n' ? '\r\n' : '\n',
+  };
+}
+
+/**
+ * Serialize and verify exactly one top-level block, given a
+ * `BlockCheckContext` (shared across all blocks of the same document).
+ * Returns the emitted text and the same `TraceInfo` shape `serializeDoc`'s
+ * own `trace` callback reports, so a caller can tell verbatim/splice/
+ * re-serialize/unverified apart without re-implementing the ladder.
+ *
+ * Never throws `UnverifiedSerializationError` itself (that is `serializeDoc`'s
+ * own contract for `onUnverified: 'throw'`, the default there); callers that
+ * want throwing behaviour check `trace.kind === 'unverified'` themselves. A
+ * `raw_block` (opaque source block) never reports `'unverified'` -- it is
+ * always its own source, verbatim or edited -- matching gate H's own note
+ * that only an ordinary (non-source) block can fail to verify.
+ */
+export function serializeBlock(block: PMNode, context: BlockCheckContext, opts: SerializeOpts = {}): { text: string; trace: TraceInfo } {
   const useHints = opts.useHints ?? true;
   const forceReserialize = opts.forceReserialize ?? false;
   const noSplice = opts.noSplice ?? false;
   const semanticLineBreaks = opts.semanticLineBreaks ?? false;
+  const { ctx, style, eol } = context;
+
+  if (block.type.name === 'raw_block' && !forceReserialize) {
+    const src = block.attrs.src as string | null;
+    const text = block.textContent;
+    const out = src != null && text === src ? src : text;
+    const kind: TraceInfo['kind'] = src != null && text === src ? 'verbatim' : 'opaque-edit';
+    return { text: out, trace: { kind, type: block.type.name, text: out } };
+  }
+
+  if (!forceReserialize) {
+    const src = block.attrs.src as string | null;
+    if (src != null) {
+      let reparsed: PMNode | undefined;
+      let reparsedCount = 0;
+      try {
+        const r = parseBlock(src, ctx);
+        reparsed = r.node;
+        reparsedCount = r.count;
+      } catch {
+        reparsed = undefined;
+      }
+      if (reparsed && reparsedCount === 1 && semanticEq(reparsed, block)) {
+        return { text: src, trace: { kind: 'verbatim', type: block.type.name, text: src } };
+      }
+      if (!noSplice) {
+        let spliced: string | null = null;
+        try {
+          spliced = trySplice(block, src, ctx, style);
+        } catch {
+          spliced = null;
+        }
+        if (spliced != null) {
+          return { text: spliced, trace: { kind: 'splice', type: block.type.name, text: spliced } };
+        }
+        let tbSpliced: string | null = null;
+        if (!opts.noTextblockSplice) {
+          try {
+            tbSpliced = tryTextblockSplice(block, src, ctx, style, semanticLineBreaks);
+          } catch {
+            tbSpliced = null;
+          }
+        }
+        if (tbSpliced != null) {
+          return { text: tbSpliced, trace: { kind: 'textblock-splice', type: block.type.name, text: tbSpliced } };
+        }
+      }
+    }
+  }
+
+  const result = reserializeBlock(block, style, useHints, eol, semanticLineBreaks);
+  let verified = false;
+  try {
+    const r = parseBlock(result, ctx);
+    verified = r.count === 1 && semanticEq(r.node, block, { equateSoftBreaks: semanticLineBreaks });
+  } catch {
+    verified = false;
+  }
+  const kind: TraceInfo['kind'] = verified ? 're-serialize' : 'unverified';
+  return { text: result, trace: { kind, type: block.type.name, text: result } };
+}
+
+export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
   const trace = opts.trace;
 
   clearParseBlockCache();
 
-  const eol: '\n' | '\r\n' = doc.attrs.eol === '\r\n' ? '\r\n' : '\n';
-  const ctx = buildDefsContextFromDoc(doc);
-  const style = detectDocStyle(doc);
-
-  let currentIndex = 0;
-  function emit(block: PMNode): string {
-    // Opaque source blocks are their own source: emit the text as is.
-    if (block.type.name === 'raw_block' && !forceReserialize) {
-      const src = block.attrs.src as string | null;
-      const text = block.textContent;
-      const out = src != null && text === src ? src : text;
-      trace?.({ kind: src != null && text === src ? 'verbatim' : 'opaque-edit', type: block.type.name, text: out });
-      return out;
-    }
-    if (!forceReserialize) {
-      const src = block.attrs.src as string | null;
-      if (src != null) {
-        let reparsed: PMNode | undefined;
-        let reparsedCount = 0;
-        try {
-          const r = parseBlock(src, ctx);
-          reparsed = r.node;
-          reparsedCount = r.count;
-        } catch {
-          reparsed = undefined;
-        }
-        if (reparsed && reparsedCount === 1 && semanticEq(reparsed, block)) {
-          trace?.({ kind: 'verbatim', type: block.type.name, text: src });
-          return src;
-        }
-        if (!noSplice) {
-          let spliced: string | null = null;
-          try {
-            spliced = trySplice(block, src, ctx, style);
-          } catch {
-            spliced = null;
-          }
-          if (spliced != null) {
-            trace?.({ kind: 'splice', type: block.type.name, text: spliced });
-            return spliced;
-          }
-          let tbSpliced: string | null = null;
-          if (!opts.noTextblockSplice) {
-            try {
-              tbSpliced = tryTextblockSplice(block, src, ctx, style, semanticLineBreaks);
-            } catch {
-              tbSpliced = null;
-            }
-          }
-          if (tbSpliced != null) {
-            trace?.({ kind: 'textblock-splice', type: block.type.name, text: tbSpliced });
-            return tbSpliced;
-          }
-        }
-      }
-    }
-
-    const result = reserializeBlock(block, style, useHints, eol, semanticLineBreaks);
-    let verified = false;
-    try {
-      const r = parseBlock(result, ctx);
-      verified = r.count === 1 && semanticEq(r.node, block, { equateSoftBreaks: semanticLineBreaks });
-    } catch {
-      verified = false;
-    }
-    trace?.({ kind: verified ? 're-serialize' : 'unverified', type: block.type.name, text: result });
-    if (!verified && !forceReserialize && (opts.onUnverified ?? 'throw') === 'throw') {
-      throw new UnverifiedSerializationError(currentIndex, block.type.name, result);
-    }
-    return result;
-  }
+  const context = buildBlockCheckContext(doc);
 
   let out = (doc.attrs.lead as string) ?? '';
   const n = doc.childCount;
   doc.forEach((block, _offset, index) => {
-    currentIndex = index;
-    out += emit(block);
+    const { text, trace: traceInfo } = serializeBlock(block, context, opts);
+    trace?.(traceInfo);
+    if (traceInfo.kind === 'unverified' && !opts.forceReserialize && (opts.onUnverified ?? 'throw') === 'throw') {
+      throw new UnverifiedSerializationError(index, block.type.name, traceInfo.text);
+    }
+    out += text;
     const gap = block.attrs.gap as string | null;
     if (gap != null) out += gap;
-    else out += index === n - 1 ? eol : eol + eol;
+    else out += index === n - 1 ? context.eol : context.eol + context.eol;
   });
   return out;
 }

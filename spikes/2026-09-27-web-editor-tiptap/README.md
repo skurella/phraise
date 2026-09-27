@@ -1,12 +1,14 @@
-# Spike 7: the web editor, briefs 01 (foundation) and 02 (typing, gates A and B)
+# Spike 7: the web editor, briefs 01-03 (foundation, typing, source blocks)
 
-Status: briefs 01 and 02 done. See
+Status: briefs 01, 02 and 03 done. See
 [the plan](../../context/plans/2026-09-27-spike-7-plan.md),
 [the charter](../../context/plans/2026-09-27-spike-7-charter-web-editor.md),
-[brief 01](../../context/plans/2026-09-27-spike-7-brief-01-foundation.md) and
-[brief 02](../../context/plans/2026-09-27-spike-7-brief-02-typing.md).
+[brief 01](../../context/plans/2026-09-27-spike-7-brief-01-foundation.md),
+[brief 02](../../context/plans/2026-09-27-spike-7-brief-02-typing.md) and
+[brief 03](../../context/plans/2026-09-27-spike-7-brief-03-source-blocks.md).
 Logs: [brief 01](../../context/logs/2026-09-27-builder-spike-7-foundation.md),
-[brief 02](../../context/logs/2026-09-27-builder-spike-7-typing.md).
+[brief 02](../../context/logs/2026-09-27-builder-spike-7-typing.md),
+[brief 03](../../context/logs/2026-09-27-builder-spike-7-source-blocks.md).
 
 ## Goal
 
@@ -18,7 +20,13 @@ a gate reporter. Brief 02 made the editor behave like a word processor
 under real keyboard input (typing, splitting/joining, formatting
 shortcuts, lists, tables) and added Markdown affordances (input rules,
 paste, copy), proving every scenario with Playwright in Chromium against
-gates A and B. Serves D4 and D5 in
+gates A and B. Brief 03 made the blocks the editor does not model (raw
+HTML, front matter, math, footnote/link-reference definitions, and
+anything unrecognized) render as labelled, editable source blocks that
+never get corrupted by edits around them; Mermaid fences render as
+diagrams; an edit the serializer cannot express shows a plain-language
+banner instead of failing silently; and the page got plain, clean document
+styling (gates C, H, and part of J). Serves D4 and D5 in
 [the architecture decisions](../../context/docs/2026-09-27-architecture-decisions.md).
 
 ## Layout
@@ -69,11 +77,23 @@ gates A and B. Serves D4 and D5 in
   `gateB-inputrules.spec.ts`, `gateB-paste.spec.ts`, `gateB-copy.spec.ts`,
   and their fixtures under `e2e/fixtures/` (small hand-written `.md` files,
   each with untouched neighbour blocks so a test can assert the full
-  serialized Markdown and prove nothing else moved).
+  serialized Markdown and prove nothing else moved). Brief 03 added
+  `gateC-sourceblocks.spec.ts` (`e2e/fixtures/source-blocks.md`: front
+  matter, HTML, math, a footnote, a link reference definition, a Mermaid
+  fence — verified to round-trip byte for byte before use; plus
+  `e2e/fixtures/unsafe-html.md` for the sanitizer test) and
+  `gateH-unverified.spec.ts` (`e2e/fixtures/gate-h.md`: an autolink whose
+  URL contains a backslash-escaped asterisk — see "Gate H's demonstration"
+  below).
 - `test/` — vitest unit tests (schema equivalence, byte-for-byte
-  round-trip through a Tiptap-built document, workaround plugin order, and
+  round-trip through a Tiptap-built document, workaround plugin order,
   brief 02's `src/editing/` modules: `freshSrc`, `pasteMarkdown`,
-  `copyMarkdown`, `inputRulePatterns`, `tableNav`).
+  `copyMarkdown`, `inputRulePatterns`, `tableNav`; brief 03's:
+  `stripEmptyParagraphs`, `rawBlockLabels`, `frontMatterPreview`,
+  `sanitizeHtml` (real DOMPurify against real HTML, in a per-file
+  `// @vitest-environment jsdom`), `sourceBlockBoundary`,
+  `blockCheckCache` (including a `vi.spyOn` proof that an unchanged
+  top-level block is genuinely skipped, not just correctly reported)).
 - `corpus/handwritten/` — 28 small hand-authored fixtures, copied from
   spike 5, used by the unit round-trip test and available to e2e tests.
 - `corpus/manifest.json`, `corpus/needed.json`, `scripts/fetch-corpus.mjs`
@@ -82,6 +102,49 @@ gates A and B. Serves D4 and D5 in
 - `examples/` — three small fixtures for `npm start` (heading + paragraphs
   + list + code block; a table; a blockquote + ordered list + emphasis).
 - `scripts/start.ts` — `npm start`'s implementation.
+- `src/editing/` (brief 03, additions) — `stripEmptyParagraphs.ts` (the
+  page-level serialize wrapper that omits an empty top-level paragraph
+  before handing the doc to `serializeDoc`, which correctly refuses one:
+  a blank line has no Markdown form at all), `rawBlockLabels.ts` (kind ->
+  plain-word label, e.g. `yaml`/`toml` -> "Page properties", `math` ->
+  "Formula", anything unrecognized -> "Source"), `frontMatterPreview.ts`
+  (a hand-rolled flat-mapping preview parser, not a real YAML/TOML parser
+  — falls back to raw text for anything nested/multi-line),
+  `sanitizeHtml.ts` (the DOMPurify config for HTML previews: explicit
+  `FORBID_TAGS` for `iframe`/`style`/`object`/`embed`/`form`/`base`/
+  `meta`/`link` on top of DOMPurify's own default script/event-handler/
+  `javascript:` stripping), `sourceBlockBoundary.ts` (pure position
+  arithmetic for the Backspace/Delete/Mod-Enter/ArrowDown gestures around a
+  source block), `blockCheckCache.ts` (gate H: a node-identity cache around
+  the two new exports below, so a debounced check only re-serializes
+  top-level blocks that actually changed).
+- `src/model/serialize.ts` (brief 03 addition) — `buildBlockCheckContext`
+  and `serializeBlock` are `serializeDoc`'s own internal per-block ladder,
+  factored out and exported (no behaviour change to `serializeDoc` itself —
+  the full brief 01/02 test suite was re-run after this refactor) so gate
+  H's check can verify one changed block without paying for a whole-document
+  re-parse every time.
+- `web/src/nodeviews/` (brief 03) — the three Tiptap node views:
+  `rawBlockView.ts` (source blocks: a label, a rendered preview per kind
+  sanitized HTML, KaTeX math, a front-matter key-value list, or raw text —
+  and an always-present editable source `contentDOM`, toggled visible by
+  whether the caret is inside it or "Edit source" was clicked; also
+  renders gate H's unverified-block banner for `kind: 'unverified'`),
+  `rawInlineView.ts` (inline math via KaTeX; an unobtrusive chip with the
+  raw source in its tooltip for inline HTML/footnote references/anything
+  else), `codeBlockView.ts` (a plain labelled code block, or for
+  `lang: mermaid` the rendered-diagram/editable-source pattern, with
+  `mermaid` loaded only through a dynamic `import()` so it is its own
+  bundle chunk).
+- `web/src/editing/` (brief 03 additions) — `sourceBlockKeymap.ts`
+  (Backspace/Delete select the adjacent source block instead of merging
+  into it; Mod-Enter/ArrowDown-at-the-last-line exit any `code: true`
+  block), `unverifiedCheck.ts` (gate H: the debounced, local-transaction-
+  only check that replaces an unverifiable block with a `raw_block` of
+  kind `unverified`, and the "Keep this"/"Undo my change" logic the
+  banner's buttons call into). `pasteRule.ts` gained one guard line so a
+  paste into a source block never tries to insert block-level Markdown
+  content into inline-only content.
 
 ## Origin of copied code
 
@@ -140,9 +203,30 @@ npm run gates          # builds the page, runs the Playwright gates, prints the 
 npm start              # builds if needed, seeds from examples/, serves on 127.0.0.1:4480 (relay 4481)
 ```
 
-`npm run gates` runs gates `[A]` (22 tests) and `[B]` (23 tests); later
-briefs add gates C through K. The reporter marks every gate with no tests
-"not run", not a failure. Every gate that does run passes.
+`npm run gates` runs gates `[A]` (22 tests), `[B]` (23 tests), `[C]`
+(6 tests) and `[H]` (4 tests); later briefs add D, E, F, G, I, J and K.
+The reporter marks every gate with no tests "not run", not a failure.
+Every gate that does run passes.
+
+## Gate H's demonstration
+
+Brief 03 tried both constructs the brief itself suggests (a paragraph with
+`&#10;&#10;` entities edited elsewhere; `***foo** bar*` with a bold
+toggle) with the real serializer, plus a fuzz across every CommonMark spec
+example — both suggested constructs, and all 132 nested-emphasis examples
+under every mark-toggle, verify successfully with this serializer's
+re-serialize ladder; they are evidently already-fixed regressions from
+spike 1's original remark-only findings, not live bugs. The demonstration
+used instead: CommonMark spec example 20 ("Backslash escapes"), an
+autolink `<https://example.com?find=\*>` whose URL text contains a
+backslash-escaped asterisk. Removing its `link` mark (a real generic core
+command, `unsetMark('link')`) leaves a plain text run the serializer
+cannot re-express as unlinked plain text that reparses back to the same
+literal `\*` — confirmed to really throw `UnverifiedSerializationError`,
+not assumed. See the builder log for the full fuzz results (46 real
+failures found across 652 spec examples and two edit types) and why this
+one was picked over the others (single paragraph, not a multi-block
+fixture).
 
 Mod-E (inline code) is this spike's own choice of shortcut: Google Docs has
 none for inline code. Documented where it's wired,
@@ -154,13 +238,15 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
 
 ## Verified
 
-- `npx vitest run` — 8 files, 69 tests, all passing (brief 01's schema
-  equivalence, corpus round-trip and workaround-order tests, plus brief
-  02's `freshSrc`, `pasteMarkdown`, `copyMarkdown`, `inputRulePatterns` and
-  `tableNav` tests).
+- `npx vitest run` — 14 files, 117 tests, all passing (brief 01's schema
+  equivalence, corpus round-trip and workaround-order tests; brief 02's
+  `freshSrc`, `pasteMarkdown`, `copyMarkdown`, `inputRulePatterns` and
+  `tableNav` tests; brief 03's `stripEmptyParagraphs`, `rawBlockLabels`,
+  `frontMatterPreview`, `sanitizeHtml`, `sourceBlockBoundary` and
+  `blockCheckCache` tests).
 - `npx tsc --noEmit` — clean.
-- `npm run gates` — builds the page, runs gates `[A]` and `[B]` in
-  Chromium, 45/45 passing, prints the table, writes
+- `npm run gates` — builds the page, runs gates `[A]`, `[B]`, `[C]` and
+  `[H]` in Chromium, 55/55 passing, prints the table, writes
   `results/gates.md`/`gates.json`, exits 0. `lsof -nP -iTCP:4400-4499
   -sTCP:LISTEN` is empty afterward.
 - `npm start` — prints the open URL; `curl` of the page returns 200; a
@@ -174,12 +260,42 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
   `examples/hello.md`, typed into it, opened the Markdown panel, read
   `window.phraise.markdown()` from the console — all matched.
 
-## Notes for the next brief
+## Bundle sizes (brief 03, after the Mermaid split)
 
-- The built page bundle is about 608 KB minified (186 KB gzipped) as a
-  single chunk — Vite warns about chunk size. Worth watching as more
-  extensions are added (brief 03's Mermaid rendering especially); code
-  splitting is one option if it grows further.
+Measured with `npx vite build` from a clean `dist/`, comparing against the
+brief-02 baseline (same command, run against the working tree with brief
+03's changes temporarily stashed):
+
+| | before brief 03 | after brief 03 |
+|---|---|---|
+| main `index-*.js` | 608.34 KB (185.79 KB gzip) | 914.10 KB (279.70 KB gzip) |
+| CSS | 1.07 KB | 36.48 KB (9.70 KB gzip) |
+| `mermaid` + its diagram-type sub-chunks | not present | ~2 MB raw across ~60 chunks (`mermaid.core-*.js` 666 KB alone), **loaded only on demand** |
+
+**Mermaid is confirmed never in the initial load**: grepping the built
+`index.js` for the mermaid chunk's own filename finds it referenced only
+inside the one `import('mermaid')` call in `loadMermaid()`
+(`web/src/nodeviews/codeBlockView.ts`) — Vite/Rollup puts it in its own
+chunk and the page never fetches it unless a document actually contains a
+`lang: mermaid` code block.
+
+**katex is NOT similarly split**, and accounts for most of the ~306 KB
+increase in the main chunk: `web/src/nodeviews/{rawBlockView,
+rawInlineView}.ts` import it statically (`import katex from 'katex'`), so
+Rollup inlines katex's ~250 KB (minified) directly into `index.js` rather
+than lazy-loading it. Mermaid ships its OWN separate, already-lazy copy of
+katex (`katex-*.js`, one of its dynamic-import-only chunks) for its own
+internal math rendering; grepping the built `index.js` finds zero
+references to that chunk's filename, confirming our static import is not
+even sharing it — it is a second, fully-inlined copy. The brief only
+asked for Mermaid to be dynamically imported, so this was left as a
+static import for simplicity; dynamic-importing katex too (matching the
+Mermaid pattern) is a straightforward follow-up if initial load size
+becomes a real concern before a non-technical user ever opens a document
+with a formula in it. DOMPurify (~84 KB source, small once minified)
+accounts for the rest of the increase.
+
+## Notes for the next brief
 - `@hocuspocus/server`'s top-level `Server` class exposes a public
   `destroy(): Promise<void>` (confirmed in its `.d.ts`), used directly for
   clean shutdown — no need for spike 5's `(server as any).hocuspocus`
@@ -206,3 +322,44 @@ test (charter's range for this spike); `npm start` uses 4480 (page) and
   split. See `src/editing/freshSrc.ts`'s file comment (the paste-into-the-
   last-block finding) if gate C/D/E's own edits turn up a similar "stale
   separator" symptom.
+- Brief 03: two more real Playwright/browser races, same shape as brief
+  02's. (1) A native `End` keypress inside a multi-line `<pre>` (real
+  embedded newlines) moves to the end of the current VISUAL line, not the
+  block's own last line — not usable for "place the caret at the very end
+  of this source block". Fixed by computing the exact position directly
+  from the node's own `nodeSize` and driving selection via
+  `editor.commands.setTextSelection`, keeping only the actual edit as a
+  real keyboard event. (2) Clicking a button whose `mousedown` handler
+  calls `editor.commands.focus()` does not synchronously move real DOM
+  focus in headless Chromium — confirmed via `document.activeElement`
+  right after the click (still `<body>`); the very first keystroke sent
+  right after is lost. Fixed by polling for `document.activeElement`
+  carrying the `ProseMirror` class before typing. See
+  `e2e/gateC-sourceblocks.spec.ts` and the builder log.
+- `checkSchemaEquivalence` is unaffected by adding a node view via
+  `.extend({ addNodeView: ... })` on one of the generically-converted
+  extensions (confirmed: `test/schemaEquivalence.spec.ts` still passes) —
+  this is the pattern to follow for any FUTURE node view too, rather than
+  hand-writing a new Tiptap Node.
+- `Node | Mark` union values from `buildTiptapExtensions()` cannot have
+  `.extend()` called on them directly (TypeScript can't resolve the
+  overloaded union signature); narrow with `instanceof` against Tiptap's
+  own `Node`/`Mark` classes first (`web/src/main.ts`'s `baseExtensions`).
+- Playwright's fixture-option merging broke on a `test.use({ seedFiles:
+  [...] })` call whose array had MORE THAN ONE element (`TypeError:
+  seedFiles is not iterable`, reproduced with a minimal throwaway spec,
+  deleted before committing); a single-element array was fine. Worked
+  around by using a separate `test.use()` per fixture file (one at the top
+  of the file, one inside a nested `test.describe()` for a second fixture)
+  — the same shape `gateB-inputrules.spec.ts` already uses for its own
+  second fixture, so likely worth remembering rather than re-discovering.
+- Gate H's per-block cache (`src/editing/blockCheckCache.ts` +
+  `web/src/editing/unverifiedCheck.ts`) measured on
+  `corpus/fetched/nodejs-node-docapinapimd.md` (240 KB, 1619 blocks): a
+  cold full check costs ~1.2s (dominated by `detectDocStyle`'s one
+  full-document re-parse, the same cost `serializeDoc` itself pays); a
+  second check after ONE small paragraph edit, with the cache warm, costs
+  ~6 ms — about 200x faster than calling `serializeDoc` again on the whole
+  document (~1.2s). The context (link/footnote definitions + detected
+  style) is only recomputed when the set of definition blocks changes, not
+  on every check.
