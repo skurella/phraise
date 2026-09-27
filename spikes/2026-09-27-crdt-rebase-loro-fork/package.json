@@ -1,0 +1,30 @@
+{
+  "name": "crdt-rebase-loro-fork",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spike 2, brief 4: the same fork-at-base rebase algorithm on Loro, for a grounded comparison against the Yjs fork spike.",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "gates": "tsx scripts/gates.ts"
+  },
+  "dependencies": {
+    "approx-string-match": "^2.0.0",
+    "diff": "^7.0.0",
+    "loro-crdt": "1.16.3",
+    "loro-prosemirror": "0.4.4",
+    "markdown-it": "^14.1.0",
+    "prosemirror-markdown": "^1.13.1",
+    "prosemirror-model": "^1.24.1",
+    "prosemirror-state": "^1.4.3"
+  },
+  "devDependencies": {
+    "@types/diff": "^7.0.0",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
+  }
+}
