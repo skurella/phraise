@@ -118,3 +118,9 @@ Drafted a bug report for the owner; not filed, awaiting the owner's go-ahead bec
 ## 04:03 — Owner: no bug report; watch spike 1; parallel spikes allowed if independent
 
 Spike 1 status from its log: core builder handed back at 03:50 and was verified, orchestrator made small fixes itself, gates-harness builder dispatched at about 04:02 (dispatch 3 of about 8). Decisions P9 to P12 recorded. Chartering spike 2 (CRDT rebase, independent variant, Yjs and Loro) and spike 4 (GitHub storage mechanics) on their own branches from `main`.
+
+## 04:05 — Spikes 2 and 4 dispatched in parallel
+
+Charters pushed on `spike/2026-09-27-crdt-rebase` and `spike/2026-09-27-github-storage`, both based on `main`. One Opus orchestrator each, background, own worktree. Three orchestrators now running: spikes 1, 2 and 4. Spike 3 (daemon) waits for spikes 1 and 2. Both new prompts include a guard against the nested-agent stall described in claude-code issue 75043: do not end a turn waiting on a worker; check its log and files instead.
+
+Pending lead actions at each handback: read handback and findings, transfer decisions to the register, rebase spike 1 onto `main`, open one PR per spike.
