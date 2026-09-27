@@ -1,3 +1,4 @@
+import { semanticEq } from './compare.js';
 // Markdown -> ProseMirror doc. See brief 02 design.
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
@@ -412,7 +413,11 @@ export function blockFromMdast(node: any, source: string, map?: MapCollector): P
     case 'footnoteDefinition': {
       const kind = node.type;
       let text: string;
-      if (typeof node.value === 'string') {
+      // The text of an opaque block is its Markdown source, including fences
+      // and delimiters (`---` for yaml, `$$` for math), so that editing it as
+      // source and emitting it verbatim is lossless. Only html uses the parser's
+      // value, because for nested html that already has container prefixes removed.
+      if (node.type === 'html' && typeof node.value === 'string') {
         text = node.value;
       } else {
         const raw = node.position ? source.slice(node.position.start.offset, node.position.end.offset) : '';
@@ -473,6 +478,8 @@ export function buildDefsContextFromDoc(doc: PMNode): string {
 export interface ParseBlockResult {
   node: PMNode;
   map?: TextRun[];
+  /** Number of top-level blocks the source parsed into; anything but 1 means the block is not self-describing. */
+  count: number;
 }
 
 const parseBlockCache = new Map<string, ParseBlockResult>();
@@ -528,7 +535,7 @@ export function parseBlock(src: string, ctx: string, opts?: { map?: boolean }): 
     });
   }
 
-  const result: ParseBlockResult = { node, map };
+  const result: ParseBlockResult = { node, map, count: remaining.length };
   parseBlockCache.set(cacheKey, result);
   return result;
 }
@@ -605,7 +612,37 @@ export function parseMarkdown(md: string, opts: ParseOpts = {}): ParseResult {
     gaps.push(gap);
   }
 
-  const doc = schema.node('doc', { lead, eol }, blocks);
+  let doc = schema.node('doc', { lead, eol }, blocks);
+
+  // Self-description check. A modeled block must re-parse in isolation (with
+  // the document's definitions prepended) to the same node it was in context,
+  // because D4's write-time compare only ever sees `src`. micromark has rare
+  // context-dependent behaviour (for example an html line lazily following a
+  // paragraph inside a nested list parses differently at the document start),
+  // so blocks that fail the check become opaque source blocks. This makes the
+  // no-edit round trip exact by construction and counts how often it happens.
+  const ctx = buildDefsContextFromDoc(doc);
+  let changed = false;
+  const checked = blocks.map((block) => {
+    const src = block.attrs.src as string;
+    if (block.type.name === 'raw_block') {
+      if (block.textContent === src) return block;
+      changed = true;
+      return schema.node('raw_block', { kind: block.attrs.kind, src, gap: block.attrs.gap }, src ? [schema.text(src)] : []);
+    }
+    let ok = false;
+    try {
+      const r = parseBlock(src, ctx);
+      ok = r.count === 1 && semanticEq(r.node, block);
+    } catch {
+      ok = false;
+    }
+    if (ok) return block;
+    changed = true;
+    return schema.node('raw_block', { kind: 'unstable:' + block.type.name, src, gap: block.attrs.gap }, src ? [schema.text(src)] : []);
+  });
+  clearParseBlockCache();
+  if (changed) doc = schema.node('doc', { lead, eol }, checked);
 
   if (!opts.positions) return { doc };
 

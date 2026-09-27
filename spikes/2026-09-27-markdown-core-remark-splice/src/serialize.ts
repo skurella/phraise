@@ -104,10 +104,14 @@ function trySplice(block: PMNode, src: string, ctx: string): string | null {
 
   const escaped = escapeMarkdownText(newText);
   let candidate = src.slice(0, srcS) + escaped + src.slice(srcE);
-  if (semanticEq(parseBlock(candidate, ctx).node, block)) return candidate;
+  const ok = (c: string) => {
+    const r = parseBlock(c, ctx);
+    return r.count === 1 && semanticEq(r.node, block);
+  };
+  if (ok(candidate)) return candidate;
 
   candidate = src.slice(0, srcS) + newText + src.slice(srcE);
-  if (semanticEq(parseBlock(candidate, ctx).node, block)) return candidate;
+  if (ok(candidate)) return candidate;
 
   return null;
 }
@@ -362,16 +366,26 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
   const style = detectDocStyle(doc);
 
   function emit(block: PMNode): string {
+    // Opaque source blocks are their own source: emit the text as is.
+    if (block.type.name === 'raw_block' && !forceReserialize) {
+      const src = block.attrs.src as string | null;
+      const text = block.textContent;
+      trace?.({ kind: src != null && text === src ? 'verbatim' : 'opaque-edit', type: block.type.name });
+      return src != null && text === src ? src : text;
+    }
     if (!forceReserialize) {
       const src = block.attrs.src as string | null;
       if (src != null) {
         let reparsed: PMNode | undefined;
+        let reparsedCount = 0;
         try {
-          reparsed = parseBlock(src, ctx).node;
+          const r = parseBlock(src, ctx);
+          reparsed = r.node;
+          reparsedCount = r.count;
         } catch {
           reparsed = undefined;
         }
-        if (reparsed && semanticEq(reparsed, block)) {
+        if (reparsed && reparsedCount === 1 && semanticEq(reparsed, block)) {
           trace?.({ kind: 'verbatim', type: block.type.name });
           return src;
         }
@@ -393,7 +407,8 @@ export function serializeDoc(doc: PMNode, opts: SerializeOpts = {}): string {
     const result = reserializeBlock(block, style, useHints, eol);
     let verified = false;
     try {
-      verified = semanticEq(parseBlock(result, ctx).node, block);
+      const r = parseBlock(result, ctx);
+      verified = r.count === 1 && semanticEq(r.node, block);
     } catch {
       verified = false;
     }
