@@ -1,0 +1,53 @@
+{
+  "name": "collab-stack-yjs14-rc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spike 5, brief 02: stack 14 (@y/y 14.0.0-rc.26, @y/prosemirror 2.0.0-13) with live ProseMirror editors under jsdom, and spike 1's schema/parser/serializer, no workarounds.",
+  "scripts": {
+    "fetch": "node scripts/fetch-corpus.mjs",
+    "gates": "tsx scripts/gates.ts",
+    "gates:quick": "tsx scripts/gates.ts --quick",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "unified": "^11.0.5",
+    "remark-parse": "^11.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-math": "^6.0.0",
+    "mdast-util-to-markdown": "^2.1.2",
+    "mdast-util-gfm": "^3.0.0",
+    "mdast-util-frontmatter": "^2.0.1",
+    "mdast-util-math": "^3.0.0",
+    "prosemirror-model": "^1.23.0",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-transform": "^1.10.2",
+    "prosemirror-view": "^1.37.0",
+    "prosemirror-commands": "^1.6.2",
+    "diff": "^7.0.0",
+    "@y/y": "14.0.0-rc.26",
+    "@y/prosemirror": "2.0.0-13",
+    "@y/protocols": "1.0.6-rc.1",
+    "lib0": "1.0.0-rc.33",
+    "ws": "^8.18.0",
+    "@hocuspocus/server": "4.7.0",
+    "@hocuspocus/provider": "4.7.0",
+    "@hocuspocus/extension-sqlite": "4.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.2",
+    "vitest": "^3.0.5",
+    "jsdom": "^25.0.1",
+    "global-jsdom": "^25.0.0",
+    "@types/node": "^22.9.0",
+    "@types/diff": "^6.0.0",
+    "@types/ws": "^8.5.13"
+  },
+  "overrides": {
+    "yjs": "npm:@y/y@14.0.0-rc.26",
+    "y-protocols": "npm:@y/protocols@1.0.6-rc.1"
+  }
+}

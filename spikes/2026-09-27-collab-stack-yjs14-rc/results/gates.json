@@ -1,0 +1,242 @@
+{
+  "generatedAt": "2026-09-27T07:33:15.470Z",
+  "quick": false,
+  "gateA": {
+    "pass": true,
+    "medianLatencyMs": 23.522625000000062,
+    "latencies": [
+      22.401875000000018,
+      23.234458000000018,
+      20.49229099999991,
+      22.795165999999995,
+      21.916541999999936,
+      21.89458400000001,
+      22.173457999999982,
+      23.522625000000062,
+      23.39549999999997,
+      23.828874999999925,
+      24.02374999999995,
+      23.44162499999993,
+      24.315375000000017,
+      23.70104200000003,
+      24.18808300000012,
+      23.997292000000016,
+      23.905250000000024,
+      24.04950000000008,
+      21.865041999999903,
+      25.022707999999966
+    ],
+    "detail": "both editors saw each other's edit; median round-trip latency over 20 single-character edits: 23.5ms"
+  },
+  "gateB": {
+    "pass": true,
+    "reasons": [],
+    "detail": "editor1, editor2 and the relay agree; every linked image kept its link mark; update count stable at 23",
+    "updateCounts": {
+      "afterConverge": 23,
+      "afterSettle": 23
+    }
+  },
+  "gateC": {
+    "pass": false,
+    "total": 266,
+    "pathAPassed": 266,
+    "pathBPassed": 234,
+    "failures": [
+      {
+        "file": "npm-axios-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-base64-js-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-bcryptjs-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-canvas-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-cesium-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-commitlint-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-compression-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-cors-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-eventemitter3-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-express-validator-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-fastify-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-gatsby-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-graphql-request-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-hexo-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-karma-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-ky-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 2 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-minimist-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-mobx-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 3 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-mqtt-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 0 (heading) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-multer-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 0 (heading) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-nanoclone-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      },
+      {
+        "file": "npm-nock-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-node-cron-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-nodemailer-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-nodemon-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-nunjucks-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-oclif-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-pino-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-recharts-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-sequelize-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-ts-node-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "byte mismatch (path B: editor 2)"
+      },
+      {
+        "file": "npm-url-parse-readme.md",
+        "pathA": true,
+        "pathB": false,
+        "errorB": "serializeDoc: block 1 (paragraph) has no serialization that re-parses to the edited block"
+      }
+    ],
+    "elapsedMs": 62596,
+    "encodedStateBytesTotal": 19606051
+  }
+}
